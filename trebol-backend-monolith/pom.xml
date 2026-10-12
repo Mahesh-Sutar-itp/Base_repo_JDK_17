@@ -27,7 +27,7 @@
   <parent>
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter-parent</artifactId>
-    <version>3.2.9</version>
+    <version>3.2.12</version>
     <relativePath/> <!-- lookup parent from repository -->
   </parent>
   <groupId>org.trebolecommerce</groupId>
@@ -44,7 +44,7 @@
     <lombok.version>1.18.36</lombok.version>
 
     <!-- Dependencies -->
-    <jjwt.version>0.11.5</jjwt.version>
+    <jjwt.version>0.12.6</jjwt.version>
     <unirest.version>3.13.8</unirest.version>
 
     <!-- Plugins configuration -->
@@ -90,7 +90,7 @@
     <dependency>
       <groupId>com.h2database</groupId>
       <artifactId>h2</artifactId>
-      <version>2.2.220</version>
+      <version>2.3.232</version>
       <scope>runtime</scope>
     </dependency>
     <dependency>
@@ -151,7 +151,7 @@
     <dependency>
       <groupId>org.apache.commons</groupId>
       <artifactId>commons-lang3</artifactId>
-      <version>3.12.0</version>
+      <version>3.17.0</version>
     </dependency>
     <dependency>
       <groupId>com.konghq</groupId>
@@ -161,7 +161,7 @@
     <dependency>
       <groupId>org.springdoc</groupId>
       <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-      <version>2.6.0</version>
+      <version>2.7.0</version>
     </dependency>
 
     <!-- Testing -->

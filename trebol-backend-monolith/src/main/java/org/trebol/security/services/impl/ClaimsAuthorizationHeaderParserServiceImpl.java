@@ -47,12 +47,12 @@ public class ClaimsAuthorizationHeaderParserServiceImpl
     @Override
     public Claims parseToken(String token) throws IllegalStateException {
         try {
-            Jws<Claims> claimsJws = Jwts.parserBuilder()
-                .setSigningKey(secretKey)
+            Jws<Claims> claimsJws = Jwts.parser()
+                .verifyWith(secretKey)
                 .build()
-                .parseClaimsJws(token);
+                .parseSignedClaims(token);
 
-            return claimsJws.getBody();
+            return claimsJws.getPayload();
         } catch (JwtException e) {
             throw new IllegalStateException(String.format("Token %s can't be trusted", token));
         }
