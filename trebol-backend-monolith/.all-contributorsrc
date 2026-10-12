@@ -1,0 +1,151 @@
+{
+  "files": [
+    "README.md"
+  ],
+  "imageSize": 100,
+  "commit": false,
+  "contributors": [
+    {
+      "login": "amigoscode",
+      "name": "Amigoscode",
+      "avatar_url": "https://avatars.githubusercontent.com/u/40702606?v=4",
+      "profile": "http://amigoscode.com",
+      "contributions": [
+        "ideas"
+      ]
+    },
+    {
+      "login": "bglamadrid",
+      "name": "bglamadrid",
+      "avatar_url": "https://avatars.githubusercontent.com/u/68207359?v=4",
+      "profile": "http://benjaminlamadrid.cl",
+      "contributions": [
+        "code",
+        "design"
+      ]
+    },
+    {
+      "login": "trangntt-016",
+      "name": "Trang Nguyen",
+      "avatar_url": "https://avatars.githubusercontent.com/u/60552188?v=4",
+      "profile": "https://github.com/trangntt-016",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "ParundeepSingh",
+      "name": "Parundeep Singh",
+      "avatar_url": "https://avatars.githubusercontent.com/u/52928589?v=4",
+      "profile": "https://github.com/ParundeepSingh",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "mutasDev",
+      "name": "Markus Mutas",
+      "avatar_url": "https://avatars.githubusercontent.com/u/25075900?v=4",
+      "profile": "https://markus.mutas.dev",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "vaishakhvh",
+      "name": "vaishakhvh",
+      "avatar_url": "https://avatars.githubusercontent.com/u/72062381?v=4",
+      "profile": "https://github.com/vaishakhvh",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "NyorJa",
+      "name": "Rod Fetalvero",
+      "avatar_url": "https://avatars.githubusercontent.com/u/8148370?v=4",
+      "profile": "https://github.com/NyorJa",
+      "contributions": [
+        "code",
+        "test",
+        "ideas",
+        "maintenance",
+        "review"
+      ]
+    },
+    {
+      "login": "mepox",
+      "name": "mepox",
+      "avatar_url": "https://avatars.githubusercontent.com/u/21198248?v=4",
+      "profile": "https://mepox.github.io/",
+      "contributions": [
+        "code",
+        "maintenance",
+        "ideas",
+        "review"
+      ]
+    },
+    {
+      "login": "shivam-Purohit",
+      "name": "Shivam Purohit",
+      "avatar_url": "https://avatars.githubusercontent.com/u/91889807?v=4",
+      "profile": "https://github.com/shivam-Purohit",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "ujwalkumar1995",
+      "name": "Ujwal Kumar",
+      "avatar_url": "https://avatars.githubusercontent.com/u/20976813?v=4",
+      "profile": "https://github.com/ujwalkumar1995",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "Angel-M-R",
+      "name": "angelmr",
+      "avatar_url": "https://avatars.githubusercontent.com/u/16781447?v=4",
+      "profile": "https://github.com/Angel-M-R",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "Prashriya",
+      "name": "Prashriya Acharya",
+      "avatar_url": "https://avatars.githubusercontent.com/u/66111954?v=4",
+      "profile": "https://github.com/Prashriya",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "logesr",
+      "name": "Loges R",
+      "avatar_url": "https://avatars.githubusercontent.com/u/55475935?v=4",
+      "profile": "https://github.com/logesr",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "mslowiak",
+      "name": "Marcin Słowiak",
+      "avatar_url": "https://avatars.githubusercontent.com/u/18486535?v=4",
+      "profile": "https://github.com/mslowiak",
+      "contributions": [
+        "doc"
+      ]
+    }
+  ],
+  "contributorsPerLine": 7,
+  "projectName": "trebol-backend-monolith",
+  "projectOwner": "trebol-ecommerce",
+  "repoType": "github",
+  "repoHost": "https://github.com",
+  "skipCi": true,
+  "commitConvention": "angular",
+  "commitType": "docs"
+}
