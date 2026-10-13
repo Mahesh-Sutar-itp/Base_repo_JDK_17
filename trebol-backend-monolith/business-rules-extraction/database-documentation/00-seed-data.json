@@ -1,0 +1,640 @@
+{
+  "_source": "src/main/resources/data.sql (executed by Spring Boot sql init after schema-mariadb.sql / H2 equivalent)",
+  "_note": "Every lookup / reference table that is seeded by the application is represented here. Tables with no seed rows are listed under empty_at_bootstrap with the reason.",
+  "app_params": {
+    "_purpose": "EAV key/value application parameters. category='company' rows are the public company profile read by CompanyServiceImpl.readDetails().",
+    "_unique": [
+      "param_category + param_name"
+    ],
+    "_identity_restart": 5,
+    "rows": [
+      {
+        "param_id": 1,
+        "param_category": "company",
+        "param_name": "name",
+        "param_value": "Trébol Demo"
+      },
+      {
+        "param_id": 2,
+        "param_category": "company",
+        "param_name": "description",
+        "param_value": "This is a demostration of integrated eCommerce system Trébol"
+      },
+      {
+        "param_id": 3,
+        "param_category": "company",
+        "param_name": "bannerImageURL",
+        "param_value": "https://fakeimg.pl/400x150"
+      },
+      {
+        "param_id": 4,
+        "param_category": "company",
+        "param_name": "logoImageURL",
+        "param_value": "https://fakeimg.pl/250"
+      }
+    ],
+    "_recognised_param_names": [
+      "name",
+      "description",
+      "bannerImageURL",
+      "logoImageURL"
+    ],
+    "_unknown_names_behaviour": "silently ignored by the switch default branch in CompanyServiceImpl"
+  },
+  "order_statuses": {
+    "_purpose": "Order lifecycle states. order_status_code carries signed business meaning: negative codes are terminal failure/abort states, positive codes are forward progress. OrdersCrudServiceImpl locks edits when code >= 3 || code < 0.",
+    "_unique": [
+      "order_status_code",
+      "order_status_name"
+    ],
+    "_identity_restart": 13,
+    "rows": [
+      {
+        "order_status_id": 1,
+        "order_status_code": -6,
+        "order_status_name": "Returned"
+      },
+      {
+        "order_status_id": 2,
+        "order_status_code": -5,
+        "order_status_name": "Delivery Failed"
+      },
+      {
+        "order_status_id": 3,
+        "order_status_code": -4,
+        "order_status_name": "Delivery Cancelled"
+      },
+      {
+        "order_status_id": 4,
+        "order_status_code": -3,
+        "order_status_name": "Rejected"
+      },
+      {
+        "order_status_id": 5,
+        "order_status_code": -2,
+        "order_status_name": "Payment Failed"
+      },
+      {
+        "order_status_id": 6,
+        "order_status_code": -1,
+        "order_status_name": "Payment Cancelled"
+      },
+      {
+        "order_status_id": 7,
+        "order_status_code": 1,
+        "order_status_name": "Pending"
+      },
+      {
+        "order_status_id": 8,
+        "order_status_code": 2,
+        "order_status_name": "Payment Started"
+      },
+      {
+        "order_status_id": 9,
+        "order_status_code": 3,
+        "order_status_name": "Paid, Unconfirmed"
+      },
+      {
+        "order_status_id": 10,
+        "order_status_code": 4,
+        "order_status_name": "Paid, Confirmed"
+      },
+      {
+        "order_status_id": 11,
+        "order_status_code": 5,
+        "order_status_name": "Delivery On Route"
+      },
+      {
+        "order_status_id": 12,
+        "order_status_code": 6,
+        "order_status_name": "Delivery Complete"
+      }
+    ],
+    "_states_never_set_by_code": [
+      "Delivery On Route",
+      "Delivery Failed",
+      "Delivery Cancelled",
+      "Returned"
+    ]
+  },
+  "billing_types": {
+    "_purpose": "Selects the billing branch in OrdersConverterServiceImpl.convertBillingInformationForEntity. 'Enterprise Invoice' additionally requires a billing company and billing address.",
+    "_unique": [
+      "billing_type_name"
+    ],
+    "_identity_restart": 3,
+    "rows": [
+      {
+        "billing_type_id": 1,
+        "billing_type_name": "Bill"
+      },
+      {
+        "billing_type_id": 2,
+        "billing_type_name": "Enterprise Invoice"
+      }
+    ]
+  },
+  "payment_types": {
+    "_purpose": "Payment method catalogue. Only one implementation exists (Transbank Webpay Plus).",
+    "_unique": [
+      "payment_type_name"
+    ],
+    "_identity_restart": 2,
+    "rows": [
+      {
+        "payment_type_id": 1,
+        "payment_type_name": "WebPay Plus"
+      }
+    ]
+  },
+  "app_user_roles": {
+    "_purpose": "Role catalogue. 'Customer' is hardcoded as the role granted to self-registered accounts (RegistrationServiceImpl.convertToUser). trebol.security.guest-user-role-id=4 points at 'Customer' as the guest role.",
+    "_unique": [
+      "user_role_name"
+    ],
+    "_identity_restart": 5,
+    "rows": [
+      {
+        "user_role_id": 1,
+        "user_role_name": "Administrator"
+      },
+      {
+        "user_role_id": 2,
+        "user_role_name": "Manager"
+      },
+      {
+        "user_role_id": 3,
+        "user_role_name": "Salesperson"
+      },
+      {
+        "user_role_id": 4,
+        "user_role_name": "Customer"
+      }
+    ]
+  },
+  "app_permissions": {
+    "_purpose": "Authority catalogue. Codes are the literal strings used in @PreAuthorize(\"hasAuthority('...')\") and become SimpleGrantedAuthority values. Format is '<resource>:<action>' except the standalone 'checkout' authority.",
+    "_unique": [
+      "permission_code"
+    ],
+    "_identity_restart": 55,
+    "rows": [
+      {
+        "permission_id": 1,
+        "permission_code": "product_categories:delete",
+        "permission_description": null
+      },
+      {
+        "permission_id": 2,
+        "permission_code": "product_categories:create",
+        "permission_description": null
+      },
+      {
+        "permission_id": 3,
+        "permission_code": "product_categories:update",
+        "permission_description": null
+      },
+      {
+        "permission_id": 4,
+        "permission_code": "product_categories:read",
+        "permission_description": null
+      },
+      {
+        "permission_id": 5,
+        "permission_code": "order_statuses:delete",
+        "permission_description": null
+      },
+      {
+        "permission_id": 6,
+        "permission_code": "order_statuses:create",
+        "permission_description": null
+      },
+      {
+        "permission_id": 7,
+        "permission_code": "order_statuses:update",
+        "permission_description": null
+      },
+      {
+        "permission_id": 8,
+        "permission_code": "order_statuses:read",
+        "permission_description": null
+      },
+      {
+        "permission_id": 9,
+        "permission_code": "order_types:delete",
+        "permission_description": null
+      },
+      {
+        "permission_id": 10,
+        "permission_code": "order_types:create",
+        "permission_description": null
+      },
+      {
+        "permission_id": 11,
+        "permission_code": "order_types:update",
+        "permission_description": null
+      },
+      {
+        "permission_id": 12,
+        "permission_code": "order_types:read",
+        "permission_description": null
+      },
+      {
+        "permission_id": 13,
+        "permission_code": "customers:delete",
+        "permission_description": null
+      },
+      {
+        "permission_id": 14,
+        "permission_code": "customers:create",
+        "permission_description": null
+      },
+      {
+        "permission_id": 15,
+        "permission_code": "customers:update",
+        "permission_description": null
+      },
+      {
+        "permission_id": 16,
+        "permission_code": "customers:read",
+        "permission_description": null
+      },
+      {
+        "permission_id": 17,
+        "permission_code": "products:delete",
+        "permission_description": null
+      },
+      {
+        "permission_id": 18,
+        "permission_code": "products:create",
+        "permission_description": null
+      },
+      {
+        "permission_id": 19,
+        "permission_code": "products:update",
+        "permission_description": null
+      },
+      {
+        "permission_id": 20,
+        "permission_code": "products:read",
+        "permission_description": null
+      },
+      {
+        "permission_id": 21,
+        "permission_code": "orders:delete",
+        "permission_description": null
+      },
+      {
+        "permission_id": 22,
+        "permission_code": "orders:create",
+        "permission_description": null
+      },
+      {
+        "permission_id": 23,
+        "permission_code": "orders:update",
+        "permission_description": null
+      },
+      {
+        "permission_id": 24,
+        "permission_code": "orders:read",
+        "permission_description": null
+      },
+      {
+        "permission_id": 25,
+        "permission_code": "salespeople:delete",
+        "permission_description": null
+      },
+      {
+        "permission_id": 26,
+        "permission_code": "salespeople:create",
+        "permission_description": null
+      },
+      {
+        "permission_id": 27,
+        "permission_code": "salespeople:update",
+        "permission_description": null
+      },
+      {
+        "permission_id": 28,
+        "permission_code": "salespeople:read",
+        "permission_description": null
+      },
+      {
+        "permission_id": 29,
+        "permission_code": "users:delete",
+        "permission_description": null
+      },
+      {
+        "permission_id": 30,
+        "permission_code": "users:create",
+        "permission_description": null
+      },
+      {
+        "permission_id": 31,
+        "permission_code": "users:update",
+        "permission_description": null
+      },
+      {
+        "permission_id": 32,
+        "permission_code": "users:read",
+        "permission_description": null
+      },
+      {
+        "permission_id": 33,
+        "permission_code": "user_roles:delete",
+        "permission_description": null
+      },
+      {
+        "permission_id": 34,
+        "permission_code": "user_roles:create",
+        "permission_description": null
+      },
+      {
+        "permission_id": 35,
+        "permission_code": "user_roles:update",
+        "permission_description": null
+      },
+      {
+        "permission_id": 36,
+        "permission_code": "user_roles:read",
+        "permission_description": null
+      },
+      {
+        "permission_id": 37,
+        "permission_code": "people:delete",
+        "permission_description": null
+      },
+      {
+        "permission_id": 38,
+        "permission_code": "people:create",
+        "permission_description": null
+      },
+      {
+        "permission_id": 39,
+        "permission_code": "people:update",
+        "permission_description": null
+      },
+      {
+        "permission_id": 40,
+        "permission_code": "people:read",
+        "permission_description": null
+      },
+      {
+        "permission_id": 41,
+        "permission_code": "images:delete",
+        "permission_description": null
+      },
+      {
+        "permission_id": 42,
+        "permission_code": "images:create",
+        "permission_description": null
+      },
+      {
+        "permission_id": 43,
+        "permission_code": "images:update",
+        "permission_description": null
+      },
+      {
+        "permission_id": 44,
+        "permission_code": "images:read",
+        "permission_description": null
+      },
+      {
+        "permission_id": 45,
+        "permission_code": "checkout",
+        "permission_description": null
+      },
+      {
+        "permission_id": 46,
+        "permission_code": "shippers:delete",
+        "permission_description": null
+      },
+      {
+        "permission_id": 47,
+        "permission_code": "shippers:create",
+        "permission_description": null
+      },
+      {
+        "permission_id": 48,
+        "permission_code": "shippers:update",
+        "permission_description": null
+      },
+      {
+        "permission_id": 49,
+        "permission_code": "shippers:read",
+        "permission_description": null
+      },
+      {
+        "permission_id": 50,
+        "permission_code": "product_lists:delete",
+        "permission_description": null
+      },
+      {
+        "permission_id": 51,
+        "permission_code": "product_lists:create",
+        "permission_description": null
+      },
+      {
+        "permission_id": 52,
+        "permission_code": "product_lists:update",
+        "permission_description": null
+      },
+      {
+        "permission_id": 53,
+        "permission_code": "product_lists:read",
+        "permission_description": null
+      },
+      {
+        "permission_id": 54,
+        "permission_code": "product_lists:contents",
+        "permission_description": null
+      }
+    ],
+    "_orphan_codes": [
+      "order_types:delete",
+      "order_types:create",
+      "order_types:update",
+      "order_types:read"
+    ],
+    "_orphan_reason": "No controller or method in src/main/java references any 'order_types:*' authority; these four rows are dead seed data left from a removed feature."
+  },
+  "app_user_role_permissions": {
+    "_purpose": "Role-to-authority grants. Resolved at login by UserPermissionsServiceImpl -> UserRolePermissionsRepository.deepFindPermissionsByUserRoleId and de-duplicated into a set.",
+    "_identity_restart": null,
+    "_note": "Seed rows omit user_role_permission_id and rely on AUTO_INCREMENT.",
+    "grants_by_role": {
+      "1 Administrator": [
+        "product_categories:delete",
+        "product_categories:create",
+        "product_categories:update",
+        "product_categories:read",
+        "order_statuses:delete",
+        "order_statuses:create",
+        "order_statuses:update",
+        "order_statuses:read",
+        "order_types:delete",
+        "order_types:create",
+        "order_types:update",
+        "order_types:read",
+        "customers:delete",
+        "customers:create",
+        "customers:update",
+        "customers:read",
+        "products:delete",
+        "products:create",
+        "products:update",
+        "products:read",
+        "orders:delete",
+        "orders:create",
+        "orders:update",
+        "orders:read",
+        "salespeople:delete",
+        "salespeople:create",
+        "salespeople:update",
+        "salespeople:read",
+        "users:delete",
+        "users:create",
+        "users:update",
+        "users:read",
+        "user_roles:delete",
+        "user_roles:create",
+        "user_roles:update",
+        "user_roles:read",
+        "people:delete",
+        "people:create",
+        "people:update",
+        "people:read",
+        "images:delete",
+        "images:create",
+        "images:update",
+        "images:read",
+        "checkout",
+        "shippers:delete",
+        "shippers:create",
+        "shippers:update",
+        "shippers:read",
+        "product_lists:delete",
+        "product_lists:create",
+        "product_lists:update",
+        "product_lists:read",
+        "product_lists:contents"
+      ],
+      "2 Manager": [
+        "product_categories:delete",
+        "product_categories:create",
+        "product_categories:update",
+        "product_categories:read",
+        "order_types:read",
+        "customers:read",
+        "products:delete",
+        "products:create",
+        "products:update",
+        "products:read",
+        "orders:update",
+        "orders:read",
+        "salespeople:create",
+        "salespeople:update",
+        "salespeople:read",
+        "user_roles:read",
+        "people:read",
+        "images:delete",
+        "images:create",
+        "images:update",
+        "images:read",
+        "checkout",
+        "shippers:delete",
+        "shippers:create",
+        "shippers:update",
+        "shippers:read",
+        "product_lists:delete",
+        "product_lists:create",
+        "product_lists:update",
+        "product_lists:read",
+        "product_lists:contents"
+      ],
+      "3 Salesperson": [
+        "product_categories:update",
+        "product_categories:read",
+        "order_statuses:read",
+        "order_types:read",
+        "customers:read",
+        "products:delete",
+        "products:create",
+        "products:update",
+        "products:read",
+        "orders:create",
+        "orders:read",
+        "salespeople:read",
+        "people:read",
+        "checkout"
+      ],
+      "4 Customer": [
+        "checkout"
+      ]
+    },
+    "grant_counts": {
+      "1 Administrator": 54,
+      "2 Manager": 31,
+      "3 Salesperson": 14,
+      "4 Customer": 1
+    }
+  },
+  "app_users": {
+    "_purpose": "Bootstrap accounts, one per role. Passwords equal the usernames, BCrypt cost factor 10. user_role_id 1 ('admin') is the account protected by trebol.security.protected-account-id=1.",
+    "_unique": [
+      "user_name"
+    ],
+    "_identity_restart": 5,
+    "_warning": "These are demonstration credentials in source control. A production deployment MUST replace them; they are documented here only because the rewrite must reproduce the bootstrap-account concept, not these hashes.",
+    "rows": [
+      {
+        "user_id": 1,
+        "user_name": "admin",
+        "user_role_id": 1,
+        "person_id": null,
+        "password": "<bcrypt hash of 'admin', cost 10>"
+      },
+      {
+        "user_id": 2,
+        "user_name": "manager",
+        "user_role_id": 2,
+        "person_id": null,
+        "password": "<bcrypt hash of 'manager', cost 10>"
+      },
+      {
+        "user_id": 3,
+        "user_name": "salesperson",
+        "user_role_id": 3,
+        "person_id": null,
+        "password": "<bcrypt hash of 'salesperson', cost 10>"
+      },
+      {
+        "user_id": 4,
+        "user_name": "customer",
+        "user_role_id": 4,
+        "person_id": null,
+        "password": "<bcrypt hash of 'customer', cost 10>"
+      }
+    ]
+  },
+  "empty_at_bootstrap": {
+    "_reason": "These tables are transactional or operator-populated; data.sql seeds no rows for them.",
+    "tables": [
+      "addresses",
+      "billing_companies",
+      "customers",
+      "images",
+      "order_details",
+      "orders",
+      "people",
+      "product_categories",
+      "product_images",
+      "product_list_items",
+      "product_lists",
+      "products",
+      "salespeople",
+      "shippers"
+    ]
+  },
+  "identity_generator_note": "data.sql ends with ALTER TABLE ... ALTER COLUMN ... RESTART WITH statements because H2 2.x does not advance identity generators when explicit IDs are inserted. A rewrite on any database must apply the equivalent sequence fix-up after seeding."
+}
