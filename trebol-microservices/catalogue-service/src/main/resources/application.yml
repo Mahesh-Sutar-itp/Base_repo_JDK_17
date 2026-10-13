@@ -1,0 +1,25 @@
+# catalogue-service
+# Each service owns its schema exclusively - no service reads another's tables.
+server:
+  port: 8082
+
+spring:
+  application:
+    name: catalogue-service
+  datasource:
+    # In-memory by default, matching the monolith's runtime default.
+    # Point at MariaDB per environment. Credentials MUST come from the environment,
+    # never from a committed file (guardrail G7).
+    url: ${TREBOL_CATALOGUE_DB_URL:jdbc:h2:mem:catalogue;DB_CLOSE_DELAY=-1}
+    username: ${TREBOL_CATALOGUE_DB_USER:sa}
+    password: ${TREBOL_CATALOGUE_DB_PASSWORD:}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+
+trebol:
+  security:
+    # Shared signing key - every service verifies locally; only identity-service issues.
+    # Supplied by the environment; no default, on purpose.
+    jwt-secret-key: ${TREBOL_JWT_SECRET_KEY:}
