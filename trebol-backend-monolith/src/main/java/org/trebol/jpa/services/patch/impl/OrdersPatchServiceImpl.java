@@ -27,9 +27,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.trebol.api.models.OrderPojo;
 import org.trebol.common.exceptions.BadInputException;
 import org.trebol.jpa.entities.Order;
-import org.trebol.jpa.repositories.PaymentTypesRepository;
 import org.trebol.jpa.repositories.OrderStatusesRepository;
-import org.trebol.jpa.repositories.ShippersRepository;
+import org.trebol.jpa.services.contracts.BillingContract;
+import org.trebol.jpa.services.contracts.ShipperLookupContract;
 import org.trebol.jpa.services.patch.OrdersPatchService;
 
 import java.time.Instant;
@@ -40,18 +40,18 @@ import java.util.Map;
 public class OrdersPatchServiceImpl
     implements OrdersPatchService {
     private final OrderStatusesRepository statusesRepository;
-    private final PaymentTypesRepository paymentTypesRepository;
-    private final ShippersRepository shippersRepository;
+    private final BillingContract billingContract;
+    private final ShipperLookupContract shipperLookupContract;
 
     @Autowired
     public OrdersPatchServiceImpl(
         OrderStatusesRepository statusesRepository,
-        PaymentTypesRepository paymentTypesRepository,
-        ShippersRepository shippersRepository
+        BillingContract billingContract,
+        ShipperLookupContract shipperLookupContract
     ) {
         this.statusesRepository = statusesRepository;
-        this.paymentTypesRepository = paymentTypesRepository;
-        this.shippersRepository = shippersRepository;
+        this.billingContract = billingContract;
+        this.shipperLookupContract = shipperLookupContract;
     }
 
     @Transactional
@@ -78,14 +78,14 @@ public class OrdersPatchServiceImpl
             if (changes.containsKey("paymentType")) {
                 String paymentTypeName = (String) changes.get("paymentType");
                 if (!StringUtils.isBlank(paymentTypeName)) {
-                    paymentTypesRepository.findByName(paymentTypeName).ifPresent(target::setPaymentType);
+                    billingContract.findPaymentTypeByName(paymentTypeName).ifPresent(target::setPaymentType);
                 }
             }
 
             if (changes.containsKey("shipper")) {
                 String shipperName = (String) changes.get("shipper");
                 if (!StringUtils.isBlank(shipperName)) {
-                    shippersRepository.findByName(shipperName).ifPresent(target::setShipper);
+                    shipperLookupContract.findShipperByName(shipperName).ifPresent(target::setShipper);
                 }
             }
         } catch (ClassCastException ex) {

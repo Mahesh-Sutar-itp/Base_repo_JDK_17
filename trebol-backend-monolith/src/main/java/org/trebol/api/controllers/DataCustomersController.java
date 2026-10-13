@@ -44,6 +44,10 @@ import java.util.Map;
 
 import static org.springframework.http.HttpStatus.CREATED;
 import static org.springframework.http.HttpStatus.NO_CONTENT;
+import static org.trebol.security.authorities.AuthorityCodes.CUSTOMERS_CREATE;
+import static org.trebol.security.authorities.AuthorityCodes.CUSTOMERS_DELETE;
+import static org.trebol.security.authorities.AuthorityCodes.CUSTOMERS_READ;
+import static org.trebol.security.authorities.AuthorityCodes.CUSTOMERS_UPDATE;
 
 @RestController
 @RequestMapping("/data/customers")
@@ -65,7 +69,7 @@ public class DataCustomersController
     @Override
     @GetMapping
     @Operation(summary = "List customers.")
-    @PreAuthorize("hasAuthority('customers:read')")
+    @PreAuthorize("hasAuthority('" + CUSTOMERS_READ + "')")
     public DataPagePojo<PersonPojo> readMany(@RequestParam Map<String, String> allRequestParams) {
         return super.readMany(allRequestParams);
     }
@@ -73,7 +77,7 @@ public class DataCustomersController
     @Override
     @PostMapping
     @Operation(summary = "Register new customer.")
-    @PreAuthorize("hasAuthority('customers:create')")
+    @PreAuthorize("hasAuthority('" + CUSTOMERS_CREATE + "')")
     @ResponseStatus(CREATED)
     public void create(@Valid @RequestBody PersonPojo input)
         throws BadInputException, EntityExistsException {
@@ -84,7 +88,7 @@ public class DataCustomersController
     @PutMapping
     @Operation(summary = "Replace customers data.")
     @ResponseStatus(NO_CONTENT)
-    @PreAuthorize("hasAuthority('customers:update')")
+    @PreAuthorize("hasAuthority('" + CUSTOMERS_UPDATE + "')")
     public void update(@Valid @RequestBody PersonPojo input, @RequestParam Map<String, String> requestParams)
         throws EntityNotFoundException, BadInputException {
         super.update(input, requestParams);
@@ -94,7 +98,7 @@ public class DataCustomersController
     @DeleteMapping
     @Operation(summary = "Deregister customers.")
     @ResponseStatus(NO_CONTENT)
-    @PreAuthorize("hasAuthority('customers:delete')")
+    @PreAuthorize("hasAuthority('" + CUSTOMERS_DELETE + "')")
     public void delete(Map<String, String> requestParams)
         throws EntityNotFoundException {
         super.delete(requestParams);

@@ -41,7 +41,12 @@ public final class Constants {
     public static final String BILLING_TYPE_ENTERPRISE = "Enterprise Invoice";
     public static final String WEBPAY_SUCCESS_TOKEN_HEADER_NAME = "token_ws";
     public static final String WEBPAY_ABORTION_TOKEN_HEADER_NAME = "TBK_TOKEN";
-    public static final String AUTHORITY_CHECKOUT = "checkout";
+    /**
+     * Delegating alias of {@link org.trebol.security.authorities.AuthorityCodes#CHECKOUT}.
+     * The generated catalogue is the single source of truth for authority codes; this alias is
+     * retained so existing call sites keep compiling.
+     */
+    public static final String AUTHORITY_CHECKOUT = org.trebol.security.authorities.AuthorityCodes.CHECKOUT;
     public static final String JWT_CLAIM_AUTHORITIES = "authorities";
     public static final String JWT_PREFIX = "Bearer ";
     public static final String PERSON_DATA_MAP_KEYS_PREFIX = "person.";

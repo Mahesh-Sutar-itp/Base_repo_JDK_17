@@ -53,6 +53,10 @@ import java.util.Map;
 
 import static org.springframework.http.HttpStatus.CREATED;
 import static org.springframework.http.HttpStatus.NO_CONTENT;
+import static org.trebol.security.authorities.AuthorityCodes.IMAGES_CREATE;
+import static org.trebol.security.authorities.AuthorityCodes.IMAGES_DELETE;
+import static org.trebol.security.authorities.AuthorityCodes.IMAGES_READ;
+import static org.trebol.security.authorities.AuthorityCodes.IMAGES_UPDATE;
 
 @RestController
 @RequestMapping("/data/images")
@@ -74,7 +78,7 @@ public class DataImagesController
     @Override
     @GetMapping
     @Operation(summary = "List image links data.")
-    @PreAuthorize("hasAuthority('images:read')")
+    @PreAuthorize("hasAuthority('" + IMAGES_READ + "')")
     public DataPagePojo<ImagePojo> readMany(@RequestParam Map<String, String> allRequestParams) {
         return super.readMany(allRequestParams);
     }
@@ -83,7 +87,7 @@ public class DataImagesController
     @PostMapping
     @Operation(summary = "Define new image links.")
     @ResponseStatus(CREATED)
-    @PreAuthorize("hasAuthority('images:create')")
+    @PreAuthorize("hasAuthority('" + IMAGES_CREATE + "')")
     public void create(@Valid @RequestBody ImagePojo input)
         throws BadInputException, EntityExistsException {
         crudService.create(input);
@@ -93,7 +97,7 @@ public class DataImagesController
     @PutMapping
     @Operation(summary = "Replace image links data.")
     @ResponseStatus(NO_CONTENT)
-    @PreAuthorize("hasAuthority('images:update')")
+    @PreAuthorize("hasAuthority('" + IMAGES_UPDATE + "')")
     public void update(@Valid @RequestBody ImagePojo input, @RequestParam Map<String, String> requestParams)
         throws EntityNotFoundException, BadInputException {
         super.update(input, requestParams);
@@ -103,7 +107,7 @@ public class DataImagesController
     @PatchMapping
     @Operation(summary = "Update parts of image links data.")
     @ResponseStatus(NO_CONTENT)
-    @PreAuthorize("hasAuthority('images:update')")
+    @PreAuthorize("hasAuthority('" + IMAGES_UPDATE + "')")
     public void partialUpdate(
         @RequestBody Map<String, Object> input,
         @RequestParam Map<String, String> requestParams
@@ -115,7 +119,7 @@ public class DataImagesController
     @DeleteMapping
     @Operation(summary = "Remove image links.")
     @ResponseStatus(NO_CONTENT)
-    @PreAuthorize("hasAuthority('images:delete')")
+    @PreAuthorize("hasAuthority('" + IMAGES_DELETE + "')")
     public void delete(@RequestParam Map<String, String> requestParams)
         throws EntityNotFoundException {
         super.delete(requestParams);

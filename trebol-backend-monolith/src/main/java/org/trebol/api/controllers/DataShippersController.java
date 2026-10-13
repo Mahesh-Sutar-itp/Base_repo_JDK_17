@@ -53,6 +53,9 @@ import java.util.Map;
 
 import static org.springframework.http.HttpStatus.CREATED;
 import static org.springframework.http.HttpStatus.NO_CONTENT;
+import static org.trebol.security.authorities.AuthorityCodes.SHIPPERS_CREATE;
+import static org.trebol.security.authorities.AuthorityCodes.SHIPPERS_DELETE;
+import static org.trebol.security.authorities.AuthorityCodes.SHIPPERS_UPDATE;
 
 @RestController
 @RequestMapping("/data/shippers")
@@ -81,7 +84,7 @@ public class DataShippersController
     @PostMapping
     @Operation(summary = "Define new shippers.")
     @ResponseStatus(CREATED)
-    @PreAuthorize("hasAuthority('shippers:create')")
+    @PreAuthorize("hasAuthority('" + SHIPPERS_CREATE + "')")
     public void create(@Valid @RequestBody ShipperPojo input)
         throws BadInputException, EntityExistsException {
         crudService.create(input);
@@ -91,7 +94,7 @@ public class DataShippersController
     @PutMapping
     @Operation(summary = "Replace shippers data.")
     @ResponseStatus(NO_CONTENT)
-    @PreAuthorize("hasAuthority('shippers:update')")
+    @PreAuthorize("hasAuthority('" + SHIPPERS_UPDATE + "')")
     public void update(@Valid @RequestBody ShipperPojo input, @RequestParam Map<String, String> requestParams)
         throws BadInputException, EntityNotFoundException {
         super.update(input, requestParams);
@@ -101,7 +104,7 @@ public class DataShippersController
     @PatchMapping
     @Operation(summary = "Update parts of shippers data.")
     @ResponseStatus(NO_CONTENT)
-    @PreAuthorize("hasAuthority('shippers:update')")
+    @PreAuthorize("hasAuthority('" + SHIPPERS_UPDATE + "')")
     public void partialUpdate(
         @RequestBody Map<String, Object> input,
         @RequestParam Map<String, String> requestParams
@@ -113,7 +116,7 @@ public class DataShippersController
     @DeleteMapping
     @Operation(summary = "Remove shippers.")
     @ResponseStatus(NO_CONTENT)
-    @PreAuthorize("hasAuthority('shippers:delete')")
+    @PreAuthorize("hasAuthority('" + SHIPPERS_DELETE + "')")
     public void delete(@RequestParam Map<String, String> requestParams)
         throws EntityNotFoundException {
         super.delete(requestParams);

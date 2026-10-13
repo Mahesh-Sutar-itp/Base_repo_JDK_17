@@ -67,6 +67,7 @@ import java.util.Optional;
 
 import static org.springframework.http.HttpStatus.CREATED;
 import static org.springframework.http.HttpStatus.NO_CONTENT;
+import static org.trebol.security.authorities.AuthorityCodes.PRODUCT_LISTS_CONTENTS;
 
 @RestController
 @RequestMapping("/data/product_list_contents")
@@ -135,7 +136,7 @@ public class DataProductListContentsController {
     @PostMapping
     @Operation(summary = "Add products to lists.")
     @ResponseStatus(CREATED)
-    @PreAuthorize("hasAuthority('product_lists:contents')")
+    @PreAuthorize("hasAuthority('" + PRODUCT_LISTS_CONTENTS + "')")
     public void addToContents(@Valid @RequestBody ProductPojo input,
                               @RequestParam Map<String, String> requestParams)
         throws BadInputException, EntityNotFoundException {
@@ -159,7 +160,7 @@ public class DataProductListContentsController {
     @PutMapping
     @Operation(summary = "Fully replace contents of product lists.")
     @ResponseStatus(NO_CONTENT)
-    @PreAuthorize("hasAuthority('product_lists:contents')")
+    @PreAuthorize("hasAuthority('" + PRODUCT_LISTS_CONTENTS + "')")
     public void updateContents(@RequestBody Collection<ProductPojo> input,
                                @RequestParam Map<String, String> requestParams)
         throws BadInputException, EntityNotFoundException {
@@ -186,7 +187,7 @@ public class DataProductListContentsController {
     @DeleteMapping
     @Operation(summary = "Remove products from lists.")
     @ResponseStatus(NO_CONTENT)
-    @PreAuthorize("hasAuthority('product_lists:contents')")
+    @PreAuthorize("hasAuthority('" + PRODUCT_LISTS_CONTENTS + "')")
     public void deleteFromContents(@RequestParam Map<String, String> requestParams)
         throws BadInputException, EntityNotFoundException {
         Optional<ProductList> listMatch = this.fetchProductListByCode(requestParams);

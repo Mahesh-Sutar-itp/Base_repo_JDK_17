@@ -32,9 +32,9 @@ import org.trebol.api.models.OrderPojo;
 import org.trebol.common.exceptions.BadInputException;
 import org.trebol.jpa.entities.*;
 import org.trebol.jpa.entities.OrderStatus;
-import org.trebol.jpa.repositories.PaymentTypesRepository;
 import org.trebol.jpa.repositories.OrderStatusesRepository;
-import org.trebol.jpa.repositories.ShippersRepository;
+import org.trebol.jpa.services.contracts.BillingContract;
+import org.trebol.jpa.services.contracts.ShipperLookupContract;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -58,8 +58,8 @@ class OrdersPatchServiceImplTest {
     OrdersPatchServiceImpl instance;
     @Mock
     OrderStatusesRepository statusesRepositoryMock;
-    @Mock PaymentTypesRepository paymentTypesRepositoryMock;
-    @Mock ShippersRepository shippersRepositoryMock;
+    @Mock BillingContract billingContractMock;
+    @Mock ShipperLookupContract shipperLookupContractMock;
     private static ObjectMapper MAPPER;
     private static Order existingOrder;
 
@@ -136,7 +136,7 @@ class OrdersPatchServiceImplTest {
         Map<String, Object> input = this.mapFrom(OrderPojo.builder()
             .paymentType(NOT_ANY)
             .build());
-        when(paymentTypesRepositoryMock.findByName(anyString())).thenReturn(Optional.of(existingPaymentType));
+        when(billingContractMock.findPaymentTypeByName(anyString())).thenReturn(Optional.of(existingPaymentType));
         Order result = instance.patchExistingEntity(input, existingOrder);
         assertNotEquals(existingOrder, result);
         assertEquals(existingPaymentType, result.getPaymentType());
@@ -148,7 +148,7 @@ class OrdersPatchServiceImplTest {
         Map<String, Object> input = this.mapFrom(OrderPojo.builder()
             .shipper(NOT_ANY)
             .build());
-        when(shippersRepositoryMock.findByName(anyString())).thenReturn(Optional.of(existingShipper));
+        when(shipperLookupContractMock.findShipperByName(anyString())).thenReturn(Optional.of(existingShipper));
         Order result = instance.patchExistingEntity(input, existingOrder);
         assertNotEquals(existingOrder, result);
         assertEquals(existingShipper, result.getShipper());
@@ -167,8 +167,8 @@ class OrdersPatchServiceImplTest {
             .shipper(NOT_ANY)
             .build());
         when(statusesRepositoryMock.findByName(anyString())).thenReturn(Optional.of(existingStatus));
-        when(paymentTypesRepositoryMock.findByName(anyString())).thenReturn(Optional.of(existingPaymentType));
-        when(shippersRepositoryMock.findByName(anyString())).thenReturn(Optional.of(existingShipper));
+        when(billingContractMock.findPaymentTypeByName(anyString())).thenReturn(Optional.of(existingPaymentType));
+        when(shipperLookupContractMock.findShipperByName(anyString())).thenReturn(Optional.of(existingShipper));
         Order result = instance.patchExistingEntity(input, existingOrder);
         assertNotEquals(existingOrder, result);
         assertEquals(whenTheMethodExecutes, result.getDate());

@@ -53,6 +53,9 @@ import java.util.Map;
 
 import static org.springframework.http.HttpStatus.CREATED;
 import static org.springframework.http.HttpStatus.NO_CONTENT;
+import static org.trebol.security.authorities.AuthorityCodes.PRODUCT_CATEGORIES_CREATE;
+import static org.trebol.security.authorities.AuthorityCodes.PRODUCT_CATEGORIES_DELETE;
+import static org.trebol.security.authorities.AuthorityCodes.PRODUCT_CATEGORIES_UPDATE;
 
 @RestController
 @RequestMapping("/data/product_categories")
@@ -84,7 +87,7 @@ public class DataProductCategoriesController
     @PostMapping
     @Operation(summary = "Define new product categories.")
     @ResponseStatus(CREATED)
-    @PreAuthorize("hasAuthority('product_categories:create')")
+    @PreAuthorize("hasAuthority('" + PRODUCT_CATEGORIES_CREATE + "')")
     public void create(@Valid @RequestBody ProductCategoryPojo input)
         throws BadInputException, EntityExistsException {
         crudService.create(input);
@@ -94,7 +97,7 @@ public class DataProductCategoriesController
     @PutMapping
     @Operation(summary = "Replace product categories data.")
     @ResponseStatus(NO_CONTENT)
-    @PreAuthorize("hasAuthority('product_categories:update')")
+    @PreAuthorize("hasAuthority('" + PRODUCT_CATEGORIES_UPDATE + "')")
     public void update(@Valid @RequestBody ProductCategoryPojo input, @RequestParam Map<String, String> requestParams)
         throws BadInputException, EntityNotFoundException {
         super.update(input, requestParams);
@@ -104,7 +107,7 @@ public class DataProductCategoriesController
     @PatchMapping
     @Operation(summary = "Update parts of product categories data.")
     @ResponseStatus(NO_CONTENT)
-    @PreAuthorize("hasAuthority('product_categories:update')")
+    @PreAuthorize("hasAuthority('" + PRODUCT_CATEGORIES_UPDATE + "')")
     public void partialUpdate(
         @RequestBody Map<String, Object> input,
         @RequestParam Map<String, String> requestParams
@@ -116,7 +119,7 @@ public class DataProductCategoriesController
     @DeleteMapping
     @Operation(summary = "Remove product categories.")
     @ResponseStatus(NO_CONTENT)
-    @PreAuthorize("hasAuthority('product_categories:delete')")
+    @PreAuthorize("hasAuthority('" + PRODUCT_CATEGORIES_DELETE + "')")
     public void delete(@RequestParam Map<String, String> requestParams)
         throws EntityNotFoundException {
         super.delete(requestParams);

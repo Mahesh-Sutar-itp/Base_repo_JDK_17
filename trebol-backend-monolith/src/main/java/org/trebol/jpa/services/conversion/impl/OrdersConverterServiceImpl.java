@@ -40,18 +40,16 @@ import org.trebol.jpa.entities.OrderDetail;
 import org.trebol.jpa.entities.Product;
 import org.trebol.jpa.entities.Shipper;
 import org.trebol.jpa.repositories.AddressesRepository;
-import org.trebol.jpa.repositories.BillingTypesRepository;
-import org.trebol.jpa.repositories.PaymentTypesRepository;
-import org.trebol.jpa.repositories.ProductsRepository;
 import org.trebol.jpa.repositories.OrderStatusesRepository;
-import org.trebol.jpa.repositories.ShippersRepository;
+import org.trebol.jpa.services.contracts.BillingContract;
+import org.trebol.jpa.services.contracts.ProductLookupContract;
+import org.trebol.jpa.services.contracts.ShipperLookupContract;
 import org.trebol.jpa.services.conversion.AddressesConverterService;
 import org.trebol.jpa.services.conversion.BillingCompaniesConverterService;
 import org.trebol.jpa.services.conversion.CustomersConverterService;
 import org.trebol.jpa.services.conversion.ProductsConverterService;
 import org.trebol.jpa.services.conversion.OrdersConverterService;
 import org.trebol.jpa.services.conversion.SalespeopleConverterService;
-import org.trebol.jpa.services.crud.BillingCompaniesCrudService;
 import org.trebol.jpa.services.crud.CustomersCrudService;
 
 import jakarta.validation.constraints.NotNull;
@@ -68,15 +66,13 @@ public class OrdersConverterServiceImpl
     implements OrdersConverterService {
     private final CustomersCrudService customersCrudService;
     private final CustomersConverterService customersConverterService;
-    private final BillingTypesRepository billingTypesRepository;
-    private final BillingCompaniesCrudService billingCompaniesCrudService;
+    private final BillingContract billingContract;
     private final BillingCompaniesConverterService billingCompaniesConverterService;
     private final SalespeopleConverterService salespeopleConverterService;
     private final ProductsConverterService productConverterService;
-    private final ProductsRepository productsRepository;
-    private final ShippersRepository shippersRepository;
+    private final ProductLookupContract productLookupContract;
+    private final ShipperLookupContract shipperLookupContract;
     private final AddressesRepository addressesRepository;
-    private final PaymentTypesRepository paymentTypesRepository;
     private final OrderStatusesRepository orderStatusesRepository;
     private final AddressesConverterService addressesConverterService;
     static final double TAX_PERCENT = 0.19; // TODO refactor into a "tax service" of sorts
@@ -86,29 +82,25 @@ public class OrdersConverterServiceImpl
     public OrdersConverterServiceImpl(
         CustomersCrudService customersCrudService,
         CustomersConverterService customersConverterService,
-        BillingTypesRepository billingTypesRepository,
-        BillingCompaniesCrudService billingCompaniesCrudService,
+        BillingContract billingContract,
         BillingCompaniesConverterService billingCompaniesConverterService,
         SalespeopleConverterService salespeopleConverterService,
         ProductsConverterService productConverterService,
-        ProductsRepository productsRepository,
-        ShippersRepository shippersRepository,
+        ProductLookupContract productLookupContract,
+        ShipperLookupContract shipperLookupContract,
         AddressesRepository addressesRepository,
-        PaymentTypesRepository paymentTypesRepository,
         OrderStatusesRepository orderStatusesRepository,
         AddressesConverterService addressesConverterService
     ) {
         this.customersCrudService = customersCrudService;
         this.customersConverterService = customersConverterService;
-        this.billingTypesRepository = billingTypesRepository;
-        this.billingCompaniesCrudService = billingCompaniesCrudService;
+        this.billingContract = billingContract;
         this.billingCompaniesConverterService = billingCompaniesConverterService;
         this.salespeopleConverterService = salespeopleConverterService;
         this.productConverterService = productConverterService;
-        this.productsRepository = productsRepository;
-        this.shippersRepository = shippersRepository;
+        this.productLookupContract = productLookupContract;
+        this.shipperLookupContract = shipperLookupContract;
         this.addressesRepository = addressesRepository;
-        this.paymentTypesRepository = paymentTypesRepository;
         this.orderStatusesRepository = orderStatusesRepository;
         this.addressesConverterService = addressesConverterService;
     }
@@ -197,7 +189,7 @@ public class OrdersConverterServiceImpl
             if (StringUtils.isBlank(barcode)) {
                 throw new BadInputException("Product barcode must be valid");
             }
-            Optional<Product> productByBarcode = productsRepository.findByBarcode(barcode);
+            Optional<Product> productByBarcode = productLookupContract.findProductByBarcode(barcode);
             if (productByBarcode.isEmpty()) {
                 throw new BadInputException("Unexisting product in sell details");
             }
@@ -222,7 +214,7 @@ public class OrdersConverterServiceImpl
     private void convertPaymentTypeInformationForEntity(OrderPojo model, Order target) throws BadInputException {
         String paymentType = model.getPaymentType();
         if (!StringUtils.isBlank(paymentType)) {
-            paymentTypesRepository.findByName(paymentType)
+            billingContract.findPaymentTypeByName(paymentType)
                 .ifPresentOrElse(target::setPaymentType,
                     () -> {
                         throw new RuntimeException("The payment type does not exist");
@@ -256,7 +248,7 @@ public class OrdersConverterServiceImpl
      */
     private void convertBillingInformationForEntity(OrderPojo model, Order target) throws BadInputException {
         String pojoBillingTypeName = model.getBillingType();
-        Optional<BillingType> existingBillingType = billingTypesRepository.findByName(pojoBillingTypeName);
+        Optional<BillingType> existingBillingType = billingContract.findBillingTypeByName(pojoBillingTypeName);
         if (existingBillingType.isEmpty()) {
             throw new BadInputException(UNEXISTING_BILLING_TYPE);
         }
@@ -264,13 +256,7 @@ public class OrdersConverterServiceImpl
 
         if (pojoBillingTypeName.equals(BILLING_TYPE_ENTERPRISE)) {
             BillingCompanyPojo pojoBillingCompany = model.getBillingCompany();
-            Optional<BillingCompany> existingCompany = billingCompaniesCrudService.getExisting(pojoBillingCompany);
-            if (existingCompany.isEmpty()) {
-                BillingCompany billingCompany = billingCompaniesConverterService.convertToNewEntity(pojoBillingCompany);
-                target.setBillingCompany(billingCompany);
-            } else {
-                target.setBillingCompany(existingCompany.get());
-            }
+            target.setBillingCompany(billingContract.resolveOrCreateBillingCompany(pojoBillingCompany));
             AddressPojo pojoBillingAddress = model.getBillingAddress();
             Optional<Address> existingBillingAddress = this.findAddress(pojoBillingAddress);
             if (existingBillingAddress.isEmpty()) {
@@ -291,7 +277,7 @@ public class OrdersConverterServiceImpl
         String pojoShipperName = model.getShipper();
         AddressPojo pojoShippingAddress = model.getShippingAddress();
         if (!StringUtils.isBlank(pojoShipperName)) {
-            Optional<Shipper> existingShipper = shippersRepository.findByName(pojoShipperName);
+            Optional<Shipper> existingShipper = shipperLookupContract.findShipperByName(pojoShipperName);
             if (existingShipper.isEmpty()) {
                 throw new BadInputException("Specified shipper does not exist");
             }

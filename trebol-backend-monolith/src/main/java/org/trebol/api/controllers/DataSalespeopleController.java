@@ -52,6 +52,10 @@ import java.util.Map;
 
 import static org.springframework.http.HttpStatus.CREATED;
 import static org.springframework.http.HttpStatus.NO_CONTENT;
+import static org.trebol.security.authorities.AuthorityCodes.SALESPEOPLE_CREATE;
+import static org.trebol.security.authorities.AuthorityCodes.SALESPEOPLE_DELETE;
+import static org.trebol.security.authorities.AuthorityCodes.SALESPEOPLE_READ;
+import static org.trebol.security.authorities.AuthorityCodes.SALESPEOPLE_UPDATE;
 
 @RestController
 @RequestMapping("/data/salespeople")
@@ -73,7 +77,7 @@ public class DataSalespeopleController
     @Override
     @GetMapping
     @Operation(summary = "List salespeople.")
-    @PreAuthorize("hasAuthority('salespeople:read')")
+    @PreAuthorize("hasAuthority('" + SALESPEOPLE_READ + "')")
     public DataPagePojo<PersonPojo> readMany(@RequestParam Map<String, String> allRequestParams) {
         return super.readMany(allRequestParams);
     }
@@ -82,7 +86,7 @@ public class DataSalespeopleController
     @PostMapping
     @Operation(summary = "Register new salespeople.")
     @ResponseStatus(CREATED)
-    @PreAuthorize("hasAuthority('salespeople:create')")
+    @PreAuthorize("hasAuthority('" + SALESPEOPLE_CREATE + "')")
     public void create(@Valid @RequestBody PersonPojo input)
         throws BadInputException, EntityExistsException {
         crudService.create(input);
@@ -92,7 +96,7 @@ public class DataSalespeopleController
     @PutMapping
     @Operation(summary = "Replace salespeople data.")
     @ResponseStatus(NO_CONTENT)
-    @PreAuthorize("hasAuthority('salespeople:update')")
+    @PreAuthorize("hasAuthority('" + SALESPEOPLE_UPDATE + "')")
     public void update(@Valid @RequestBody PersonPojo input, @RequestParam Map<String, String> requestParams)
         throws BadInputException, EntityNotFoundException {
         super.update(input, requestParams);
@@ -102,7 +106,7 @@ public class DataSalespeopleController
     @DeleteMapping
     @Operation(summary = "Deregister salespeople.")
     @ResponseStatus(NO_CONTENT)
-    @PreAuthorize("hasAuthority('salespeople:delete')")
+    @PreAuthorize("hasAuthority('" + SALESPEOPLE_DELETE + "')")
     public void delete(@RequestParam Map<String, String> requestParams)
         throws EntityNotFoundException {
         super.delete(requestParams);

@@ -56,9 +56,9 @@ import java.util.Map;
 
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static org.springframework.http.HttpStatus.SEE_OTHER;
-import static org.trebol.config.Constants.AUTHORITY_CHECKOUT;
 import static org.trebol.config.Constants.WEBPAY_ABORTION_TOKEN_HEADER_NAME;
 import static org.trebol.config.Constants.WEBPAY_SUCCESS_TOKEN_HEADER_NAME;
+import static org.trebol.security.authorities.AuthorityCodes.CHECKOUT;
 
 @RestController
 @RequestMapping("/public/checkout")
@@ -94,7 +94,7 @@ public class PublicCheckoutController {
      */
     @PostMapping
     @Operation(summary = "Submit cart contents to request an order and begin a checkout")
-    @PreAuthorize("hasAuthority('" + AUTHORITY_CHECKOUT + "')")
+    @PreAuthorize("hasAuthority('" + CHECKOUT + "')")
     public PaymentRedirectionDetailsPojo submitCart(@Valid @RequestBody OrderPojo transactionRequest)
         throws BadInputException, PaymentServiceException, EntityExistsException {
         OrderPojo createdTransaction = ordersCrudService.create(transactionRequest);

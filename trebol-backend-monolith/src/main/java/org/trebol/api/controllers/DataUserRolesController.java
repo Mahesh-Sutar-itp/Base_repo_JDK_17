@@ -52,6 +52,10 @@ import java.util.Map;
 
 import static org.springframework.http.HttpStatus.CREATED;
 import static org.springframework.http.HttpStatus.NO_CONTENT;
+import static org.trebol.security.authorities.AuthorityCodes.USER_ROLES_CREATE;
+import static org.trebol.security.authorities.AuthorityCodes.USER_ROLES_DELETE;
+import static org.trebol.security.authorities.AuthorityCodes.USER_ROLES_READ;
+import static org.trebol.security.authorities.AuthorityCodes.USER_ROLES_UPDATE;
 
 @RestController
 @RequestMapping("/data/user_roles")
@@ -73,7 +77,7 @@ public class DataUserRolesController
     @Override
     @GetMapping
     @Operation(summary = "List user roles.")
-    @PreAuthorize("hasAuthority('user_roles:read')")
+    @PreAuthorize("hasAuthority('" + USER_ROLES_READ + "')")
     public DataPagePojo<UserRolePojo> readMany(@RequestParam Map<String, String> allRequestParams) {
         return super.readMany(allRequestParams);
     }
@@ -82,7 +86,7 @@ public class DataUserRolesController
     @PostMapping
     @Operation(summary = "Define new user roles.")
     @ResponseStatus(CREATED)
-    @PreAuthorize("hasAuthority('user_roles:create')")
+    @PreAuthorize("hasAuthority('" + USER_ROLES_CREATE + "')")
     public void create(@Valid @RequestBody UserRolePojo input)
         throws BadInputException, EntityExistsException {
         crudService.create(input);
@@ -92,7 +96,7 @@ public class DataUserRolesController
     @PutMapping
     @Operation(summary = "Replace user roles data.")
     @ResponseStatus(NO_CONTENT)
-    @PreAuthorize("hasAuthority('user_roles:update')")
+    @PreAuthorize("hasAuthority('" + USER_ROLES_UPDATE + "')")
     public void update(@Valid @RequestBody UserRolePojo input, @RequestParam Map<String, String> requestParams)
         throws BadInputException, EntityNotFoundException {
         super.update(input, requestParams);
@@ -102,7 +106,7 @@ public class DataUserRolesController
     @DeleteMapping
     @Operation(summary = "Remove user roles.")
     @ResponseStatus(NO_CONTENT)
-    @PreAuthorize("hasAuthority('user_roles:delete')")
+    @PreAuthorize("hasAuthority('" + USER_ROLES_DELETE + "')")
     public void delete(@RequestParam Map<String, String> requestParams)
         throws EntityNotFoundException {
         super.delete(requestParams);

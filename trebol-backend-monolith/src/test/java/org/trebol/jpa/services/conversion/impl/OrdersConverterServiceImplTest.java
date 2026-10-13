@@ -45,17 +45,15 @@ import org.trebol.jpa.entities.Product;
 import org.trebol.jpa.entities.Salesperson;
 import org.trebol.jpa.entities.Shipper;
 import org.trebol.jpa.repositories.AddressesRepository;
-import org.trebol.jpa.repositories.BillingTypesRepository;
-import org.trebol.jpa.repositories.PaymentTypesRepository;
-import org.trebol.jpa.repositories.ProductsRepository;
 import org.trebol.jpa.repositories.OrderStatusesRepository;
-import org.trebol.jpa.repositories.ShippersRepository;
+import org.trebol.jpa.services.contracts.BillingContract;
+import org.trebol.jpa.services.contracts.ProductLookupContract;
+import org.trebol.jpa.services.contracts.ShipperLookupContract;
 import org.trebol.jpa.services.conversion.AddressesConverterService;
 import org.trebol.jpa.services.conversion.BillingCompaniesConverterService;
 import org.trebol.jpa.services.conversion.CustomersConverterService;
 import org.trebol.jpa.services.conversion.ProductsConverterService;
 import org.trebol.jpa.services.conversion.SalespeopleConverterService;
-import org.trebol.jpa.services.crud.BillingCompaniesCrudService;
 import org.trebol.jpa.services.crud.CustomersCrudService;
 
 import java.time.Instant;
@@ -86,15 +84,13 @@ class OrdersConverterServiceImplTest {
     OrdersConverterServiceImpl instance;
     @Mock CustomersCrudService customersCrudServiceMock;
     @Mock CustomersConverterService customersConverterServiceMock;
-    @Mock BillingTypesRepository billingTypesRepositoryMock;
-    @Mock BillingCompaniesCrudService billingCompaniesCrudServiceMock;
+    @Mock BillingContract billingContractMock;
     @Mock BillingCompaniesConverterService billingCompaniesConverterServiceMock;
     @Mock SalespeopleConverterService salespeopleConverterServiceMock;
     @Mock ProductsConverterService productConverterServiceMock;
-    @Mock ProductsRepository productsRepositoryMock;
-    @Mock ShippersRepository shippersRepositoryMock;
+    @Mock ProductLookupContract productLookupContractMock;
+    @Mock ShipperLookupContract shipperLookupContractMock;
     @Mock AddressesRepository addressesRepositoryMock;
-    @Mock PaymentTypesRepository paymentTypesRepository;
     @Mock
     OrderStatusesRepository orderStatusesRepository;
     @Mock AddressesConverterService addressesConverterServiceMock;
@@ -142,28 +138,28 @@ class OrdersConverterServiceImplTest {
             .shipper(ANY)
             .shippingAddress(SOME_ADDRESS)
             .build();
-        when(paymentTypesRepository.findByName(anyString())).thenReturn(Optional.of(SOME_PAYMENT_TYPE_ENTITY));
+        when(billingContractMock.findPaymentTypeByName(anyString())).thenReturn(Optional.of(SOME_PAYMENT_TYPE_ENTITY));
         when(customersCrudServiceMock.getExisting(any(PersonPojo.class))).thenReturn(Optional.of(SOME_CUSTOMER_ENTITY));
-        when(billingTypesRepositoryMock.findByName(anyString())).thenReturn(Optional.of(SOME_BILLING_TYPE_ENTITY));
-        when(billingCompaniesCrudServiceMock.getExisting(any(BillingCompanyPojo.class))).thenReturn(Optional.of(SOME_BILLING_COMPANY_ENTITY));
+        when(billingContractMock.findBillingTypeByName(anyString())).thenReturn(Optional.of(SOME_BILLING_TYPE_ENTITY));
+        when(billingContractMock.resolveOrCreateBillingCompany(any(BillingCompanyPojo.class))).thenReturn(SOME_BILLING_COMPANY_ENTITY);
         when(addressesRepositoryMock.findByFields(anyString(), anyString(), anyString(), anyString(), anyString(), anyString())).thenReturn(Optional.of(SOME_ADDRESS_ENTITY));
-        when(productsRepositoryMock.findByBarcode(anyString())).thenReturn(Optional.of(SOME_PRODUCT_ENTITY));
-        when(shippersRepositoryMock.findByName(anyString())).thenReturn(Optional.of(SOME_SHIPPER_ENTITY));
+        when(productLookupContractMock.findProductByBarcode(anyString())).thenReturn(Optional.of(SOME_PRODUCT_ENTITY));
+        when(shipperLookupContractMock.findShipperByName(anyString())).thenReturn(Optional.of(SOME_SHIPPER_ENTITY));
         Order result = instance.convertToNewEntity(input);
         assertEquals(SOME_CUSTOMER_ENTITY, result.getCustomer());
         verify(customersCrudServiceMock).getExisting(SOME_CUSTOMER);
         assertEquals(SOME_BILLING_TYPE_ENTITY, result.getBillingType());
-        verify(billingTypesRepositoryMock).findByName(BILLING_TYPE_ENTERPRISE);
+        verify(billingContractMock).findBillingTypeByName(BILLING_TYPE_ENTERPRISE);
         assertEquals(SOME_BILLING_COMPANY_ENTITY, result.getBillingCompany());
-        verify(billingCompaniesCrudServiceMock).getExisting(SOME_BILLING_COMPANY);
+        verify(billingContractMock).resolveOrCreateBillingCompany(SOME_BILLING_COMPANY);
         assertEquals(SOME_ADDRESS_ENTITY, result.getBillingAddress());
         assertFalse(result.getDetails().isEmpty());
         assertEquals(1, result.getDetails().size());
         assertEquals(SOME_PRODUCT_ENTITY, result.getDetails().iterator().next().getProduct());
-        verify(productsRepositoryMock, times(1)).findByBarcode(ANY);
+        verify(productLookupContractMock, times(1)).findProductByBarcode(ANY);
         assertEquals(SOME_SHIPPER_ENTITY, result.getShipper());
         assertEquals(SOME_ADDRESS_ENTITY, result.getShippingAddress());
-        verify(shippersRepositoryMock).findByName(ANY);
+        verify(shipperLookupContractMock).findShipperByName(ANY);
         verify(addressesRepositoryMock, times(2)).findByFields(ANY, ANY, ANY, ANY, ANY, ANY); // billing & shipping addresses
     }
 
@@ -198,12 +194,12 @@ class OrdersConverterServiceImplTest {
             .shipper(ANY)
             .shippingAddress(SOME_ADDRESS)
             .build();
-        when(paymentTypesRepository.findByName(anyString())).thenReturn(Optional.of(SOME_PAYMENT_TYPE_ENTITY));
-        when(billingTypesRepositoryMock.findByName(anyString())).thenReturn(Optional.of(SOME_BILLING_TYPE_ENTITY));
-        when(billingCompaniesCrudServiceMock.getExisting(any(BillingCompanyPojo.class))).thenReturn(Optional.of(SOME_BILLING_COMPANY_ENTITY));
+        when(billingContractMock.findPaymentTypeByName(anyString())).thenReturn(Optional.of(SOME_PAYMENT_TYPE_ENTITY));
+        when(billingContractMock.findBillingTypeByName(anyString())).thenReturn(Optional.of(SOME_BILLING_TYPE_ENTITY));
+        when(billingContractMock.resolveOrCreateBillingCompany(any(BillingCompanyPojo.class))).thenReturn(SOME_BILLING_COMPANY_ENTITY);
         when(addressesRepositoryMock.findByFields(anyString(), anyString(), anyString(), anyString(), anyString(), anyString())).thenReturn(Optional.of(SOME_ADDRESS_ENTITY));
-        when(productsRepositoryMock.findByBarcode(anyString())).thenReturn(Optional.of(productEntityWithPrice));
-        when(shippersRepositoryMock.findByName(anyString())).thenReturn(Optional.of(SOME_SHIPPER_ENTITY));
+        when(productLookupContractMock.findProductByBarcode(anyString())).thenReturn(Optional.of(productEntityWithPrice));
+        when(shipperLookupContractMock.findShipperByName(anyString())).thenReturn(Optional.of(SOME_SHIPPER_ENTITY));
         Order result = instance.convertToNewEntity(input);
         assertEquals(productUnits, result.getTotalItems());
         assertEquals(totalTaxValue, result.getTaxesValue());
@@ -384,14 +380,15 @@ class OrdersConverterServiceImplTest {
                 .billingAddress(SOME_ADDRESS)
                 .details(List.of())
                 .build();
-            when(paymentTypesRepository.findByName(anyString())).thenReturn(Optional.of(SOME_PAYMENT_TYPE_ENTITY));
-            when(billingTypesRepositoryMock.findByName(anyString())).thenReturn(Optional.of(SOME_BILLING_TYPE_ENTITY));
-            when(billingCompaniesConverterServiceMock.convertToNewEntity(any(BillingCompanyPojo.class))).thenReturn(SOME_BILLING_COMPANY_ENTITY);
+            when(billingContractMock.findPaymentTypeByName(anyString())).thenReturn(Optional.of(SOME_PAYMENT_TYPE_ENTITY));
+            when(billingContractMock.findBillingTypeByName(anyString())).thenReturn(Optional.of(SOME_BILLING_TYPE_ENTITY));
+            when(billingContractMock.resolveOrCreateBillingCompany(any(BillingCompanyPojo.class))).thenReturn(SOME_BILLING_COMPANY_ENTITY);
             when(addressesRepositoryMock.findByFields(anyString(), anyString(), anyString(), anyString(), anyString(), anyString())).thenReturn(Optional.of(SOME_ADDRESS_ENTITY));
             Order result = instance.convertToNewEntity(input);
             assertEquals(SOME_BILLING_COMPANY_ENTITY, result.getBillingCompany());
-            verify(billingCompaniesCrudServiceMock).getExisting(SOME_BILLING_COMPANY); // not mocked, is Optional.empty()
-            verify(billingCompaniesConverterServiceMock).convertToNewEntity(SOME_BILLING_COMPANY);
+            // resolve-or-create is now the billing contract's responsibility; both of its branches
+            // are covered by BillingContractImplTest
+            verify(billingContractMock).resolveOrCreateBillingCompany(SOME_BILLING_COMPANY);
         }
 
         @Test
@@ -405,10 +402,10 @@ class OrdersConverterServiceImplTest {
                 .shipper(ANY)
                 .shippingAddress(SOME_ADDRESS)
                 .build();
-            when(paymentTypesRepository.findByName(anyString())).thenReturn(Optional.of(SOME_PAYMENT_TYPE_ENTITY));
-            when(billingTypesRepositoryMock.findByName(anyString())).thenReturn(Optional.of(SOME_BILLING_TYPE_ENTITY));
+            when(billingContractMock.findPaymentTypeByName(anyString())).thenReturn(Optional.of(SOME_PAYMENT_TYPE_ENTITY));
+            when(billingContractMock.findBillingTypeByName(anyString())).thenReturn(Optional.of(SOME_BILLING_TYPE_ENTITY));
             when(addressesConverterServiceMock.convertToNewEntity(any(AddressPojo.class))).thenReturn(SOME_ADDRESS_ENTITY);
-            when(shippersRepositoryMock.findByName(anyString())).thenReturn(Optional.of(SOME_SHIPPER_ENTITY));
+            when(shipperLookupContractMock.findShipperByName(anyString())).thenReturn(Optional.of(SOME_SHIPPER_ENTITY));
             Order result = instance.convertToNewEntity(input);
             verify(addressesRepositoryMock).findByFields(ANY, ANY, ANY, ANY, ANY, ANY); // not mocked, is Optional.empty()
             verify(addressesConverterServiceMock).convertToNewEntity(SOME_ADDRESS);
@@ -450,7 +447,7 @@ class OrdersConverterServiceImplTest {
                 .paymentType(ANY)
                 .customer(null)
                 .build();
-            when(paymentTypesRepository.findByName(anyString())).thenReturn(Optional.of(SOME_PAYMENT_TYPE_ENTITY));
+            when(billingContractMock.findPaymentTypeByName(anyString())).thenReturn(Optional.of(SOME_PAYMENT_TYPE_ENTITY));
             when(customersCrudServiceMock.getExisting(isNull())).thenThrow(new BadInputException(NO_CUSTOMER_PROVIDED));
             BadInputException result = assertThrows(BadInputException.class, () -> instance.convertToNewEntity(input));
             assertEquals(NO_CUSTOMER_PROVIDED, result.getMessage());
@@ -465,10 +462,10 @@ class OrdersConverterServiceImplTest {
                 .customer(SOME_CUSTOMER)
                 .billingType(null)
                 .build();
-            when(paymentTypesRepository.findByName(anyString())).thenReturn(Optional.of(SOME_PAYMENT_TYPE_ENTITY));
+            when(billingContractMock.findPaymentTypeByName(anyString())).thenReturn(Optional.of(SOME_PAYMENT_TYPE_ENTITY));
             BadInputException result = assertThrows(BadInputException.class, () -> instance.convertToNewEntity(input));
             assertEquals(UNEXISTING_BILLING_TYPE, result.getMessage());
-            verify(billingTypesRepositoryMock).findByName(isNull());
+            verify(billingContractMock).findBillingTypeByName(isNull());
         }
 
         @Test
@@ -479,11 +476,11 @@ class OrdersConverterServiceImplTest {
                 .customer(SOME_CUSTOMER)
                 .billingType(NOT_ANY)
                 .build();
-            when(paymentTypesRepository.findByName(anyString())).thenReturn(Optional.of(SOME_PAYMENT_TYPE_ENTITY));
-            when(billingTypesRepositoryMock.findByName(NOT_ANY)).thenReturn(Optional.empty());
+            when(billingContractMock.findPaymentTypeByName(anyString())).thenReturn(Optional.of(SOME_PAYMENT_TYPE_ENTITY));
+            when(billingContractMock.findBillingTypeByName(NOT_ANY)).thenReturn(Optional.empty());
             BadInputException result = assertThrows(BadInputException.class, () -> instance.convertToNewEntity(input));
             assertEquals(UNEXISTING_BILLING_TYPE, result.getMessage());
-            verify(billingTypesRepositoryMock).findByName(NOT_ANY);
+            verify(billingContractMock).findBillingTypeByName(NOT_ANY);
         }
 
         @Test
@@ -496,9 +493,9 @@ class OrdersConverterServiceImplTest {
                 .billingAddress(SOME_ADDRESS)
                 .billingCompany(null)
                 .build();
-            when(paymentTypesRepository.findByName(anyString())).thenReturn(Optional.of(SOME_PAYMENT_TYPE_ENTITY));
-            when(billingTypesRepositoryMock.findByName(anyString())).thenReturn(Optional.of(SOME_BILLING_TYPE_ENTITY));
-            when(billingCompaniesCrudServiceMock.getExisting(isNull())).thenThrow(new BadInputException(NO_BILLING_COMPANY_PROVIDED));
+            when(billingContractMock.findPaymentTypeByName(anyString())).thenReturn(Optional.of(SOME_PAYMENT_TYPE_ENTITY));
+            when(billingContractMock.findBillingTypeByName(anyString())).thenReturn(Optional.of(SOME_BILLING_TYPE_ENTITY));
+            when(billingContractMock.resolveOrCreateBillingCompany(isNull())).thenThrow(new BadInputException(NO_BILLING_COMPANY_PROVIDED));
             BadInputException result = assertThrows(BadInputException.class, () -> instance.convertToNewEntity(input));
             assertEquals(NO_BILLING_COMPANY_PROVIDED, result.getMessage());
         }
@@ -512,10 +509,10 @@ class OrdersConverterServiceImplTest {
                 .billingType(ANY)
                 .details(null)
                 .build();
-            when(paymentTypesRepository.findByName(anyString())).thenReturn(Optional.of(SOME_PAYMENT_TYPE_ENTITY));
-            when(billingTypesRepositoryMock.findByName(anyString())).thenReturn(Optional.of(SOME_BILLING_TYPE_ENTITY));
+            when(billingContractMock.findPaymentTypeByName(anyString())).thenReturn(Optional.of(SOME_PAYMENT_TYPE_ENTITY));
+            when(billingContractMock.findBillingTypeByName(anyString())).thenReturn(Optional.of(SOME_BILLING_TYPE_ENTITY));
             assertThrows(NullPointerException.class, () -> instance.convertToNewEntity(inputWithoutDetails));
-            verifyNoInteractions(productsRepositoryMock);
+            verifyNoInteractions(productLookupContractMock);
         }
 
         @Test
@@ -525,8 +522,8 @@ class OrdersConverterServiceImplTest {
                 .paymentType(ANY)
                 .customer(SOME_CUSTOMER)
                 .billingType(ANY);
-            when(paymentTypesRepository.findByName(anyString())).thenReturn(Optional.of(SOME_PAYMENT_TYPE_ENTITY));
-            when(billingTypesRepositoryMock.findByName(anyString())).thenReturn(Optional.of(SOME_BILLING_TYPE_ENTITY));
+            when(billingContractMock.findPaymentTypeByName(anyString())).thenReturn(Optional.of(SOME_PAYMENT_TYPE_ENTITY));
+            when(billingContractMock.findBillingTypeByName(anyString())).thenReturn(Optional.of(SOME_BILLING_TYPE_ENTITY));
 
             // products cannot be null
             List.of(
@@ -569,7 +566,7 @@ class OrdersConverterServiceImplTest {
                 RuntimeException result = assertThrows(RuntimeException.class, () -> instance.convertToNewEntity(inputBuilder.build()));
                 assertEquals("Product barcode must be valid", result.getMessage());
             });
-            verifyNoInteractions(productsRepositoryMock);
+            verifyNoInteractions(productLookupContractMock);
         }
 
         @Test
@@ -587,13 +584,13 @@ class OrdersConverterServiceImplTest {
                         .build()
                 ))
                 .build();
-            when(paymentTypesRepository.findByName(anyString())).thenReturn(Optional.of(SOME_PAYMENT_TYPE_ENTITY));
-            when(billingTypesRepositoryMock.findByName(anyString())).thenReturn(Optional.of(SOME_BILLING_TYPE_ENTITY));
-            when(productsRepositoryMock.findByBarcode(anyString())).thenReturn(Optional.empty());
+            when(billingContractMock.findPaymentTypeByName(anyString())).thenReturn(Optional.of(SOME_PAYMENT_TYPE_ENTITY));
+            when(billingContractMock.findBillingTypeByName(anyString())).thenReturn(Optional.of(SOME_BILLING_TYPE_ENTITY));
+            when(productLookupContractMock.findProductByBarcode(anyString())).thenReturn(Optional.empty());
             RuntimeException result = assertThrows(RuntimeException.class, () -> instance.convertToNewEntity(input));
             BadInputException originalResult = (BadInputException) result.getCause();
             assertEquals("Unexisting product in sell details", originalResult.getMessage());
-            verify(productsRepositoryMock).findByBarcode(ANY);
+            verify(productLookupContractMock).findProductByBarcode(ANY);
         }
 
         @Test
@@ -606,11 +603,11 @@ class OrdersConverterServiceImplTest {
                 .details(List.of())
                 .shipper(ANY)
                 .build();
-            when(paymentTypesRepository.findByName(anyString())).thenReturn(Optional.of(SOME_PAYMENT_TYPE_ENTITY));
-            when(billingTypesRepositoryMock.findByName(anyString())).thenReturn(Optional.of(SOME_BILLING_TYPE_ENTITY));
+            when(billingContractMock.findPaymentTypeByName(anyString())).thenReturn(Optional.of(SOME_PAYMENT_TYPE_ENTITY));
+            when(billingContractMock.findBillingTypeByName(anyString())).thenReturn(Optional.of(SOME_BILLING_TYPE_ENTITY));
             BadInputException result = assertThrows(BadInputException.class, () -> instance.convertToNewEntity(input));
             assertEquals("Specified shipper does not exist", result.getMessage());
-            verify(shippersRepositoryMock).findByName(ANY);
+            verify(shipperLookupContractMock).findShipperByName(ANY);
         }
 
         @Test
@@ -624,11 +621,11 @@ class OrdersConverterServiceImplTest {
                 .shipper(ANY)
                 .shippingAddress(null)
                 .build();
-            when(paymentTypesRepository.findByName(anyString())).thenReturn(Optional.of(SOME_PAYMENT_TYPE_ENTITY));
-            when(billingTypesRepositoryMock.findByName(anyString())).thenReturn(Optional.of(SOME_BILLING_TYPE_ENTITY));
-            when(shippersRepositoryMock.findByName(anyString())).thenReturn(Optional.of(SOME_SHIPPER_ENTITY));
+            when(billingContractMock.findPaymentTypeByName(anyString())).thenReturn(Optional.of(SOME_PAYMENT_TYPE_ENTITY));
+            when(billingContractMock.findBillingTypeByName(anyString())).thenReturn(Optional.of(SOME_BILLING_TYPE_ENTITY));
+            when(shipperLookupContractMock.findShipperByName(anyString())).thenReturn(Optional.of(SOME_SHIPPER_ENTITY));
             assertThrows(NullPointerException.class, () -> instance.convertToNewEntity(input));
-            verify(shippersRepositoryMock).findByName(ANY);
+            verify(shipperLookupContractMock).findShipperByName(ANY);
         }
     }
 }

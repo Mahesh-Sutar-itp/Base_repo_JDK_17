@@ -53,6 +53,10 @@ import java.util.Map;
 
 import static org.springframework.http.HttpStatus.CREATED;
 import static org.springframework.http.HttpStatus.NO_CONTENT;
+import static org.trebol.security.authorities.AuthorityCodes.USERS_CREATE;
+import static org.trebol.security.authorities.AuthorityCodes.USERS_DELETE;
+import static org.trebol.security.authorities.AuthorityCodes.USERS_READ;
+import static org.trebol.security.authorities.AuthorityCodes.USERS_UPDATE;
 
 @RestController
 @RequestMapping("/data/users")
@@ -74,7 +78,7 @@ public class DataUsersController
     @Override
     @GetMapping
     @Operation(summary = "List users.")
-    @PreAuthorize("hasAuthority('users:read')")
+    @PreAuthorize("hasAuthority('" + USERS_READ + "')")
     public DataPagePojo<UserPojo> readMany(@RequestParam Map<String, String> allRequestParams) {
         return super.readMany(allRequestParams);
     }
@@ -83,7 +87,7 @@ public class DataUsersController
     @PostMapping
     @Operation(summary = "Register new users.")
     @ResponseStatus(CREATED)
-    @PreAuthorize("hasAuthority('users:create')")
+    @PreAuthorize("hasAuthority('" + USERS_CREATE + "')")
     public void create(@Valid @RequestBody UserPojo input)
         throws BadInputException, EntityExistsException {
         crudService.create(input);
@@ -93,7 +97,7 @@ public class DataUsersController
     @PutMapping
     @Operation(summary = "Replace users data.")
     @ResponseStatus(NO_CONTENT)
-    @PreAuthorize("hasAuthority('users:update')")
+    @PreAuthorize("hasAuthority('" + USERS_UPDATE + "')")
     public void update(@Valid @RequestBody UserPojo input, @RequestParam Map<String, String> requestParams)
         throws BadInputException, EntityNotFoundException {
         super.update(input, requestParams);
@@ -102,7 +106,7 @@ public class DataUsersController
     @DeleteMapping
     @Operation(summary = "Remove users.")
     @ResponseStatus(NO_CONTENT)
-    @PreAuthorize("hasAuthority('users:delete')")
+    @PreAuthorize("hasAuthority('" + USERS_DELETE + "')")
     public void delete(Principal principal, @RequestParam Map<String, String> requestParams)
         throws EntityNotFoundException, BadInputException {
         if (requestParams.containsKey("name") && requestParams.get("name").equals(principal.getName())) {

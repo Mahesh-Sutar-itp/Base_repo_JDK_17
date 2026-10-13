@@ -41,6 +41,8 @@ import org.trebol.jpa.sortspecs.OrderStatusesSortSpec;
 
 import java.util.Map;
 
+import static org.trebol.security.authorities.AuthorityCodes.ORDER_STATUSES_READ;
+
 @RestController
 @RequestMapping("/data/order_statuses")
 @Tag(name = "Params management")
@@ -61,7 +63,7 @@ public class DataOrderStatusesController
     @Override
     @GetMapping
     @Operation(summary = "List order statuses.")
-    @PreAuthorize("hasAuthority('order_statuses:read')")
+    @PreAuthorize("hasAuthority('" + ORDER_STATUSES_READ + "')")
     public DataPagePojo<OrderStatusPojo> readMany(@RequestParam Map<String, String> allRequestParams) {
         return super.readMany(allRequestParams);
     }

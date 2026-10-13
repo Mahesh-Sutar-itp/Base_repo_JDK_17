@@ -41,6 +41,8 @@ import org.trebol.jpa.sortspecs.PeopleSortSpec;
 
 import java.util.Map;
 
+import static org.trebol.security.authorities.AuthorityCodes.PEOPLE_READ;
+
 @RestController
 @RequestMapping("/data/people")
 @Tag(name = "People management")
@@ -61,7 +63,7 @@ public class DataPeopleController
     @Override
     @GetMapping
     @Operation(summary = "List people.")
-    @PreAuthorize("hasAuthority('people:read')")
+    @PreAuthorize("hasAuthority('" + PEOPLE_READ + "')")
     public DataPagePojo<PersonPojo> readMany(@RequestParam Map<String, String> allRequestParams) {
         return super.readMany(allRequestParams);
     }

@@ -60,6 +60,10 @@ import java.util.Map;
 
 import static org.springframework.http.HttpStatus.CREATED;
 import static org.springframework.http.HttpStatus.NO_CONTENT;
+import static org.trebol.security.authorities.AuthorityCodes.ORDERS_CREATE;
+import static org.trebol.security.authorities.AuthorityCodes.ORDERS_DELETE;
+import static org.trebol.security.authorities.AuthorityCodes.ORDERS_READ;
+import static org.trebol.security.authorities.AuthorityCodes.ORDERS_UPDATE;
 
 @RestController
 @RequestMapping("/data/orders")
@@ -88,7 +92,7 @@ public class DataOrdersController
     @Override
     @GetMapping
     @Operation(summary = "List orders.")
-    @PreAuthorize("hasAuthority('orders:read')")
+    @PreAuthorize("hasAuthority('" + ORDERS_READ + "')")
     public DataPagePojo<OrderPojo> readMany(@RequestParam Map<String, String> allRequestParams) {
         if (allRequestParams!=null) {
             if (allRequestParams.containsKey("buyOrder")) {
@@ -113,7 +117,7 @@ public class DataOrdersController
     @PostMapping
     @Operation(summary = "Create new orders.")
     @ResponseStatus(CREATED)
-    @PreAuthorize("hasAuthority('orders:create')")
+    @PreAuthorize("hasAuthority('" + ORDERS_CREATE + "')")
     public void create(@Valid @RequestBody OrderPojo input)
         throws BadInputException, EntityExistsException {
         crudService.create(input);
@@ -123,7 +127,7 @@ public class DataOrdersController
     @PutMapping
     @Operation(summary = "Replace orders data.")
     @ResponseStatus(NO_CONTENT)
-    @PreAuthorize("hasAuthority('orders:update')")
+    @PreAuthorize("hasAuthority('" + ORDERS_UPDATE + "')")
     public void update(@Valid @RequestBody OrderPojo input, @RequestParam Map<String, String> requestParams)
         throws BadInputException, EntityNotFoundException {
         super.update(input, requestParams);
@@ -133,7 +137,7 @@ public class DataOrdersController
     @PatchMapping
     @Operation(summary = "Update parts of orders data.")
     @ResponseStatus(NO_CONTENT)
-    @PreAuthorize("hasAuthority('orders:update')")
+    @PreAuthorize("hasAuthority('" + ORDERS_UPDATE + "')")
     public void partialUpdate(
         @RequestBody Map<String, Object> input,
         @RequestParam Map<String, String> requestParams
@@ -145,7 +149,7 @@ public class DataOrdersController
     @DeleteMapping
     @Operation(summary = "Remove orders.")
     @ResponseStatus(NO_CONTENT)
-    @PreAuthorize("hasAuthority('orders:delete')")
+    @PreAuthorize("hasAuthority('" + ORDERS_DELETE + "')")
     public void delete(@RequestParam Map<String, String> requestParams)
         throws EntityNotFoundException {
         super.delete(requestParams);
@@ -154,7 +158,7 @@ public class DataOrdersController
     @PostMapping("/confirmation")
     @Operation(summary = "Confirm a pending order.")
     @ResponseStatus(NO_CONTENT)
-    @PreAuthorize("hasAuthority('orders:update')")
+    @PreAuthorize("hasAuthority('" + ORDERS_UPDATE + "')")
     public void confirmSell(@RequestBody OrderPojo sell)
         throws BadInputException, MailingServiceException {
         OrderPojo updatedSell = processService.markAsConfirmed(sell);
@@ -166,7 +170,7 @@ public class DataOrdersController
 
     @PostMapping("/rejection")
     @Operation(summary = "Reject a pending order.")
-    @PreAuthorize("hasAuthority('orders:update')")
+    @PreAuthorize("hasAuthority('" + ORDERS_UPDATE + "')")
     public void rejectSell(@RequestBody OrderPojo sell)
         throws BadInputException, MailingServiceException {
         OrderPojo updatedSell = processService.markAsRejected(sell);
@@ -177,7 +181,7 @@ public class DataOrdersController
 
     @PostMapping("/completion")
     @Operation(summary = "Mark an order as completed.")
-    @PreAuthorize("hasAuthority('orders:update')")
+    @PreAuthorize("hasAuthority('" + ORDERS_UPDATE + "')")
     public void completeSell(@RequestBody OrderPojo sell)
         throws BadInputException, MailingServiceException {
         OrderPojo updatedSell = processService.markAsCompleted(sell);
