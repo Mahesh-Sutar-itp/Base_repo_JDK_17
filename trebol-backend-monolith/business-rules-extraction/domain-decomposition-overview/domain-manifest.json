@@ -43,7 +43,9 @@
       "domain_events": 0,
       "scheduled_jobs": 0,
       "cache_regions": 0,
-      "public_routes": 12
+      "public_routes": 12,
+      "order_statuses_never_reached": 4,
+      "bootstrap_accounts": 4
     }
   },
   "domains": [
