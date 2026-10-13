@@ -1,0 +1,100 @@
+{
+  "_comment": "Registry metadata for a USER transformation. Field names below mirror those observed in the live registry listing (name, description, version, severity, requiredRuntimeTools, matchingCriteria). CONFIRM the exact wrapper schema for user transformations with `atx custom def --help` before registering — the registry currently contains 0 user transformations, so the packaging contract has not been observed in practice.",
+
+  "name": "Trebol/monolith-to-microservices",
+  "description": "Decomposes the Trebol eCommerce Spring Boot monolith (org.trebolecommerce:trebol-backend-monolith-java17) into three independently deployable services — Identity, Catalogue and Orders — consuming the business-rules-extraction manifest as input. Enforces four mandatory prerequisite gates inside the monolith before any extraction: replace cross-domain repository reads with contracts, publish the 54-code authority catalogue as a generated artefact, and record the consistency and authentication-propagation decisions. Carries a 17-item defect decision register, seven items of which must be fixed before extraction. REPOSITORY-SPECIFIC: names concrete classes, authority codes and order statuses from this codebase; not applicable to any other repository.",
+  "version": "2026-10-13",
+  "severity": "HIGH",
+  "requiredRuntimeTools": [
+    "java"
+  ],
+
+  "matchingCriteria": [
+    {
+      "_comment": "Primary: the exact Maven coordinates of this repository.",
+      "conditions": [
+        {
+          "glob": "**/pom.xml",
+          "negate": false,
+          "pattern": "<groupId>\\s*org\\.trebolecommerce\\s*</groupId>"
+        },
+        {
+          "glob": "**/pom.xml",
+          "negate": false,
+          "pattern": "<artifactId>\\s*trebol-backend-monolith-java17\\s*</artifactId>"
+        }
+      ]
+    },
+    {
+      "_comment": "Secondary: the prerequisite analysis output must already be present, since this transformation consumes it rather than producing it.",
+      "conditions": [
+        {
+          "glob": "**/business-rules-extraction/domain-decomposition-overview/domain-manifest.json",
+          "negate": false
+        },
+        {
+          "glob": "**/pom.xml",
+          "negate": false,
+          "pattern": "<artifactId>\\s*trebol-backend-monolith-java17\\s*</artifactId>"
+        }
+      ]
+    }
+  ],
+
+  "entryPoint": "SKILL.md",
+
+  "references": [
+    "references/00-transformation-definition.md"
+  ],
+
+  "prerequisites": {
+    "transformations": [
+      {
+        "name": "AWS/business-rules-extraction",
+        "reason": "This transformation consumes the Mode A domain manifest, global schema, seed data, coupling hotspots, integrations map and authentication model it produces. Without them the pre-flight validation in SKILL.md fails."
+      }
+    ]
+  },
+
+  "targetState": {
+    "services": [
+      {
+        "name": "Identity",
+        "absorbsDomains": ["person", "user", "customer", "salesperson"],
+        "ownedTableCount": 7,
+        "approximateLoc": 5500
+      },
+      {
+        "name": "Catalogue",
+        "absorbsDomains": ["product", "product-category", "product-list", "image", "company-profile"],
+        "ownedTableCount": 7,
+        "approximateLoc": 4250
+      },
+      {
+        "name": "Orders",
+        "absorbsDomains": ["order", "billing", "shipper"],
+        "ownedTableCount": 8,
+        "approximateLoc": 6000
+      }
+    ],
+    "sharedContractArtefact": true,
+    "totalTables": 22,
+    "totalRoutes": 67
+  },
+
+  "baseline": {
+    "sourceFiles": 294,
+    "loc": 17800,
+    "tables": 22,
+    "httpRoutes": 67,
+    "businessRules": 327,
+    "springBootVersion": "3.2.12",
+    "javaVersion": "21"
+  },
+
+  "knownGaps": [
+    "Porting-depth specifications exist for the person and image domains only. The remaining ten are covered at Mode A depth, which is sufficient for planning but not for porting; each phase therefore begins by producing them for the domains it touches.",
+    "The order and billing domains have no porting-depth specification yet, and order is the largest and most complex domain in the system (58 files, 4243 LOC, 70 rules).",
+    "No event infrastructure exists anywhere in the codebase — no broker, queue or stream — so the outbox required by defect D11 is built from nothing."
+  ]
+}
