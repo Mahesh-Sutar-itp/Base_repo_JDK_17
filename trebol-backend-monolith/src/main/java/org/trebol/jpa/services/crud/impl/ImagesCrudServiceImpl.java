@@ -52,13 +52,34 @@ public class ImagesCrudServiceImpl
         this.imagesRepository = imagesRepository;
     }
 
+    /**
+     * Register item D7: {@code image_code}, {@code image_filename} and {@code image_url} are all
+     * declared unique, but only the filename used to be checked here. A collision on either of the
+     * other two therefore escaped the {@code EntityExistsException} path in
+     * {@link CrudGenericService} and surfaced as a database constraint violation, i.e. HTTP 500
+     * instead of HTTP 409. All three unique columns are now checked, first match wins.
+     */
     @Override
     public Optional<Image> getExisting(ImagePojo input) throws BadInputException {
         String name = input.getFilename();
         if (StringUtils.isBlank(name)) {
             throw new BadInputException("Invalid filename");
-        } else {
-            return imagesRepository.findByFilename(name);
         }
+        Optional<Image> byFilename = imagesRepository.findByFilename(name);
+        if (byFilename.isPresent()) {
+            return byFilename;
+        }
+        String code = input.getCode();
+        if (!StringUtils.isBlank(code)) {
+            Optional<Image> byCode = imagesRepository.findByCode(code);
+            if (byCode.isPresent()) {
+                return byCode;
+            }
+        }
+        String url = input.getUrl();
+        if (!StringUtils.isBlank(url)) {
+            return imagesRepository.findByUrl(url);
+        }
+        return Optional.empty();
     }
 }

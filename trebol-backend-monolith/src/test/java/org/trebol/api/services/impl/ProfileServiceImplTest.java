@@ -24,6 +24,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.trebol.api.models.PersonPojo;
@@ -41,13 +42,17 @@ import org.trebol.jpa.services.patch.PeoplePatchService;
 import org.trebol.testing.PeopleTestHelper;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -94,6 +99,12 @@ class ProfileServiceImplTest {
         verify(usersRepositoryMock, times(1)).saveAndFlush(existingUserBefore);
     }
 
+    /**
+     * Register item D6. This test previously stubbed the {@code PersonPojo} overload of the patch
+     * service, which is why it passed while the real flow always returned HTTP 500: the production
+     * implementation of that overload throws {@link UnsupportedOperationException} unconditionally.
+     * It now stubs the {@code Map} overload, which is the one actually implemented and now called.
+     */
     @Test
     void updates_existing_profile_data() throws BadInputException {
         Person existingProfile = peopleTestHelper.personEntityAfterCreation();
@@ -101,9 +112,49 @@ class ProfileServiceImplTest {
         String name = existingUser.getName();
         PersonPojo input = peopleTestHelper.personPojoBeforeCreation();
         when(usersRepositoryMock.findByName(anyString())).thenReturn(Optional.of(existingUser));
-        when(peoplePatchService.patchExistingEntity(any(PersonPojo.class), any(Person.class))).thenReturn(existingProfile);
+        when(peoplePatchService.patchExistingEntity(anyMap(), any(Person.class))).thenReturn(existingProfile);
         assertDoesNotThrow(() -> instance.updateProfileForUserWithName(name, input));
-        verify(peopleRepositoryMock, times(1)).saveAndFlush(any(Person.class));
+        verify(peoplePatchService, times(1)).patchExistingEntity(anyMap(), eq(existingProfile));
+        verify(peopleRepositoryMock, times(1)).saveAndFlush(existingProfile);
+    }
+
+    /**
+     * Register item D6. The deprecated {@code PersonPojo} overload must not be reached - it throws
+     * unconditionally, which is the defect itself.
+     */
+    @Test
+    void updating_an_existing_profile_does_not_use_the_unsupported_overload() throws BadInputException {
+        Person existingProfile = peopleTestHelper.personEntityAfterCreation();
+        existingUser.setPerson(existingProfile);
+        String name = existingUser.getName();
+        PersonPojo input = peopleTestHelper.personPojoBeforeCreation();
+        when(usersRepositoryMock.findByName(anyString())).thenReturn(Optional.of(existingUser));
+        when(peoplePatchService.patchExistingEntity(anyMap(), any(Person.class))).thenReturn(existingProfile);
+        assertDoesNotThrow(() -> instance.updateProfileForUserWithName(name, input));
+        verify(peoplePatchService, never()).patchExistingEntity(any(PersonPojo.class), any(Person.class));
+    }
+
+    /**
+     * Register item D6. Fields the client did not send must not be wiped, so only non-null values
+     * reach the patch service - the patch implementation assigns phone1/phone2 unconditionally
+     * whenever their keys are present.
+     */
+    @Test
+    void updating_an_existing_profile_passes_only_the_submitted_fields() throws BadInputException {
+        Person existingProfile = peopleTestHelper.personEntityAfterCreation();
+        existingUser.setPerson(existingProfile);
+        String name = existingUser.getName();
+        PersonPojo input = PersonPojo.builder()
+            .firstName("newFirstName")
+            .build();
+        when(usersRepositoryMock.findByName(anyString())).thenReturn(Optional.of(existingUser));
+        when(peoplePatchService.patchExistingEntity(anyMap(), any(Person.class))).thenReturn(existingProfile);
+
+        assertDoesNotThrow(() -> instance.updateProfileForUserWithName(name, input));
+
+        ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
+        verify(peoplePatchService).patchExistingEntity(captor.capture(), eq(existingProfile));
+        assertEquals(Map.of("firstName", "newFirstName"), captor.getValue());
     }
 
     @Test

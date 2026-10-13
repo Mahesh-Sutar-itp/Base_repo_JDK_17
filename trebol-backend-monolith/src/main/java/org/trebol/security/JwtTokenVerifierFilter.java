@@ -98,10 +98,11 @@ public class JwtTokenVerifierFilter
                 }
                 filterChain.doFilter(request, response);
             } catch (NullPointerException | IllegalStateException exc) {
-                myLogger.info("Access denied: '{}' '{}' used an invalid token '{}'",
+                // Register item D2: the token value itself used to be logged here, leaking a live
+                // credential into the application log. The request is still logged, the token is not.
+                myLogger.info("Access denied: '{}' '{}' used an invalid token",
                     request.getMethod(),
-                    request.getRequestURI(),
-                    jwt);
+                    request.getRequestURI());
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             }
         }

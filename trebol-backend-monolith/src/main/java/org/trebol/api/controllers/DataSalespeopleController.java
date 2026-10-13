@@ -108,7 +108,7 @@ public class DataSalespeopleController
     @ResponseStatus(NO_CONTENT)
     @PreAuthorize("hasAuthority('" + SALESPEOPLE_DELETE + "')")
     public void delete(@RequestParam Map<String, String> requestParams)
-        throws EntityNotFoundException {
+        throws BadInputException, EntityNotFoundException {
         super.delete(requestParams);
     }
 

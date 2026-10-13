@@ -38,6 +38,7 @@ import org.trebol.payment.PaymentService;
 import org.trebol.payment.PaymentServiceException;
 
 import java.io.IOException;
+import java.util.UUID;
 
 /**
  * Implements Webpay Plus as a payment gateway, using their official SDK.<br/>
@@ -62,7 +63,7 @@ public class WebpayplusPaymentServiceImpl
     @Override
     public PaymentRedirectionDetailsPojo requestNewPaymentPageDetails(OrderPojo transaction) throws PaymentServiceException {
         String buyOrder = transaction.getBuyOrder().toString();
-        String sessionId = String.valueOf(transaction.hashCode());
+        String sessionId = newSessionId();
         double amount = transaction.getTotalValue();
         String returnUrl = properties.getCallbackUrl();
 
@@ -98,6 +99,19 @@ public class WebpayplusPaymentServiceImpl
     @Override
     public String getPaymentResultPageUrl() {
         return properties.getBrowserRedirectionUrl();
+    }
+
+    /**
+     * Register item D9: the session identifier used to be {@code transaction.hashCode()}, which is
+     * neither unique nor stable across processes - two instances of the application can produce the
+     * same value for different orders, and the same order yields different values after a restart.
+     * A UUID is process-independent and collision-free. The value is not persisted anywhere, so no
+     * schema change is involved. Webpay allows up to 61 characters; this is 32.
+     *
+     * @return a fresh payment session identifier
+     */
+    static String newSessionId() {
+        return UUID.randomUUID().toString().replace("-", "");
     }
 
     private WebpayPlus.Transaction createWebpayTransaction() {

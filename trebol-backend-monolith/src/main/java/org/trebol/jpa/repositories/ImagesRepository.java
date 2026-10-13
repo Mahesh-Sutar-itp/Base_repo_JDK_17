@@ -30,4 +30,8 @@ public interface ImagesRepository
     extends Repository<Image> {
 
     Optional<Image> findByFilename(String filename);
+
+    Optional<Image> findByCode(String code);
+
+    Optional<Image> findByUrl(String url);
 }

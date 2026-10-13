@@ -30,6 +30,9 @@ import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ImagesPredicateServiceImplTest {
     final ImagesPredicateServiceImpl instance = new ImagesPredicateServiceImpl();
@@ -45,5 +48,26 @@ class ImagesPredicateServiceImplTest {
             instance.parseMap(Map.of("filenameLike", "filename portion")));
         Set<Predicate> distinctPredicates = new HashSet<>(predicates);
         assertEquals(predicates.size(), distinctPredicates.size());
+    }
+
+    /**
+     * Evidence for register item D1: an unrecognised parameter is ignored and the builder is
+     * returned carrying no condition at all - which QueryDSL applies as "match everything".
+     * {@code DataCrudGenericController.delete} is the single point that now rejects this.
+     */
+    @Test
+    void yields_a_value_less_builder_when_no_param_is_recognized() {
+        Predicate result = instance.parseMap(Map.of("mistyped", "whatever"));
+
+        assertInstanceOf(BooleanBuilder.class, result);
+        assertFalse(((BooleanBuilder) result).hasValue());
+    }
+
+    @Test
+    void yields_a_builder_with_a_value_when_a_param_is_recognized() {
+        Predicate result = instance.parseMap(Map.of("codeLike", "code portion"));
+
+        assertInstanceOf(BooleanBuilder.class, result);
+        assertTrue(((BooleanBuilder) result).hasValue());
     }
 }

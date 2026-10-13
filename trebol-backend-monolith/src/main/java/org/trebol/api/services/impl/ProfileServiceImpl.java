@@ -36,6 +36,8 @@ import org.trebol.jpa.services.conversion.PeopleConverterService;
 import org.trebol.jpa.services.crud.PeopleCrudService;
 import org.trebol.jpa.services.patch.PeoplePatchService;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -101,9 +103,42 @@ public class ProfileServiceImpl
                 usersRepository.saveAndFlush(targetUser);
             }
         } else {
-            target = peoplePatchService.patchExistingEntity(profile, target);
+            target = peoplePatchService.patchExistingEntity(asChangesMap(profile), target);
             peopleRepository.saveAndFlush(target);
         }
+    }
+
+    /**
+     * Register item D6: this path used to call the {@code PersonPojo} overload of
+     * {@link PeoplePatchService#patchExistingEntity}, whose implementation throws
+     * {@link UnsupportedOperationException} unconditionally - so updating the profile of any account
+     * that already had one always failed. The {@code Map} overload is the working one.
+     * <p>
+     * Only non-null values are put in the map. The patch implementation assigns {@code phone1} and
+     * {@code phone2} unconditionally whenever their keys are present, so emitting explicit nulls
+     * (as {@code ObjectMapper.convertValue} would) would wipe fields the client did not send.
+     */
+    private static Map<String, Object> asChangesMap(PersonPojo profile) {
+        Map<String, Object> changes = new HashMap<>();
+        if (profile.getIdNumber()!=null) {
+            changes.put("idNumber", profile.getIdNumber());
+        }
+        if (profile.getFirstName()!=null) {
+            changes.put("firstName", profile.getFirstName());
+        }
+        if (profile.getLastName()!=null) {
+            changes.put("lastName", profile.getLastName());
+        }
+        if (profile.getEmail()!=null) {
+            changes.put("email", profile.getEmail());
+        }
+        if (profile.getPhone1()!=null) {
+            changes.put("phone1", profile.getPhone1());
+        }
+        if (profile.getPhone2()!=null) {
+            changes.put("phone2", profile.getPhone2());
+        }
+        return changes;
     }
 
     private User getUserFromName(String userName)

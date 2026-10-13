@@ -20,6 +20,7 @@
 
 package org.trebol.api;
 
+import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.types.Predicate;
 import org.trebol.api.services.PaginationService;
 import org.trebol.common.exceptions.BadInputException;
@@ -41,6 +42,11 @@ import java.util.Map;
 public abstract class DataCrudGenericController<M, E>
     extends DataGenericController<M, E>
     implements DataCrudController<M> {
+    /**
+     * Rejection message for a request whose filtering parameters contain no recognised selector.
+     * See register item D1.
+     */
+    public static final String NO_RECOGNIZED_FILTERING_PARAMS = "No recognized filtering parameters were provided";
 
     protected DataCrudGenericController(
         PaginationService paginationService,
@@ -72,9 +78,16 @@ public abstract class DataCrudGenericController<M, E>
     }
 
     @Override
-    public void delete(Map<String, String> requestParams) throws EntityNotFoundException {
+    public void delete(Map<String, String> requestParams) throws BadInputException, EntityNotFoundException {
         if (!requestParams.isEmpty()) {
             Predicate predicate = predicateService.parseMap(requestParams);
+            if (predicate instanceof BooleanBuilder && !((BooleanBuilder) predicate).hasValue()) {
+                // Register item D1: every PredicateService implementation ignores an unrecognised
+                // parameter and returns the BooleanBuilder it built. With no recognised selector that
+                // builder carries no condition, which QueryDSL treats as "match everything" - so a
+                // single mistyped query parameter used to delete the whole table. Reject instead.
+                throw new BadInputException(NO_RECOGNIZED_FILTERING_PARAMS);
+            }
             crudService.delete(predicate);
         }
     }

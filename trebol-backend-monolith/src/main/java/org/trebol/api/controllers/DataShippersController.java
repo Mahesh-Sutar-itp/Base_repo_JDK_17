@@ -118,7 +118,7 @@ public class DataShippersController
     @ResponseStatus(NO_CONTENT)
     @PreAuthorize("hasAuthority('" + SHIPPERS_DELETE + "')")
     public void delete(@RequestParam Map<String, String> requestParams)
-        throws EntityNotFoundException {
+        throws BadInputException, EntityNotFoundException {
         super.delete(requestParams);
     }
 

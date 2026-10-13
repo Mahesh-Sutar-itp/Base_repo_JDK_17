@@ -108,7 +108,7 @@ public class DataUserRolesController
     @ResponseStatus(NO_CONTENT)
     @PreAuthorize("hasAuthority('" + USER_ROLES_DELETE + "')")
     public void delete(@RequestParam Map<String, String> requestParams)
-        throws EntityNotFoundException {
+        throws BadInputException, EntityNotFoundException {
         super.delete(requestParams);
     }
 

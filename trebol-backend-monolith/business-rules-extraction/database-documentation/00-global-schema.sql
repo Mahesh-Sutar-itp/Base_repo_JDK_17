@@ -211,6 +211,7 @@ CREATE TABLE `app_user_role_permissions` (
   `permission_id` bigint(20) NOT NULL,
   `user_role_id` bigint(20) NOT NULL,
   PRIMARY KEY (`user_role_permission_id`),
+  UNIQUE KEY `UQ_UROLEPERMS_UROLE_PERM` (`user_role_id`,`permission_id`),
   CONSTRAINT `FK_UROLEPERMS_PERM_ID` FOREIGN KEY (`permission_id`) REFERENCES `app_permissions` (`permission_id`),
   CONSTRAINT `FK_UROLEPERMS_UROLE_ID` FOREIGN KEY (`user_role_id`) REFERENCES `app_user_roles` (`user_role_id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=99 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

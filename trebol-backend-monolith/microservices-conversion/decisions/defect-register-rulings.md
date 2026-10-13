@@ -101,18 +101,23 @@ an ad-hoc `new ObjectMapper()`, persists a real `person` and `customer` row, and
 only **then** authenticates. The configured guest name is used as **both username
 and password**.
 
-Phase 0 fix — scope recorded honestly:
+Phase 0 fix - scope recorded honestly:
 - authenticate **first**, provision **after**, so a failed guest login creates no
   rows;
-- move the write out of the filter into a `@Transactional` application service with
-  bean validation, preserving the existing `EntityExistsException`-swallowing
-  semantics and log literal;
-- inject the Spring `ObjectMapper` bean instead of constructing one.
+- move the write out of the filter into a `@Transactional` application service
+  (`GuestCustomerProvisioningService`), preserving the existing
+  `EntityExistsException`-swallowing semantics and the log message literal;
+- inject the Spring `ObjectMapper` bean instead of constructing one per request.
 
-**Not** fixed in Phase 0: guest-name-as-password, and the fact that the endpoint is
-a filter at all. The definition requires `/public/guest` to be **ported as a
-filter** in Phase 2, so eliminating the filter is out of scope here. Revisited in
-Phase 2.
+**Not** fixed in Phase 0, and deliberately so:
+- guest-name-as-password;
+- the endpoint being a filter at all - the definition requires `/public/guest` to be
+  **ported as a filter** in Phase 2, so removing the filter is out of scope here;
+- bean validation of the submitted profile. Adding `@Validated` would raise
+  `ConstraintViolationException`, which this filter does not catch, turning a
+  rejected guest profile from HTTP 401 into HTTP 500 - a behavioural regression. The
+  existing `BadInputException` path already rejects insufficient data. Revisit in
+  Phase 2 together with the filter port.
 
 ### D17 — no uniqueness constraint on the role-permission pair
 **Source:** user domain overview · **Ruling: FIX**

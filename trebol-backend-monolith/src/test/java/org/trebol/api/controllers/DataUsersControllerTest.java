@@ -104,4 +104,9 @@ class DataUsersControllerTest
     void does_not_delete_salespeople_when_predicate_filters_map_is_empty() {
         assertDoesNotThrow(super::does_not_delete_data_when_predicate_filters_map_is_empty);
     }
+
+    @Test
+    void rejects_delete_without_recognized_filtering_params() {
+        super.rejects_delete_when_no_filtering_param_is_recognized();
+    }
 }

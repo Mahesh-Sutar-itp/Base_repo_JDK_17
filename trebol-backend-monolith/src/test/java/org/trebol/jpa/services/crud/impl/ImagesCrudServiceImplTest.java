@@ -36,8 +36,10 @@ import org.trebol.testing.ImagesTestHelper;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -63,6 +65,77 @@ class ImagesCrudServiceImplTest {
         verify(imagesRepositoryMock).findByFilename(input.getFilename());
         assertTrue(match.isPresent());
         assertEquals(expectedResult, match.get());
+    }
+
+    /**
+     * Register item D7: image_code is a unique column, so a collision on it must be detected here
+     * and surface as HTTP 409, not as a database constraint violation and HTTP 500.
+     */
+    @Test
+    void finds_by_code_when_filename_does_not_match() throws BadInputException {
+        ImagePojo input = imagesHelper.imagePojoBeforeCreation();
+        Image expectedResult = imagesHelper.imageEntityAfterCreation();
+        when(imagesRepositoryMock.findByFilename(anyString())).thenReturn(Optional.empty());
+        when(imagesRepositoryMock.findByCode(anyString())).thenReturn(Optional.of(expectedResult));
+
+        Optional<Image> match = instance.getExisting(input);
+
+        verify(imagesRepositoryMock).findByCode(input.getCode());
+        verify(imagesRepositoryMock, never()).findByUrl(anyString());
+        assertTrue(match.isPresent());
+        assertEquals(expectedResult, match.get());
+    }
+
+    /**
+     * Register item D7: image_url is a unique column, with the same consequence as the code column.
+     */
+    @Test
+    void finds_by_url_when_neither_filename_nor_code_match() throws BadInputException {
+        ImagePojo input = imagesHelper.imagePojoBeforeCreation();
+        Image expectedResult = imagesHelper.imageEntityAfterCreation();
+        when(imagesRepositoryMock.findByFilename(anyString())).thenReturn(Optional.empty());
+        when(imagesRepositoryMock.findByCode(anyString())).thenReturn(Optional.empty());
+        when(imagesRepositoryMock.findByUrl(anyString())).thenReturn(Optional.of(expectedResult));
+
+        Optional<Image> match = instance.getExisting(input);
+
+        verify(imagesRepositoryMock).findByUrl(input.getUrl());
+        assertTrue(match.isPresent());
+        assertEquals(expectedResult, match.get());
+    }
+
+    @Test
+    void finds_nothing_when_no_unique_column_matches() throws BadInputException {
+        ImagePojo input = imagesHelper.imagePojoBeforeCreation();
+        when(imagesRepositoryMock.findByFilename(anyString())).thenReturn(Optional.empty());
+        when(imagesRepositoryMock.findByCode(anyString())).thenReturn(Optional.empty());
+        when(imagesRepositoryMock.findByUrl(anyString())).thenReturn(Optional.empty());
+
+        assertTrue(instance.getExisting(input).isEmpty());
+    }
+
+    /**
+     * A fetch-style input carries only the filename; the optional columns must not be queried with
+     * blank values.
+     */
+    @Test
+    void does_not_query_blank_code_or_url() throws BadInputException {
+        ImagePojo input = imagesHelper.imagePojoForFetch();
+        when(imagesRepositoryMock.findByFilename(anyString())).thenReturn(Optional.empty());
+
+        assertTrue(instance.getExisting(input).isEmpty());
+
+        verify(imagesRepositoryMock, never()).findByCode(anyString());
+        verify(imagesRepositoryMock, never()).findByUrl(anyString());
+    }
+
+    @Test
+    void rejects_a_blank_filename() {
+        ImagePojo input = ImagePojo.builder().build();
+
+        BadInputException result = assertThrows(BadInputException.class, () -> instance.getExisting(input));
+
+        assertEquals("Invalid filename", result.getMessage());
     }
 
 }

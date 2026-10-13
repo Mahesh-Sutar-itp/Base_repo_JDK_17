@@ -20,6 +20,7 @@
 
 package org.trebol.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.jsonwebtoken.Claims;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -38,7 +39,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.trebol.jpa.services.crud.CustomersCrudService;
+import org.trebol.api.services.GuestCustomerProvisioningService;
 import org.trebol.security.JwtGuestAuthenticationFilter;
 import org.trebol.security.JwtLoginAuthenticationFilter;
 import org.trebol.security.JwtTokenVerifierFilter;
@@ -56,7 +57,8 @@ public class SecurityConfig {
     private final SecretKey secretKey;
     private final SecurityProperties securityProperties;
     private final AuthorizationHeaderParserService<Claims> jwtClaimsParserService;
-    private final CustomersCrudService customersService;
+    private final GuestCustomerProvisioningService guestCustomerProvisioningService;
+    private final ObjectMapper objectMapper;
     private AuthenticationManager authenticationManager;
 
     @Autowired
@@ -64,12 +66,14 @@ public class SecurityConfig {
                           SecretKey secretKey,
                           SecurityProperties securityProperties,
                           AuthorizationHeaderParserService<Claims> jwtClaimsParserService,
-                          CustomersCrudService customersService) {
+                          GuestCustomerProvisioningService guestCustomerProvisioningService,
+                          ObjectMapper objectMapper) {
         this.userDetailsService = userDetailsService;
         this.secretKey = secretKey;
         this.securityProperties = securityProperties;
         this.jwtClaimsParserService = jwtClaimsParserService;
-        this.customersService = customersService;
+        this.guestCustomerProvisioningService = guestCustomerProvisioningService;
+        this.objectMapper = objectMapper;
     }
 
     @Bean
@@ -121,7 +125,8 @@ public class SecurityConfig {
             securityProperties,
             secretKey,
             authenticationManager,
-            customersService);
+            guestCustomerProvisioningService,
+            objectMapper);
         filter.setFilterProcessesUrl(url);
         return filter;
     }

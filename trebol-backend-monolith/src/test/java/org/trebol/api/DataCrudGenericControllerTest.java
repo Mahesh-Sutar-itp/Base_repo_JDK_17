@@ -22,6 +22,7 @@ package org.trebol.api;
 
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.types.Predicate;
+import com.querydsl.core.types.dsl.Expressions;
 import org.springframework.lang.Nullable;
 import org.trebol.api.services.PaginationService;
 import org.trebol.common.exceptions.BadInputException;
@@ -31,11 +32,14 @@ import org.trebol.jpa.services.SortSpecParserService;
 
 import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.trebol.api.DataCrudGenericController.NO_RECOGNIZED_FILTERING_PARAMS;
 import static org.trebol.testing.TestConstants.ANY;
 
 public abstract class DataCrudGenericControllerTest<P, E>
@@ -57,11 +61,16 @@ public abstract class DataCrudGenericControllerTest<P, E>
         verify(crudServiceMock).create(input);
     }
 
-    protected void deletes_data_parsing_predicate_filters_from_map(@Nullable Map<String, String> predicateFiltersMap) {
+    protected void deletes_data_parsing_predicate_filters_from_map(@Nullable Map<String, String> predicateFiltersMap)
+        throws BadInputException {
         if (predicateFiltersMap==null) {
             predicateFiltersMap = Map.of(ANY, ANY);
         }
-        Predicate predicate = new BooleanBuilder();
+        // Register item D1: the predicate must carry at least one recognised condition. This stub used
+        // to be an empty BooleanBuilder, i.e. the match-everything predicate that made a mistyped
+        // parameter delete the whole table; asserting that it reaches the delete call asserted the
+        // defect. It now stubs a predicate with a value, which is what a recognised selector produces.
+        Predicate predicate = new BooleanBuilder(Expressions.asBoolean(true).isTrue());
         when(predicateServiceMock.parseMap(anyMap())).thenReturn(predicate);
 
         instance.delete(predicateFiltersMap);
@@ -70,8 +79,22 @@ public abstract class DataCrudGenericControllerTest<P, E>
         verify(crudServiceMock).delete(predicate);
     }
 
-    protected void does_not_delete_data_when_predicate_filters_map_is_empty() {
+    protected void does_not_delete_data_when_predicate_filters_map_is_empty() throws BadInputException {
         instance.delete(Map.of());
+        verify(crudServiceMock, never()).delete(any(Predicate.class));
+    }
+
+    /**
+     * Register item D1. A request whose filtering parameters contain no recognised selector must be
+     * rejected before it reaches the delete call, instead of deleting every row in the table.
+     */
+    protected void rejects_delete_when_no_filtering_param_is_recognized() {
+        when(predicateServiceMock.parseMap(anyMap())).thenReturn(new BooleanBuilder());
+
+        BadInputException result = assertThrows(BadInputException.class,
+            () -> instance.delete(Map.of("mistyped", ANY)));
+
+        assertEquals(NO_RECOGNIZED_FILTERING_PARAMS, result.getMessage());
         verify(crudServiceMock, never()).delete(any(Predicate.class));
     }
 }

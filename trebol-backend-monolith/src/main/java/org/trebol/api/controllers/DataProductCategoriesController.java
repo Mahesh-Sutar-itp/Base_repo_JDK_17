@@ -121,7 +121,7 @@ public class DataProductCategoriesController
     @ResponseStatus(NO_CONTENT)
     @PreAuthorize("hasAuthority('" + PRODUCT_CATEGORIES_DELETE + "')")
     public void delete(@RequestParam Map<String, String> requestParams)
-        throws EntityNotFoundException {
+        throws BadInputException, EntityNotFoundException {
         super.delete(requestParams);
     }
 

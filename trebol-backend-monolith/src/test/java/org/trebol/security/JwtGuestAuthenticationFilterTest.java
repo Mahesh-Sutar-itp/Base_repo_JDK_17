@@ -50,7 +50,7 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.trebol.api.models.PersonPojo;
 import org.trebol.config.SecurityProperties;
-import org.trebol.jpa.services.crud.CustomersCrudService;
+import org.trebol.api.services.GuestCustomerProvisioningService;
 import org.trebol.testing.PeopleTestHelper;
 
 import javax.crypto.SecretKey;
@@ -112,7 +112,7 @@ class JwtGuestAuthenticationFilterTest {
     @EnableWebSecurity
     static class MockSecurityConfig {
         @MockBean
-        CustomersCrudService customersService;
+        GuestCustomerProvisioningService guestCustomerProvisioningService;
         final SecurityProperties securityProperties;
         final PasswordEncoder passwordEncoder;
         final SecretKey secretKey;
@@ -149,7 +149,8 @@ class JwtGuestAuthenticationFilterTest {
                 securityProperties,
                 secretKey,
                 new ProviderManager(this.daoAuthenticationProvider()),
-                customersService);
+                guestCustomerProvisioningService,
+                new ObjectMapper());
             filter.setFilterProcessesUrl(GUEST_URL);
             return filter;
         }

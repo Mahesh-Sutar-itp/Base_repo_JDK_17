@@ -38,9 +38,12 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 
 @Entity
-@Table(name = "app_user_role_permissions")
+@Table(name = "app_user_role_permissions",
+    uniqueConstraints = @UniqueConstraint(name = "UQ_UROLEPERMS_UROLE_PERM",
+        columnNames = {"user_role_id", "permission_id"}))
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor

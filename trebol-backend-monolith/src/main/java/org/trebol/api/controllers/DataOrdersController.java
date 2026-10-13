@@ -151,7 +151,7 @@ public class DataOrdersController
     @ResponseStatus(NO_CONTENT)
     @PreAuthorize("hasAuthority('" + ORDERS_DELETE + "')")
     public void delete(@RequestParam Map<String, String> requestParams)
-        throws EntityNotFoundException {
+        throws BadInputException, EntityNotFoundException {
         super.delete(requestParams);
     }
 
