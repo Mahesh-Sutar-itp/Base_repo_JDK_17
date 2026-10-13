@@ -1,0 +1,2838 @@
+{
+  "schema_version": "1.0.0",
+  "project": {
+    "name": "trebol-backend-monolith",
+    "root_path": "/mnt/c/Projects/intuitive/monolith_jdk_17_transform/Base_repo_JDK_17/trebol-backend-monolith",
+    "primary_languages": [
+      "Java",
+      "SQL"
+    ],
+    "total_source_files": 294,
+    "total_loc": 17800,
+    "generated_at": "2026-10-13T09:40:00Z",
+    "atx_documentation_consumed": false,
+    "additional_input_consumed": false,
+    "stats": {
+      "artifact": "org.trebolecommerce:trebol-backend-monolith-java17:0.2.5-SNAPSHOT",
+      "packaging": "war",
+      "framework": "Spring Boot 3.2.12",
+      "orm": "JPA / Hibernate with QueryDSL predicates",
+      "declared_java_version": 21,
+      "total_entities": 22,
+      "total_tables": 22,
+      "total_controllers": 22,
+      "total_http_routes": 67,
+      "filter_implemented_routes": 2,
+      "total_repositories": 23,
+      "total_transport_models": 25,
+      "crud_service_impls": 14,
+      "converter_impls": 15,
+      "patch_impls": 14,
+      "predicate_impls": 15,
+      "sort_specs": 14,
+      "test_classes": 108,
+      "shared_kernel_files": 36,
+      "shared_kernel_loc": 2085,
+      "seeded_authority_codes": 54,
+      "seeded_roles": 4,
+      "seeded_order_statuses": 12,
+      "authority_codes_never_enforced": 14,
+      "total_business_rules": 327,
+      "total_features": 139,
+      "external_integrations": 2,
+      "domain_events": 0,
+      "scheduled_jobs": 0,
+      "cache_regions": 0,
+      "public_routes": 12
+    }
+  },
+  "domains": [
+    {
+      "slug": "person",
+      "name": "Person Registry",
+      "description": "Canonical record of a natural person: legal name, national identification number, e-mail and two phone numbers. Written by three other domains and deleted by none.",
+      "complexity": "small",
+      "source_files": [
+        {
+          "path": "src/main/java/org/trebol/api/controllers/DataPeopleController.java",
+          "loc": 73,
+          "role": "controller"
+        },
+        {
+          "path": "src/main/java/org/trebol/api/models/PersonPojo.java",
+          "loc": 51,
+          "role": "other"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/entities/Person.java",
+          "loc": 93,
+          "role": "entity",
+          "primary_entity": "Person"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/exceptions/PersonNotFoundException.java",
+          "loc": 34,
+          "role": "other"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/repositories/PeopleRepository.java",
+          "loc": 34,
+          "role": "repository"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/conversion/PeopleConverterService.java",
+          "loc": 29,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/conversion/impl/PeopleConverterServiceImpl.java",
+          "loc": 72,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/crud/PeopleCrudService.java",
+          "loc": 29,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/crud/impl/PeopleCrudServiceImpl.java",
+          "loc": 64,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/patch/PeoplePatchService.java",
+          "loc": 29,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/patch/impl/PeoplePatchServiceImpl.java",
+          "loc": 87,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/predicates/PeoplePredicateService.java",
+          "loc": 29,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/predicates/impl/PeoplePredicateServiceImpl.java",
+          "loc": 88,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/sortspecs/PeopleSortSpec.java",
+          "loc": 43,
+          "role": "helper"
+        }
+      ],
+      "entities": [
+        {
+          "name": "Person",
+          "table_name": "people",
+          "is_shared": true,
+          "source_file": "src/main/java/org/trebol/jpa/entities/Person.java",
+          "columns_approx": 7,
+          "relationship_count": 0
+        }
+      ],
+      "owned_tables": [
+        "people"
+      ],
+      "shared_tables_referenced": [],
+      "depends_on_domains": [],
+      "depended_on_by_domains": [
+        "user",
+        "customer",
+        "salesperson"
+      ],
+      "shared_entities_used": [
+        "Person"
+      ],
+      "cross_domain_features": [
+        "CDF-02 Self-registration",
+        "CDF-04 Account profile management"
+      ],
+      "controller_count": 1,
+      "endpoint_count_approx": 1,
+      "service_count": 8,
+      "feature_count": 7,
+      "rule_count": 13,
+      "responsibility": "Canonical record of a natural person: legal name, national identification number, e-mail and two phone numbers.",
+      "bounded_context_summary": "Master-data context for personal identity. Its single invariant - one person per national identification number - is the contract three other contexts depend on.",
+      "notes": "No code path deletes a person row, and no referencing domain cascades removal, so orphans accumulate. The one-person-one-account rule is enforced only in application code with no database constraint behind it.",
+      "stats": {
+        "repository_count": 1,
+        "entity_count": 1,
+        "handler_count": 0,
+        "helper_count": 1,
+        "other_count": 2,
+        "source_files_loc": 755,
+        "source_file_count": 14
+      }
+    },
+    {
+      "slug": "image",
+      "name": "Image Registry",
+      "description": "Catalogue of image asset metadata - business code, filename and absolute URL. The system stores no binary content and never dereferences the URLs.",
+      "complexity": "small",
+      "source_files": [
+        {
+          "path": "src/main/java/org/trebol/api/controllers/DataImagesController.java",
+          "loc": 128,
+          "role": "controller"
+        },
+        {
+          "path": "src/main/java/org/trebol/api/models/ImagePojo.java",
+          "loc": 45,
+          "role": "other"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/entities/Image.java",
+          "loc": 73,
+          "role": "entity",
+          "primary_entity": "Image"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/repositories/ImagesRepository.java",
+          "loc": 33,
+          "role": "repository"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/conversion/ImagesConverterService.java",
+          "loc": 29,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/conversion/impl/ImagesConverterServiceImpl.java",
+          "loc": 56,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/crud/ImagesCrudService.java",
+          "loc": 29,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/crud/impl/ImagesCrudServiceImpl.java",
+          "loc": 64,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/patch/ImagesPatchService.java",
+          "loc": 29,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/patch/impl/ImagesPatchServiceImpl.java",
+          "loc": 70,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/predicates/ImagesPredicateService.java",
+          "loc": 29,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/predicates/impl/ImagesPredicateServiceImpl.java",
+          "loc": 67,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/sortspecs/ImagesSortSpec.java",
+          "loc": 39,
+          "role": "helper"
+        }
+      ],
+      "entities": [
+        {
+          "name": "Image",
+          "table_name": "images",
+          "is_shared": true,
+          "source_file": "src/main/java/org/trebol/jpa/entities/Image.java",
+          "columns_approx": 4,
+          "relationship_count": 0
+        }
+      ],
+      "owned_tables": [
+        "images"
+      ],
+      "shared_tables_referenced": [],
+      "depends_on_domains": [],
+      "depended_on_by_domains": [
+        "product"
+      ],
+      "shared_entities_used": [
+        "Image"
+      ],
+      "cross_domain_features": [
+        "CDF-07 Product image linking"
+      ],
+      "controller_count": 1,
+      "endpoint_count_approx": 5,
+      "service_count": 8,
+      "feature_count": 8,
+      "rule_count": 15,
+      "responsibility": "Catalogue of image asset metadata - business code, filename and absolute URL. No binary content is ever stored or served.",
+      "bounded_context_summary": "Reference-data context for media metadata. Image rows outlive any individual product, while the product-to-image link rows do not.",
+      "notes": "The service-level existence check resolves by filename only while the database enforces three independent unique constraints, so code and URL collisions surface as infrastructure errors rather than business conflicts.",
+      "stats": {
+        "repository_count": 1,
+        "entity_count": 1,
+        "handler_count": 0,
+        "helper_count": 1,
+        "other_count": 1,
+        "source_files_loc": 691,
+        "source_file_count": 13
+      }
+    },
+    {
+      "slug": "product-category",
+      "name": "Product Category Tree",
+      "description": "Self-referencing category hierarchy used to classify products, including recursive descendant resolution bounded by configuration.",
+      "complexity": "medium",
+      "source_files": [
+        {
+          "path": "src/main/java/org/trebol/api/controllers/DataProductCategoriesController.java",
+          "loc": 129,
+          "role": "controller"
+        },
+        {
+          "path": "src/main/java/org/trebol/api/models/ProductCategoryPojo.java",
+          "loc": 45,
+          "role": "other"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/entities/ProductCategory.java",
+          "loc": 107,
+          "role": "entity",
+          "primary_entity": "ProductCategory"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/ProductCategoryTreeResolverService.java",
+          "loc": 51,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/conversion/ProductCategoriesConverterService.java",
+          "loc": 29,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/conversion/impl/ProductCategoriesConverterServiceImpl.java",
+          "loc": 69,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/crud/ProductCategoriesCrudService.java",
+          "loc": 29,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/crud/impl/ProductCategoriesCrudServiceImpl.java",
+          "loc": 79,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/impl/ProductCategoryTreeResolverServiceImpl.java",
+          "loc": 100,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/patch/ProductCategoriesPatchService.java",
+          "loc": 29,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/patch/impl/ProductCategoriesPatchServiceImpl.java",
+          "loc": 63,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/predicates/ProductCategoriesPredicateService.java",
+          "loc": 29,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/predicates/impl/ProductCategoriesPredicateServiceImpl.java",
+          "loc": 106,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/sortspecs/ProductCategoriesSortSpec.java",
+          "loc": 38,
+          "role": "helper"
+        }
+      ],
+      "entities": [
+        {
+          "name": "ProductCategory",
+          "table_name": "product_categories",
+          "is_shared": true,
+          "source_file": "src/main/java/org/trebol/jpa/entities/ProductCategory.java",
+          "columns_approx": 4,
+          "relationship_count": 1
+        }
+      ],
+      "owned_tables": [
+        "product_categories"
+      ],
+      "shared_tables_referenced": [],
+      "depends_on_domains": [],
+      "depended_on_by_domains": [
+        "product"
+      ],
+      "shared_entities_used": [
+        "ProductCategory"
+      ],
+      "cross_domain_features": [
+        "CDF-05 Branch-aware product search"
+      ],
+      "controller_count": 1,
+      "endpoint_count_approx": 5,
+      "service_count": 10,
+      "feature_count": 14,
+      "rule_count": 20,
+      "responsibility": "Self-referencing category hierarchy, including recursive descendant resolution bounded by configuration.",
+      "bounded_context_summary": "Hierarchical classification context with a single self-referencing aggregate root governing sibling-name uniqueness, parent preservation and a recursion depth limit.",
+      "notes": "Cycles are creatable through full replacement and are never detected; the recursion depth limit masks the corruption instead of reporting it. Products block category deletion and the orphaning operation that would make deletion safe is never called.",
+      "stats": {
+        "repository_count": 0,
+        "entity_count": 1,
+        "handler_count": 0,
+        "helper_count": 1,
+        "other_count": 1,
+        "source_files_loc": 903,
+        "source_file_count": 14
+      }
+    },
+    {
+      "slug": "billing",
+      "name": "Billing",
+      "description": "Invoicing classification: the billing-type catalogue that selects the individual-versus-enterprise branch, and the register of invoiced companies. No tax is computed and no document is produced here.",
+      "complexity": "small",
+      "source_files": [
+        {
+          "path": "src/main/java/org/trebol/api/controllers/DataBillingTypesController.java",
+          "loc": 70,
+          "role": "controller"
+        },
+        {
+          "path": "src/main/java/org/trebol/api/models/BillingCompanyPojo.java",
+          "loc": 37,
+          "role": "other"
+        },
+        {
+          "path": "src/main/java/org/trebol/api/models/BillingTypePojo.java",
+          "loc": 35,
+          "role": "other"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/entities/BillingCompany.java",
+          "loc": 69,
+          "role": "entity",
+          "primary_entity": "BillingCompany"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/entities/BillingType.java",
+          "loc": 65,
+          "role": "entity",
+          "primary_entity": "BillingType"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/repositories/BillingCompaniesRepository.java",
+          "loc": 33,
+          "role": "repository"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/repositories/BillingTypesRepository.java",
+          "loc": 33,
+          "role": "repository"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/conversion/BillingCompaniesConverterService.java",
+          "loc": 29,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/conversion/BillingTypesConverterService.java",
+          "loc": 29,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/conversion/impl/BillingCompaniesConverterServiceImpl.java",
+          "loc": 54,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/conversion/impl/BillingTypesConverterServiceImpl.java",
+          "loc": 52,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/crud/BillingCompaniesCrudService.java",
+          "loc": 29,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/crud/BillingTypesCrudService.java",
+          "loc": 29,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/crud/impl/BillingCompaniesCrudServiceImpl.java",
+          "loc": 64,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/crud/impl/BillingTypesCrudServiceImpl.java",
+          "loc": 64,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/patch/BillingCompaniesPatchService.java",
+          "loc": 29,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/patch/BillingTypesPatchService.java",
+          "loc": 29,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/patch/impl/BillingCompaniesPatchServiceImpl.java",
+          "loc": 63,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/patch/impl/BillingTypesPatchServiceImpl.java",
+          "loc": 56,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/predicates/BillingCompaniesPredicateService.java",
+          "loc": 29,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/predicates/BillingTypesPredicateService.java",
+          "loc": 29,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/predicates/impl/BillingCompaniesPredicateServiceImpl.java",
+          "loc": 68,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/predicates/impl/BillingTypesPredicateServiceImpl.java",
+          "loc": 63,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/sortspecs/BillingTypesSortSpec.java",
+          "loc": 37,
+          "role": "helper"
+        }
+      ],
+      "entities": [
+        {
+          "name": "BillingType",
+          "table_name": "billing_types",
+          "is_shared": true,
+          "source_file": "src/main/java/org/trebol/jpa/entities/BillingType.java",
+          "columns_approx": 2,
+          "relationship_count": 0
+        },
+        {
+          "name": "BillingCompany",
+          "table_name": "billing_companies",
+          "is_shared": true,
+          "source_file": "src/main/java/org/trebol/jpa/entities/BillingCompany.java",
+          "columns_approx": 3,
+          "relationship_count": 0
+        }
+      ],
+      "owned_tables": [
+        "billing_types",
+        "billing_companies"
+      ],
+      "shared_tables_referenced": [],
+      "depends_on_domains": [],
+      "depended_on_by_domains": [
+        "order"
+      ],
+      "shared_entities_used": [
+        "BillingType",
+        "BillingCompany"
+      ],
+      "cross_domain_features": [
+        "CDF-01 Checkout"
+      ],
+      "controller_count": 1,
+      "endpoint_count_approx": 1,
+      "service_count": 16,
+      "feature_count": 10,
+      "rule_count": 19,
+      "responsibility": "Invoicing classification: the billing-type catalogue that selects the individual-versus-enterprise branch, and the register of invoiced companies.",
+      "bounded_context_summary": "Invoicing-classification context. The billing type chosen for an order decides whether a billing company is required at all, so both entities are mutated together inside one transactional decision.",
+      "notes": "The individual-versus-enterprise branch decision lives in the order converter, not here. Billing companies have no controller at all, so they are write-only from checkout. No billing authority code exists anywhere, so billing is outside the role model.",
+      "stats": {
+        "repository_count": 2,
+        "entity_count": 2,
+        "handler_count": 0,
+        "helper_count": 1,
+        "other_count": 2,
+        "source_files_loc": 1095,
+        "source_file_count": 24
+      }
+    },
+    {
+      "slug": "shipper",
+      "name": "Shipper",
+      "description": "Catalogue of delivery carriers. A carrier is a unique name and nothing else - no contact detail, rate card, service area or carrier integration exists.",
+      "complexity": "small",
+      "source_files": [
+        {
+          "path": "src/main/java/org/trebol/api/controllers/DataShippersController.java",
+          "loc": 126,
+          "role": "controller"
+        },
+        {
+          "path": "src/main/java/org/trebol/api/models/ShipperPojo.java",
+          "loc": 39,
+          "role": "other"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/entities/Shipper.java",
+          "loc": 63,
+          "role": "entity",
+          "primary_entity": "Shipper"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/repositories/ShippersRepository.java",
+          "loc": 33,
+          "role": "repository"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/conversion/ShippersConverterService.java",
+          "loc": 29,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/conversion/impl/ShippersConverterServiceImpl.java",
+          "loc": 52,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/crud/ShippersCrudService.java",
+          "loc": 29,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/crud/impl/ShippersCrudServiceImpl.java",
+          "loc": 64,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/patch/ShippersPatchService.java",
+          "loc": 29,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/patch/impl/ShippersPatchServiceImpl.java",
+          "loc": 56,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/predicates/ShippersPredicateService.java",
+          "loc": 29,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/predicates/impl/ShippersPredicateServiceImpl.java",
+          "loc": 62,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/sortspecs/ShippersSortSpec.java",
+          "loc": 37,
+          "role": "helper"
+        }
+      ],
+      "entities": [
+        {
+          "name": "Shipper",
+          "table_name": "shippers",
+          "is_shared": true,
+          "source_file": "src/main/java/org/trebol/jpa/entities/Shipper.java",
+          "columns_approx": 2,
+          "relationship_count": 0
+        }
+      ],
+      "owned_tables": [
+        "shippers"
+      ],
+      "shared_tables_referenced": [],
+      "depends_on_domains": [],
+      "depended_on_by_domains": [
+        "order"
+      ],
+      "shared_entities_used": [
+        "Shipper"
+      ],
+      "cross_domain_features": [
+        "CDF-01 Checkout"
+      ],
+      "controller_count": 1,
+      "endpoint_count_approx": 5,
+      "service_count": 8,
+      "feature_count": 9,
+      "rule_count": 15,
+      "responsibility": "Catalogue of delivery carriers. A carrier is a unique name and nothing else - no contact detail, rate card, service area or carrier API.",
+      "bounded_context_summary": "Minimal reference-data context whose carrier rows have a lifecycle entirely independent of any order; the order domain only ever reads them by name.",
+      "notes": "The blank-name rejection message reads \"Billing type has no name\" - a copy-paste defect. An unknown carrier rejects order creation but is silently ignored on an order patch. The carrier name has no size annotation, so a too-long value fails at the database.",
+      "stats": {
+        "repository_count": 1,
+        "entity_count": 1,
+        "handler_count": 0,
+        "helper_count": 1,
+        "other_count": 1,
+        "source_files_loc": 648,
+        "source_file_count": 13
+      }
+    },
+    {
+      "slug": "company-profile",
+      "name": "Company Profile",
+      "description": "The application parameter store and the single feature built on it: the public storefront profile comprising shop name, description, banner URL and logo URL.",
+      "complexity": "small",
+      "source_files": [
+        {
+          "path": "src/main/java/org/trebol/api/models/CompanyDetailsPojo.java",
+          "loc": 35,
+          "role": "other"
+        },
+        {
+          "path": "src/main/java/org/trebol/api/services/CompanyService.java",
+          "loc": 35,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/api/services/impl/CompanyServiceImpl.java",
+          "loc": 67,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/entities/Param.java",
+          "loc": 78,
+          "role": "entity",
+          "primary_entity": "Param"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/repositories/ParamsRepository.java",
+          "loc": 34,
+          "role": "repository"
+        }
+      ],
+      "entities": [
+        {
+          "name": "Param",
+          "table_name": "app_params",
+          "is_shared": false,
+          "source_file": "src/main/java/org/trebol/jpa/entities/Param.java",
+          "columns_approx": 4,
+          "relationship_count": 0
+        }
+      ],
+      "owned_tables": [
+        "app_params"
+      ],
+      "shared_tables_referenced": [],
+      "depends_on_domains": [],
+      "depended_on_by_domains": [],
+      "shared_entities_used": [],
+      "cross_domain_features": [],
+      "controller_count": 1,
+      "endpoint_count_approx": 1,
+      "service_count": 2,
+      "feature_count": 5,
+      "rule_count": 13,
+      "responsibility": "The entity-attribute-value parameter store and the one feature built on it: the public storefront profile.",
+      "bounded_context_summary": "Application-configuration context, fully isolated: no foreign key in either direction and no consumer. The only domain that opts out of the generic CRUD framework entirely.",
+      "notes": "There is no write path of any kind, so the profile can only be changed by a direct database statement and no authority code covers it. An unrecognised parameter name is silently ignored, making a typo indistinguishable from a missing row.",
+      "stats": {
+        "repository_count": 1,
+        "entity_count": 1,
+        "handler_count": 0,
+        "helper_count": 0,
+        "other_count": 1,
+        "source_files_loc": 249,
+        "source_file_count": 5
+      }
+    },
+    {
+      "slug": "user",
+      "name": "Identity & Access",
+      "description": "The security kernel as a business domain: accounts, roles, the authority catalogue, role grants, self-registration, guest sessions, token issuance and verification, authority resolution and the protected-account guard.",
+      "complexity": "large",
+      "source_files": [
+        {
+          "path": "src/main/java/org/trebol/api/controllers/AccessController.java",
+          "loc": 122,
+          "role": "controller"
+        },
+        {
+          "path": "src/main/java/org/trebol/api/controllers/AccountProfileController.java",
+          "loc": 68,
+          "role": "controller"
+        },
+        {
+          "path": "src/main/java/org/trebol/api/controllers/DataUserRolesController.java",
+          "loc": 115,
+          "role": "controller"
+        },
+        {
+          "path": "src/main/java/org/trebol/api/controllers/DataUsersController.java",
+          "loc": 118,
+          "role": "controller"
+        },
+        {
+          "path": "src/main/java/org/trebol/api/models/AuthorizedAccessPojo.java",
+          "loc": 37,
+          "role": "other"
+        },
+        {
+          "path": "src/main/java/org/trebol/api/models/LoginPojo.java",
+          "loc": 39,
+          "role": "other"
+        },
+        {
+          "path": "src/main/java/org/trebol/api/models/RegistrationPojo.java",
+          "loc": 40,
+          "role": "other"
+        },
+        {
+          "path": "src/main/java/org/trebol/api/models/UserPojo.java",
+          "loc": 46,
+          "role": "other"
+        },
+        {
+          "path": "src/main/java/org/trebol/api/models/UserRolePojo.java",
+          "loc": 35,
+          "role": "other"
+        },
+        {
+          "path": "src/main/java/org/trebol/api/services/ProfileService.java",
+          "loc": 52,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/api/services/RegistrationService.java",
+          "loc": 41,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/api/services/impl/ProfileServiceImpl.java",
+          "loc": 118,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/api/services/impl/RegistrationServiceImpl.java",
+          "loc": 121,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/config/JwtKeyConfig.java",
+          "loc": 36,
+          "role": "other"
+        },
+        {
+          "path": "src/main/java/org/trebol/config/SecurityConfig.java",
+          "loc": 128,
+          "role": "other"
+        },
+        {
+          "path": "src/main/java/org/trebol/config/SecurityProperties.java",
+          "loc": 53,
+          "role": "other"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/entities/Permission.java",
+          "loc": 69,
+          "role": "entity",
+          "primary_entity": "Permission"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/entities/User.java",
+          "loc": 90,
+          "role": "entity",
+          "primary_entity": "User"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/entities/UserRole.java",
+          "loc": 70,
+          "role": "entity",
+          "primary_entity": "UserRole"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/entities/UserRolePermission.java",
+          "loc": 76,
+          "role": "entity",
+          "primary_entity": "UserRolePermission"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/exceptions/UserNotFoundException.java",
+          "loc": 34,
+          "role": "other"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/repositories/PermissionsRepository.java",
+          "loc": 29,
+          "role": "repository"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/repositories/UserRolePermissionsRepository.java",
+          "loc": 36,
+          "role": "repository"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/repositories/UserRolesRepository.java",
+          "loc": 35,
+          "role": "repository"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/repositories/UsersRepository.java",
+          "loc": 47,
+          "role": "repository"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/conversion/UserRolesConverterService.java",
+          "loc": 29,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/conversion/UsersConverterService.java",
+          "loc": 29,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/conversion/impl/UserRolesConverterServiceImpl.java",
+          "loc": 52,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/conversion/impl/UsersConverterServiceImpl.java",
+          "loc": 120,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/crud/UserRolesCrudService.java",
+          "loc": 29,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/crud/UsersCrudService.java",
+          "loc": 29,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/crud/impl/UserRolesCrudServiceImpl.java",
+          "loc": 64,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/crud/impl/UsersCrudServiceImpl.java",
+          "loc": 85,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/patch/UserRolesPatchService.java",
+          "loc": 29,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/patch/UsersPatchService.java",
+          "loc": 29,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/patch/impl/UserRolesPatchServiceImpl.java",
+          "loc": 56,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/patch/impl/UsersPatchServiceImpl.java",
+          "loc": 71,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/predicates/UserRolesPredicateService.java",
+          "loc": 29,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/predicates/UsersPredicateService.java",
+          "loc": 29,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/predicates/impl/UserRolesPredicateServiceImpl.java",
+          "loc": 62,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/predicates/impl/UsersPredicateServiceImpl.java",
+          "loc": 68,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/sortspecs/UserRolesSortSpec.java",
+          "loc": 37,
+          "role": "helper"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/sortspecs/UsersSortSpec.java",
+          "loc": 38,
+          "role": "helper"
+        },
+        {
+          "path": "src/main/java/org/trebol/security/GenericJwtAuthenticationFilter.java",
+          "loc": 85,
+          "role": "handler"
+        },
+        {
+          "path": "src/main/java/org/trebol/security/JwtGuestAuthenticationFilter.java",
+          "loc": 89,
+          "role": "handler"
+        },
+        {
+          "path": "src/main/java/org/trebol/security/JwtLoginAuthenticationFilter.java",
+          "loc": 68,
+          "role": "handler"
+        },
+        {
+          "path": "src/main/java/org/trebol/security/JwtTokenVerifierFilter.java",
+          "loc": 109,
+          "role": "handler"
+        },
+        {
+          "path": "src/main/java/org/trebol/security/UserDetailsPojo.java",
+          "loc": 42,
+          "role": "other"
+        },
+        {
+          "path": "src/main/java/org/trebol/security/UserDetailsServiceImpl.java",
+          "loc": 110,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/security/exceptions/AccountProtectionViolationException.java",
+          "loc": 32,
+          "role": "other"
+        },
+        {
+          "path": "src/main/java/org/trebol/security/services/AuthorizationHeaderParserService.java",
+          "loc": 47,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/security/services/AuthorizedApiService.java",
+          "loc": 48,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/security/services/UserPermissionsService.java",
+          "loc": 40,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/security/services/impl/AuthorizedApiServiceImpl.java",
+          "loc": 62,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/security/services/impl/ClaimsAuthorizationHeaderParserServiceImpl.java",
+          "loc": 67,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/security/services/impl/UserPermissionsServiceImpl.java",
+          "loc": 65,
+          "role": "service"
+        }
+      ],
+      "entities": [
+        {
+          "name": "User",
+          "table_name": "app_users",
+          "is_shared": false,
+          "source_file": "src/main/java/org/trebol/jpa/entities/User.java",
+          "columns_approx": 5,
+          "relationship_count": 2
+        },
+        {
+          "name": "UserRole",
+          "table_name": "app_user_roles",
+          "is_shared": false,
+          "source_file": "src/main/java/org/trebol/jpa/entities/UserRole.java",
+          "columns_approx": 2,
+          "relationship_count": 0
+        },
+        {
+          "name": "Permission",
+          "table_name": "app_permissions",
+          "is_shared": false,
+          "source_file": "src/main/java/org/trebol/jpa/entities/Permission.java",
+          "columns_approx": 3,
+          "relationship_count": 0
+        },
+        {
+          "name": "UserRolePermission",
+          "table_name": "app_user_role_permissions",
+          "is_shared": false,
+          "source_file": "src/main/java/org/trebol/jpa/entities/UserRolePermission.java",
+          "columns_approx": 3,
+          "relationship_count": 2
+        }
+      ],
+      "owned_tables": [
+        "app_users",
+        "app_user_roles",
+        "app_permissions",
+        "app_user_role_permissions"
+      ],
+      "shared_tables_referenced": [
+        "people",
+        "customers"
+      ],
+      "depends_on_domains": [
+        "person",
+        "customer"
+      ],
+      "depended_on_by_domains": [],
+      "shared_entities_used": [
+        "Person",
+        "Customer"
+      ],
+      "cross_domain_features": [
+        "CDF-02 Self-registration",
+        "CDF-03 Guest session",
+        "CDF-04 Account profile management",
+        "CDF-10 Authority enforcement"
+      ],
+      "controller_count": 5,
+      "endpoint_count_approx": 20,
+      "service_count": 27,
+      "feature_count": 15,
+      "rule_count": 55,
+      "responsibility": "The security kernel as a business domain: accounts, roles, authorities, grants, registration, guest sessions, token issuance and verification, and authority resolution.",
+      "bounded_context_summary": "Access-control context. The four owned entities form one aggregate under a single invariant: a caller effective authorities are derived transactionally from account to role to grant to authority.",
+      "notes": "The security kernel depends OUTWARD on two business domains: registration and guest authentication write person and customer rows. Registration is not transactional across its three writes. Authorities are frozen in the issued token, so a revoked grant stays effective for up to one token lifetime. Authority codes are unchecked string literals in all eleven consuming domains.",
+      "stats": {
+        "repository_count": 4,
+        "entity_count": 4,
+        "handler_count": 4,
+        "helper_count": 2,
+        "other_count": 11,
+        "source_files_loc": 3404,
+        "source_file_count": 56
+      }
+    },
+    {
+      "slug": "customer",
+      "name": "Customer",
+      "description": "The buyer role: a thin record marking a person as someone who can place orders. It carries no attributes of its own and reuses the person transport model as its API contract.",
+      "complexity": "small",
+      "source_files": [
+        {
+          "path": "src/main/java/org/trebol/api/controllers/DataCustomersController.java",
+          "loc": 107,
+          "role": "controller"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/entities/Customer.java",
+          "loc": 71,
+          "role": "entity",
+          "primary_entity": "Customer"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/repositories/CustomersRepository.java",
+          "loc": 36,
+          "role": "repository"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/conversion/CustomersConverterService.java",
+          "loc": 29,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/conversion/impl/CustomersConverterServiceImpl.java",
+          "loc": 61,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/crud/CustomersCrudService.java",
+          "loc": 29,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/crud/impl/CustomersCrudServiceImpl.java",
+          "loc": 64,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/patch/CustomersPatchService.java",
+          "loc": 29,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/patch/impl/CustomersPatchServiceImpl.java",
+          "loc": 67,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/predicates/CustomersPredicateService.java",
+          "loc": 29,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/predicates/impl/CustomersPredicateServiceImpl.java",
+          "loc": 90,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/sortspecs/CustomersSortSpec.java",
+          "loc": 45,
+          "role": "helper"
+        }
+      ],
+      "entities": [
+        {
+          "name": "Customer",
+          "table_name": "customers",
+          "is_shared": true,
+          "source_file": "src/main/java/org/trebol/jpa/entities/Customer.java",
+          "columns_approx": 2,
+          "relationship_count": 1
+        }
+      ],
+      "owned_tables": [
+        "customers"
+      ],
+      "shared_tables_referenced": [
+        "people"
+      ],
+      "depends_on_domains": [
+        "person"
+      ],
+      "depended_on_by_domains": [
+        "order",
+        "user"
+      ],
+      "shared_entities_used": [
+        "Person"
+      ],
+      "cross_domain_features": [
+        "CDF-01 Checkout",
+        "CDF-02 Self-registration",
+        "CDF-03 Guest session"
+      ],
+      "controller_count": 1,
+      "endpoint_count_approx": 4,
+      "service_count": 8,
+      "feature_count": 11,
+      "rule_count": 22,
+      "responsibility": "The buyer role: a thin record marking a person as someone who can place orders.",
+      "bounded_context_summary": "Buyer-role context with a single aggregate root that transactionally governs its person reference through a full-cascade one-to-one association.",
+      "notes": "Publishes the person transport model as its own contract, so the customer identifier is never exposed and extraction would export the person schema. Because the order reference is mandatory with no cascade, any buyer with order history is permanently undeletable. The patch service is wired but no PATCH route exposes it.",
+      "stats": {
+        "repository_count": 1,
+        "entity_count": 1,
+        "handler_count": 0,
+        "helper_count": 1,
+        "other_count": 0,
+        "source_files_loc": 657,
+        "source_file_count": 12
+      }
+    },
+    {
+      "slug": "salesperson",
+      "name": "Salesperson",
+      "description": "The seller role: a thin record marking a person as staff who can be credited on an order. It carries no attributes of its own and is referenced by no live code path.",
+      "complexity": "small",
+      "source_files": [
+        {
+          "path": "src/main/java/org/trebol/api/controllers/DataSalespeopleController.java",
+          "loc": 115,
+          "role": "controller"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/entities/Salesperson.java",
+          "loc": 72,
+          "role": "entity",
+          "primary_entity": "Salesperson"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/repositories/SalespeopleRepository.java",
+          "loc": 36,
+          "role": "repository"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/conversion/SalespeopleConverterService.java",
+          "loc": 29,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/conversion/impl/SalespeopleConverterServiceImpl.java",
+          "loc": 61,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/crud/SalespeopleCrudService.java",
+          "loc": 29,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/crud/impl/SalespeopleCrudServiceImpl.java",
+          "loc": 64,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/patch/SalespeoplePatchService.java",
+          "loc": 29,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/patch/impl/SalespeoplePatchServiceImpl.java",
+          "loc": 65,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/predicates/SalespeoplePredicateService.java",
+          "loc": 29,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/predicates/impl/SalespeoplePredicateServiceImpl.java",
+          "loc": 90,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/sortspecs/SalespeopleSortSpec.java",
+          "loc": 45,
+          "role": "helper"
+        }
+      ],
+      "entities": [
+        {
+          "name": "Salesperson",
+          "table_name": "salespeople",
+          "is_shared": true,
+          "source_file": "src/main/java/org/trebol/jpa/entities/Salesperson.java",
+          "columns_approx": 2,
+          "relationship_count": 1
+        }
+      ],
+      "owned_tables": [
+        "salespeople"
+      ],
+      "shared_tables_referenced": [
+        "people"
+      ],
+      "depends_on_domains": [
+        "person"
+      ],
+      "depended_on_by_domains": [
+        "order"
+      ],
+      "shared_entities_used": [
+        "Person"
+      ],
+      "cross_domain_features": [],
+      "controller_count": 1,
+      "endpoint_count_approx": 4,
+      "service_count": 8,
+      "feature_count": 8,
+      "rule_count": 23,
+      "responsibility": "The seller role: a thin record marking a person as staff who can be credited on an order.",
+      "bounded_context_summary": "Seller-role context, structurally parallel to the buyer role but with a many-to-one person association, no uniqueness enforcement, no patch route and an optional order reference.",
+      "notes": "No component calls into this domain in a shipped deployment: no route ever populates the order salesperson column, so attribution is modelled and dead. The person reference has no unique constraint, unlike the customer equivalent, so duplicates are possible. Nothing links a salesperson record to a login account.",
+      "stats": {
+        "repository_count": 1,
+        "entity_count": 1,
+        "handler_count": 0,
+        "helper_count": 1,
+        "other_count": 0,
+        "source_files_loc": 664,
+        "source_file_count": 12
+      }
+    },
+    {
+      "slug": "product",
+      "name": "Product Catalog",
+      "description": "The sellable item catalogue - barcode, name, description, price and stock levels - plus the product-to-image link rows the product aggregate governs.",
+      "complexity": "medium",
+      "source_files": [
+        {
+          "path": "src/main/java/org/trebol/api/controllers/DataProductsController.java",
+          "loc": 126,
+          "role": "controller"
+        },
+        {
+          "path": "src/main/java/org/trebol/api/models/ProductPojo.java",
+          "loc": 54,
+          "role": "other"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/entities/Product.java",
+          "loc": 99,
+          "role": "entity",
+          "primary_entity": "Product"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/entities/ProductImage.java",
+          "loc": 76,
+          "role": "entity",
+          "primary_entity": "ProductImage"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/repositories/ProductImagesRepository.java",
+          "loc": 43,
+          "role": "repository"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/repositories/ProductsCategoriesRepository.java",
+          "loc": 43,
+          "role": "repository"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/repositories/ProductsRepository.java",
+          "loc": 58,
+          "role": "repository"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/conversion/ProductsConverterService.java",
+          "loc": 34,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/conversion/impl/ProductsConverterServiceImpl.java",
+          "loc": 122,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/crud/ProductsCrudService.java",
+          "loc": 29,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/crud/impl/ProductsCrudServiceImpl.java",
+          "loc": 166,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/patch/ProductsPatchService.java",
+          "loc": 29,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/patch/impl/ProductsPatchServiceImpl.java",
+          "loc": 86,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/predicates/ProductsPredicateService.java",
+          "loc": 29,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/predicates/impl/ProductsPredicateServiceImpl.java",
+          "loc": 86,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/sortspecs/ProductsSortSpec.java",
+          "loc": 40,
+          "role": "helper"
+        }
+      ],
+      "entities": [
+        {
+          "name": "Product",
+          "table_name": "products",
+          "is_shared": true,
+          "source_file": "src/main/java/org/trebol/jpa/entities/Product.java",
+          "columns_approx": 8,
+          "relationship_count": 1
+        },
+        {
+          "name": "ProductImage",
+          "table_name": "product_images",
+          "is_shared": false,
+          "source_file": "src/main/java/org/trebol/jpa/entities/ProductImage.java",
+          "columns_approx": 3,
+          "relationship_count": 2
+        }
+      ],
+      "owned_tables": [
+        "products",
+        "product_images"
+      ],
+      "shared_tables_referenced": [
+        "images",
+        "product_categories"
+      ],
+      "depends_on_domains": [
+        "image",
+        "product-category"
+      ],
+      "depended_on_by_domains": [
+        "order",
+        "product-list"
+      ],
+      "shared_entities_used": [
+        "Image",
+        "ProductCategory"
+      ],
+      "cross_domain_features": [
+        "CDF-01 Checkout",
+        "CDF-05 Branch-aware product search",
+        "CDF-06 Product list contents management",
+        "CDF-07 Product image linking",
+        "CDF-09 Receipt lookup"
+      ],
+      "controller_count": 1,
+      "endpoint_count_approx": 5,
+      "service_count": 8,
+      "feature_count": 13,
+      "rule_count": 32,
+      "responsibility": "The sellable item catalogue plus the product-to-image link rows it governs.",
+      "bounded_context_summary": "Catalogue context whose aggregate root transactionally governs its image-link rows - those rows are deleted and rebuilt wholesale on every product replacement.",
+      "notes": "Stock is stored and never read: no availability check, no reservation and no decrement, so an out-of-stock product can be ordered, paid for and completed. Three different delete rules cross this boundary - image links block deletion, order lines are set null, list membership cascades. The public read exposes price and stock anonymously.",
+      "stats": {
+        "repository_count": 3,
+        "entity_count": 2,
+        "handler_count": 0,
+        "helper_count": 1,
+        "other_count": 1,
+        "source_files_loc": 1120,
+        "source_file_count": 16
+      }
+    },
+    {
+      "slug": "product-list",
+      "name": "Product List",
+      "description": "Curated, named collections of products for storefront merchandising, plus the membership rows the list aggregate governs. Nothing consumes lists.",
+      "complexity": "medium",
+      "source_files": [
+        {
+          "path": "src/main/java/org/trebol/api/controllers/DataProductListContentsController.java",
+          "loc": 208,
+          "role": "controller"
+        },
+        {
+          "path": "src/main/java/org/trebol/api/controllers/DataProductListsController.java",
+          "loc": 126,
+          "role": "controller"
+        },
+        {
+          "path": "src/main/java/org/trebol/api/models/ProductListPojo.java",
+          "loc": 45,
+          "role": "other"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/entities/ProductList.java",
+          "loc": 87,
+          "role": "entity",
+          "primary_entity": "ProductList"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/entities/ProductListItem.java",
+          "loc": 75,
+          "role": "entity",
+          "primary_entity": "ProductListItem"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/repositories/ProductListItemsRepository.java",
+          "loc": 43,
+          "role": "repository"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/repositories/ProductListsRepository.java",
+          "loc": 33,
+          "role": "repository"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/conversion/ProductListItemsConverterService.java",
+          "loc": 29,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/conversion/ProductListsConverterService.java",
+          "loc": 29,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/conversion/impl/ProductListConverterServiceImpl.java",
+          "loc": 66,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/conversion/impl/ProductListItemsConverterServiceImpl.java",
+          "loc": 58,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/crud/ProductListCrudService.java",
+          "loc": 29,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/crud/impl/ProductListsCrudServiceImpl.java",
+          "loc": 85,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/patch/ProductListsPatchService.java",
+          "loc": 29,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/patch/impl/ProductListPatchServiceImpl.java",
+          "loc": 63,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/predicates/ProductListItemsPredicateService.java",
+          "loc": 29,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/predicates/ProductListsPredicateService.java",
+          "loc": 29,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/predicates/impl/ProductListItemsPredicateServiceImpl.java",
+          "loc": 75,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/predicates/impl/ProductListsPredicateServiceImpl.java",
+          "loc": 69,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/sortspecs/ProductListItemsSortSpec.java",
+          "loc": 40,
+          "role": "helper"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/sortspecs/ProductListsSortSpec.java",
+          "loc": 39,
+          "role": "helper"
+        }
+      ],
+      "entities": [
+        {
+          "name": "ProductList",
+          "table_name": "product_lists",
+          "is_shared": false,
+          "source_file": "src/main/java/org/trebol/jpa/entities/ProductList.java",
+          "columns_approx": 4,
+          "relationship_count": 1
+        },
+        {
+          "name": "ProductListItem",
+          "table_name": "product_list_items",
+          "is_shared": false,
+          "source_file": "src/main/java/org/trebol/jpa/entities/ProductListItem.java",
+          "columns_approx": 3,
+          "relationship_count": 2
+        }
+      ],
+      "owned_tables": [
+        "product_lists",
+        "product_list_items"
+      ],
+      "shared_tables_referenced": [
+        "products"
+      ],
+      "depends_on_domains": [
+        "product"
+      ],
+      "depended_on_by_domains": [],
+      "shared_entities_used": [
+        "Product"
+      ],
+      "cross_domain_features": [
+        "CDF-06 Product list contents management"
+      ],
+      "controller_count": 2,
+      "endpoint_count_approx": 9,
+      "service_count": 12,
+      "feature_count": 16,
+      "rule_count": 30,
+      "responsibility": "Curated, named collections of products for storefront merchandising, plus the membership rows the list aggregate governs.",
+      "bounded_context_summary": "Merchandising context whose aggregate root transactionally governs its membership rows: deleting a list deletes its items first, and replacing contents deletes and rebuilds them wholesale.",
+      "notes": "The contents controller bypasses the generic framework entirely and inverts the delete convention - an empty filter empties the whole list. Contents replacement is destructive before constructive and silently skips unresolvable products. The disabled flag is mandatory in the database and blocked from working by three independent layers.",
+      "stats": {
+        "repository_count": 2,
+        "entity_count": 2,
+        "handler_count": 0,
+        "helper_count": 2,
+        "other_count": 1,
+        "source_files_loc": 1286,
+        "source_file_count": 21
+      }
+    },
+    {
+      "slug": "order",
+      "name": "Order, Checkout & Fulfilment",
+      "description": "The commercial transaction end to end: order header and lines, the status machine, checkout, the Webpay Plus payment integration, public receipt lookup, order-status notifications, and the addresses and payment-type catalogue only orders use.",
+      "complexity": "large",
+      "source_files": [
+        {
+          "path": "src/main/java/org/trebol/api/controllers/DataOrderStatusesController.java",
+          "loc": 73,
+          "role": "controller"
+        },
+        {
+          "path": "src/main/java/org/trebol/api/controllers/DataOrdersController.java",
+          "loc": 193,
+          "role": "controller"
+        },
+        {
+          "path": "src/main/java/org/trebol/api/controllers/PublicCheckoutController.java",
+          "loc": 163,
+          "role": "controller"
+        },
+        {
+          "path": "src/main/java/org/trebol/api/controllers/PublicReceiptController.java",
+          "loc": 67,
+          "role": "controller"
+        },
+        {
+          "path": "src/main/java/org/trebol/api/models/AddressPojo.java",
+          "loc": 48,
+          "role": "other"
+        },
+        {
+          "path": "src/main/java/org/trebol/api/models/OrderDetailPojo.java",
+          "loc": 44,
+          "role": "other"
+        },
+        {
+          "path": "src/main/java/org/trebol/api/models/OrderPojo.java",
+          "loc": 68,
+          "role": "other"
+        },
+        {
+          "path": "src/main/java/org/trebol/api/models/OrderStatusPojo.java",
+          "loc": 40,
+          "role": "other"
+        },
+        {
+          "path": "src/main/java/org/trebol/api/models/PaymentTypePojo.java",
+          "loc": 35,
+          "role": "other"
+        },
+        {
+          "path": "src/main/java/org/trebol/api/models/ReceiptDetailPojo.java",
+          "loc": 33,
+          "role": "other"
+        },
+        {
+          "path": "src/main/java/org/trebol/api/models/ReceiptPojo.java",
+          "loc": 41,
+          "role": "other"
+        },
+        {
+          "path": "src/main/java/org/trebol/api/services/CheckoutService.java",
+          "loc": 68,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/api/services/OrdersProcessService.java",
+          "loc": 96,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/api/services/ReceiptService.java",
+          "loc": 40,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/api/services/impl/CheckoutServiceImpl.java",
+          "loc": 138,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/api/services/impl/OrdersProcessServiceImpl.java",
+          "loc": 292,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/api/services/impl/ReceiptServiceImpl.java",
+          "loc": 84,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/common/converters/OrderDetailEntity2ReceiptDetailPojo.java",
+          "loc": 40,
+          "role": "other"
+        },
+        {
+          "path": "src/main/java/org/trebol/common/converters/OrderEntity2ReceiptPojo.java",
+          "loc": 44,
+          "role": "other"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/entities/Address.java",
+          "loc": 98,
+          "role": "entity",
+          "primary_entity": "Address"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/entities/Order.java",
+          "loc": 148,
+          "role": "entity",
+          "primary_entity": "Order"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/entities/OrderDetail.java",
+          "loc": 91,
+          "role": "entity",
+          "primary_entity": "OrderDetail"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/entities/OrderStatus.java",
+          "loc": 68,
+          "role": "entity",
+          "primary_entity": "OrderStatus"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/entities/PaymentType.java",
+          "loc": 65,
+          "role": "entity",
+          "primary_entity": "PaymentType"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/repositories/AddressesRepository.java",
+          "loc": 47,
+          "role": "repository"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/repositories/OrderDetailsRepository.java",
+          "loc": 36,
+          "role": "repository"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/repositories/OrderStatusesRepository.java",
+          "loc": 33,
+          "role": "repository"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/repositories/OrdersRepository.java",
+          "loc": 54,
+          "role": "repository"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/repositories/PaymentTypesRepository.java",
+          "loc": 33,
+          "role": "repository"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/conversion/AddressesConverterService.java",
+          "loc": 29,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/conversion/OrderStatusesConverterService.java",
+          "loc": 29,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/conversion/OrdersConverterService.java",
+          "loc": 34,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/conversion/impl/AddressesConverterServiceImpl.java",
+          "loc": 70,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/conversion/impl/OrderStatusesConverterServiceImpl.java",
+          "loc": 54,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/conversion/impl/OrdersConverterServiceImpl.java",
+          "loc": 354,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/crud/OrderStatusesCrudService.java",
+          "loc": 29,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/crud/OrdersCrudService.java",
+          "loc": 29,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/crud/impl/OrderStatusesCrudServiceImpl.java",
+          "loc": 64,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/crud/impl/OrdersCrudServiceImpl.java",
+          "loc": 115,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/patch/OrderStatusesPatchService.java",
+          "loc": 29,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/patch/OrdersPatchService.java",
+          "loc": 29,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/patch/impl/OrderStatusesPatchServiceImpl.java",
+          "loc": 63,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/patch/impl/OrdersPatchServiceImpl.java",
+          "loc": 102,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/predicates/OrderStatusesPredicateService.java",
+          "loc": 29,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/predicates/OrdersPredicateService.java",
+          "loc": 29,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/predicates/impl/OrderStatusesPredicateServiceImpl.java",
+          "loc": 62,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/services/predicates/impl/OrdersPredicateServiceImpl.java",
+          "loc": 71,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/sortspecs/OrderStatusesSortSpec.java",
+          "loc": 37,
+          "role": "helper"
+        },
+        {
+          "path": "src/main/java/org/trebol/jpa/sortspecs/OrdersSortSpec.java",
+          "loc": 47,
+          "role": "helper"
+        },
+        {
+          "path": "src/main/java/org/trebol/mailing/MailingProperties.java",
+          "loc": 48,
+          "role": "other"
+        },
+        {
+          "path": "src/main/java/org/trebol/mailing/MailingService.java",
+          "loc": 46,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/mailing/MailingServiceException.java",
+          "loc": 33,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/mailing/impl/mailgun/MailgunMailingProperties.java",
+          "loc": 49,
+          "role": "other"
+        },
+        {
+          "path": "src/main/java/org/trebol/mailing/impl/mailgun/MailgunMailingServiceImpl.java",
+          "loc": 235,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/payment/PaymentService.java",
+          "loc": 54,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/payment/PaymentServiceException.java",
+          "loc": 33,
+          "role": "service"
+        },
+        {
+          "path": "src/main/java/org/trebol/payment/impl/webpayplus/WebpayplusPaymentProperties.java",
+          "loc": 43,
+          "role": "other"
+        },
+        {
+          "path": "src/main/java/org/trebol/payment/impl/webpayplus/WebpayplusPaymentServiceImpl.java",
+          "loc": 117,
+          "role": "service"
+        }
+      ],
+      "entities": [
+        {
+          "name": "Order",
+          "table_name": "orders",
+          "is_shared": false,
+          "source_file": "src/main/java/org/trebol/jpa/entities/Order.java",
+          "columns_approx": 17,
+          "relationship_count": 10
+        },
+        {
+          "name": "OrderDetail",
+          "table_name": "order_details",
+          "is_shared": false,
+          "source_file": "src/main/java/org/trebol/jpa/entities/OrderDetail.java",
+          "columns_approx": 6,
+          "relationship_count": 2
+        },
+        {
+          "name": "OrderStatus",
+          "table_name": "order_statuses",
+          "is_shared": false,
+          "source_file": "src/main/java/org/trebol/jpa/entities/OrderStatus.java",
+          "columns_approx": 3,
+          "relationship_count": 0
+        },
+        {
+          "name": "Address",
+          "table_name": "addresses",
+          "is_shared": false,
+          "source_file": "src/main/java/org/trebol/jpa/entities/Address.java",
+          "columns_approx": 7,
+          "relationship_count": 0
+        },
+        {
+          "name": "PaymentType",
+          "table_name": "payment_types",
+          "is_shared": false,
+          "source_file": "src/main/java/org/trebol/jpa/entities/PaymentType.java",
+          "columns_approx": 2,
+          "relationship_count": 0
+        }
+      ],
+      "owned_tables": [
+        "orders",
+        "order_details",
+        "order_statuses",
+        "addresses",
+        "payment_types"
+      ],
+      "shared_tables_referenced": [
+        "customers",
+        "products",
+        "billing_types",
+        "billing_companies",
+        "shippers",
+        "salespeople"
+      ],
+      "depends_on_domains": [
+        "customer",
+        "product",
+        "billing",
+        "shipper",
+        "salesperson"
+      ],
+      "depended_on_by_domains": [],
+      "shared_entities_used": [
+        "Customer",
+        "Product",
+        "BillingType",
+        "BillingCompany",
+        "Shipper",
+        "Salesperson"
+      ],
+      "cross_domain_features": [
+        "CDF-01 Checkout",
+        "CDF-08 Order status notification",
+        "CDF-09 Receipt lookup"
+      ],
+      "controller_count": 4,
+      "endpoint_count_approx": 14,
+      "service_count": 30,
+      "feature_count": 23,
+      "rule_count": 70,
+      "responsibility": "The commercial transaction end to end: order lifecycle, checkout, payment integration, receipt lookup and order-status notification.",
+      "bounded_context_summary": "Transaction context and the only one with a real state machine. Operational owner of order statuses, addresses and payment types, none of which is read by any other domain.",
+      "notes": "Four of five domain dependencies are repository-level - the largest body of extraction work in the system. The status machine is bypassable by patching a status key, and full replacement escapes the edit lock entirely. Both payment callbacks are public with no signature, origin or idempotency check. The integer truncation order in the tax arithmetic is load-bearing. transportValue is mandatory, excluded from the total and never set.",
+      "stats": {
+        "repository_count": 5,
+        "entity_count": 5,
+        "handler_count": 0,
+        "helper_count": 2,
+        "other_count": 12,
+        "source_files_loc": 4243,
+        "source_file_count": 58
+      }
+    }
+  ],
+  "shared_entities": [
+    {
+      "name": "Person",
+      "table_name": "people",
+      "source_file": "src/main/java/org/trebol/jpa/entities/Person.java",
+      "used_by_domains": [
+        "person",
+        "user",
+        "customer",
+        "salesperson"
+      ],
+      "owning_domain": "person",
+      "canonical_spec_path": "cross-cutting-documentation/shared-entities.md",
+      "canonical_spec_anchor": "#person"
+    },
+    {
+      "name": "Customer",
+      "table_name": "customers",
+      "source_file": "src/main/java/org/trebol/jpa/entities/Customer.java",
+      "used_by_domains": [
+        "customer",
+        "order",
+        "user"
+      ],
+      "owning_domain": "customer",
+      "canonical_spec_path": "cross-cutting-documentation/shared-entities.md",
+      "canonical_spec_anchor": "#customer"
+    },
+    {
+      "name": "Salesperson",
+      "table_name": "salespeople",
+      "source_file": "src/main/java/org/trebol/jpa/entities/Salesperson.java",
+      "used_by_domains": [
+        "salesperson",
+        "order"
+      ],
+      "owning_domain": "salesperson",
+      "canonical_spec_path": "cross-cutting-documentation/shared-entities.md",
+      "canonical_spec_anchor": "#salesperson"
+    },
+    {
+      "name": "Product",
+      "table_name": "products",
+      "source_file": "src/main/java/org/trebol/jpa/entities/Product.java",
+      "used_by_domains": [
+        "product",
+        "order",
+        "product-list"
+      ],
+      "owning_domain": "product",
+      "canonical_spec_path": "cross-cutting-documentation/shared-entities.md",
+      "canonical_spec_anchor": "#product"
+    },
+    {
+      "name": "ProductCategory",
+      "table_name": "product_categories",
+      "source_file": "src/main/java/org/trebol/jpa/entities/ProductCategory.java",
+      "used_by_domains": [
+        "product-category",
+        "product"
+      ],
+      "owning_domain": "product-category",
+      "canonical_spec_path": "cross-cutting-documentation/shared-entities.md",
+      "canonical_spec_anchor": "#productcategory"
+    },
+    {
+      "name": "Image",
+      "table_name": "images",
+      "source_file": "src/main/java/org/trebol/jpa/entities/Image.java",
+      "used_by_domains": [
+        "image",
+        "product"
+      ],
+      "owning_domain": "image",
+      "canonical_spec_path": "cross-cutting-documentation/shared-entities.md",
+      "canonical_spec_anchor": "#image"
+    },
+    {
+      "name": "BillingType",
+      "table_name": "billing_types",
+      "source_file": "src/main/java/org/trebol/jpa/entities/BillingType.java",
+      "used_by_domains": [
+        "billing",
+        "order"
+      ],
+      "owning_domain": "billing",
+      "canonical_spec_path": "cross-cutting-documentation/shared-entities.md",
+      "canonical_spec_anchor": "#billingtype"
+    },
+    {
+      "name": "BillingCompany",
+      "table_name": "billing_companies",
+      "source_file": "src/main/java/org/trebol/jpa/entities/BillingCompany.java",
+      "used_by_domains": [
+        "billing",
+        "order"
+      ],
+      "owning_domain": "billing",
+      "canonical_spec_path": "cross-cutting-documentation/shared-entities.md",
+      "canonical_spec_anchor": "#billingcompany"
+    },
+    {
+      "name": "Shipper",
+      "table_name": "shippers",
+      "source_file": "src/main/java/org/trebol/jpa/entities/Shipper.java",
+      "used_by_domains": [
+        "shipper",
+        "order"
+      ],
+      "owning_domain": "shipper",
+      "canonical_spec_path": "cross-cutting-documentation/shared-entities.md",
+      "canonical_spec_anchor": "#shipper"
+    }
+  ],
+  "shared_kernel_components": [
+    {
+      "component_name": "DBEntity",
+      "component_type": "base_class",
+      "source_file": "src/main/java/org/trebol/jpa/DBEntity.java",
+      "used_by_domains": [
+        "person",
+        "image",
+        "product-category",
+        "billing",
+        "shipper",
+        "company-profile",
+        "user",
+        "customer",
+        "salesperson",
+        "product",
+        "product-list",
+        "order"
+      ],
+      "documented_in": "domain-decomposition-overview/shared-kernel.md",
+      "tables": []
+    },
+    {
+      "component_name": "Repository",
+      "component_type": "framework",
+      "source_file": "src/main/java/org/trebol/jpa/Repository.java",
+      "used_by_domains": [
+        "person",
+        "image",
+        "product-category",
+        "billing",
+        "shipper",
+        "company-profile",
+        "user",
+        "customer",
+        "salesperson",
+        "product",
+        "product-list",
+        "order"
+      ],
+      "documented_in": "domain-decomposition-overview/shared-kernel.md",
+      "tables": []
+    },
+    {
+      "component_name": "CrudGenericService",
+      "component_type": "base_class",
+      "source_file": "src/main/java/org/trebol/jpa/services/crud/CrudGenericService.java",
+      "used_by_domains": [
+        "person",
+        "image",
+        "product-category",
+        "billing",
+        "shipper",
+        "user",
+        "customer",
+        "salesperson",
+        "product",
+        "product-list",
+        "order"
+      ],
+      "documented_in": "domain-decomposition-overview/shared-kernel.md",
+      "tables": []
+    },
+    {
+      "component_name": "CrudService",
+      "component_type": "lifecycle_interface",
+      "source_file": "src/main/java/org/trebol/jpa/services/CrudService.java",
+      "used_by_domains": [
+        "person",
+        "image",
+        "product-category",
+        "billing",
+        "shipper",
+        "user",
+        "customer",
+        "salesperson",
+        "product",
+        "product-list",
+        "order"
+      ],
+      "documented_in": "domain-decomposition-overview/shared-kernel.md",
+      "tables": []
+    },
+    {
+      "component_name": "ConverterService",
+      "component_type": "lifecycle_interface",
+      "source_file": "src/main/java/org/trebol/jpa/services/ConverterService.java",
+      "used_by_domains": [
+        "person",
+        "image",
+        "product-category",
+        "billing",
+        "shipper",
+        "user",
+        "customer",
+        "salesperson",
+        "product",
+        "product-list",
+        "order"
+      ],
+      "documented_in": "domain-decomposition-overview/shared-kernel.md",
+      "tables": []
+    },
+    {
+      "component_name": "PatchService",
+      "component_type": "lifecycle_interface",
+      "source_file": "src/main/java/org/trebol/jpa/services/PatchService.java",
+      "used_by_domains": [
+        "person",
+        "image",
+        "product-category",
+        "billing",
+        "shipper",
+        "user",
+        "customer",
+        "salesperson",
+        "product",
+        "product-list",
+        "order"
+      ],
+      "documented_in": "domain-decomposition-overview/shared-kernel.md",
+      "tables": []
+    },
+    {
+      "component_name": "PredicateService",
+      "component_type": "lifecycle_interface",
+      "source_file": "src/main/java/org/trebol/jpa/services/PredicateService.java",
+      "used_by_domains": [
+        "person",
+        "image",
+        "product-category",
+        "billing",
+        "shipper",
+        "user",
+        "customer",
+        "salesperson",
+        "product",
+        "product-list",
+        "order"
+      ],
+      "documented_in": "domain-decomposition-overview/shared-kernel.md",
+      "tables": []
+    },
+    {
+      "component_name": "SortSpecParserService",
+      "component_type": "lifecycle_interface",
+      "source_file": "src/main/java/org/trebol/jpa/services/SortSpecParserService.java",
+      "used_by_domains": [
+        "person",
+        "image",
+        "product-category",
+        "billing",
+        "shipper",
+        "user",
+        "customer",
+        "salesperson",
+        "product",
+        "product-list",
+        "order"
+      ],
+      "documented_in": "domain-decomposition-overview/shared-kernel.md",
+      "tables": []
+    },
+    {
+      "component_name": "SortSpecParserServiceImpl",
+      "component_type": "utility",
+      "source_file": "src/main/java/org/trebol/jpa/services/impl/SortSpecParserServiceImpl.java",
+      "used_by_domains": [
+        "person",
+        "image",
+        "product-category",
+        "billing",
+        "shipper",
+        "user",
+        "customer",
+        "salesperson",
+        "product",
+        "product-list",
+        "order"
+      ],
+      "documented_in": "domain-decomposition-overview/shared-kernel.md",
+      "tables": []
+    },
+    {
+      "component_name": "DataController",
+      "component_type": "lifecycle_interface",
+      "source_file": "src/main/java/org/trebol/api/DataController.java",
+      "used_by_domains": [
+        "person",
+        "image",
+        "product-category",
+        "billing",
+        "shipper",
+        "user",
+        "customer",
+        "salesperson",
+        "product",
+        "product-list",
+        "order"
+      ],
+      "documented_in": "domain-decomposition-overview/shared-kernel.md",
+      "tables": []
+    },
+    {
+      "component_name": "DataCrudController",
+      "component_type": "lifecycle_interface",
+      "source_file": "src/main/java/org/trebol/api/DataCrudController.java",
+      "used_by_domains": [
+        "image",
+        "product",
+        "product-category",
+        "product-list",
+        "shipper",
+        "customer",
+        "salesperson",
+        "user",
+        "order"
+      ],
+      "documented_in": "domain-decomposition-overview/shared-kernel.md",
+      "tables": []
+    },
+    {
+      "component_name": "DataGenericController",
+      "component_type": "base_class",
+      "source_file": "src/main/java/org/trebol/api/DataGenericController.java",
+      "used_by_domains": [
+        "person",
+        "billing",
+        "order",
+        "image",
+        "product",
+        "product-category",
+        "product-list",
+        "shipper",
+        "customer",
+        "salesperson",
+        "user"
+      ],
+      "documented_in": "domain-decomposition-overview/shared-kernel.md",
+      "tables": []
+    },
+    {
+      "component_name": "DataCrudGenericController",
+      "component_type": "base_class",
+      "source_file": "src/main/java/org/trebol/api/DataCrudGenericController.java",
+      "used_by_domains": [
+        "image",
+        "product",
+        "product-category",
+        "product-list",
+        "shipper",
+        "customer",
+        "salesperson",
+        "user",
+        "order"
+      ],
+      "documented_in": "domain-decomposition-overview/shared-kernel.md",
+      "tables": []
+    },
+    {
+      "component_name": "ExceptionsControllerAdvice",
+      "component_type": "framework",
+      "source_file": "src/main/java/org/trebol/api/ExceptionsControllerAdvice.java",
+      "used_by_domains": [
+        "person",
+        "image",
+        "product-category",
+        "billing",
+        "shipper",
+        "company-profile",
+        "user",
+        "customer",
+        "salesperson",
+        "product",
+        "product-list",
+        "order"
+      ],
+      "documented_in": "domain-decomposition-overview/shared-kernel.md",
+      "tables": []
+    },
+    {
+      "component_name": "AppError",
+      "component_type": "utility",
+      "source_file": "src/main/java/org/trebol/api/models/AppError.java",
+      "used_by_domains": [
+        "person",
+        "image",
+        "product-category",
+        "billing",
+        "shipper",
+        "company-profile",
+        "user",
+        "customer",
+        "salesperson",
+        "product",
+        "product-list",
+        "order"
+      ],
+      "documented_in": "domain-decomposition-overview/shared-kernel.md",
+      "tables": []
+    },
+    {
+      "component_name": "BadInputException",
+      "component_type": "framework",
+      "source_file": "src/main/java/org/trebol/common/exceptions/BadInputException.java",
+      "used_by_domains": [
+        "person",
+        "image",
+        "product-category",
+        "billing",
+        "shipper",
+        "company-profile",
+        "user",
+        "customer",
+        "salesperson",
+        "product",
+        "product-list",
+        "order"
+      ],
+      "documented_in": "domain-decomposition-overview/shared-kernel.md",
+      "tables": []
+    },
+    {
+      "component_name": "DataPagePojo",
+      "component_type": "utility",
+      "source_file": "src/main/java/org/trebol/api/models/DataPagePojo.java",
+      "used_by_domains": [
+        "person",
+        "image",
+        "product-category",
+        "billing",
+        "shipper",
+        "user",
+        "customer",
+        "salesperson",
+        "product",
+        "product-list",
+        "order"
+      ],
+      "documented_in": "domain-decomposition-overview/shared-kernel.md",
+      "tables": []
+    },
+    {
+      "component_name": "PaginationService",
+      "component_type": "lifecycle_interface",
+      "source_file": "src/main/java/org/trebol/api/services/PaginationService.java",
+      "used_by_domains": [
+        "person",
+        "image",
+        "product-category",
+        "billing",
+        "shipper",
+        "user",
+        "customer",
+        "salesperson",
+        "product",
+        "product-list",
+        "order"
+      ],
+      "documented_in": "domain-decomposition-overview/shared-kernel.md",
+      "tables": []
+    },
+    {
+      "component_name": "PaginationServiceImpl",
+      "component_type": "utility",
+      "source_file": "src/main/java/org/trebol/api/services/impl/PaginationServiceImpl.java",
+      "used_by_domains": [
+        "person",
+        "image",
+        "product-category",
+        "billing",
+        "shipper",
+        "user",
+        "customer",
+        "salesperson",
+        "product",
+        "product-list",
+        "order"
+      ],
+      "documented_in": "domain-decomposition-overview/shared-kernel.md",
+      "tables": []
+    },
+    {
+      "component_name": "Utils",
+      "component_type": "utility",
+      "source_file": "src/main/java/org/trebol/common/Utils.java",
+      "used_by_domains": [
+        "customer",
+        "salesperson",
+        "person"
+      ],
+      "documented_in": "domain-decomposition-overview/shared-kernel.md",
+      "tables": []
+    },
+    {
+      "component_name": "RegexMatcherAdapterService",
+      "component_type": "lifecycle_interface",
+      "source_file": "src/main/java/org/trebol/common/services/RegexMatcherAdapterService.java",
+      "used_by_domains": [],
+      "documented_in": "domain-decomposition-overview/shared-kernel.md",
+      "tables": []
+    },
+    {
+      "component_name": "RegexMatcherAdapterServiceImpl",
+      "component_type": "utility",
+      "source_file": "src/main/java/org/trebol/common/services/impl/RegexMatcherAdapterServiceImpl.java",
+      "used_by_domains": [],
+      "documented_in": "domain-decomposition-overview/shared-kernel.md",
+      "tables": []
+    },
+    {
+      "component_name": "Constants",
+      "component_type": "framework",
+      "source_file": "src/main/java/org/trebol/config/Constants.java",
+      "used_by_domains": [
+        "order",
+        "billing",
+        "user",
+        "customer"
+      ],
+      "documented_in": "domain-decomposition-overview/shared-kernel.md",
+      "tables": []
+    },
+    {
+      "component_name": "ApiProperties",
+      "component_type": "framework",
+      "source_file": "src/main/java/org/trebol/config/ApiProperties.java",
+      "used_by_domains": [
+        "order",
+        "product-category",
+        "person",
+        "image",
+        "product",
+        "product-list",
+        "shipper",
+        "billing",
+        "customer",
+        "salesperson",
+        "user"
+      ],
+      "documented_in": "domain-decomposition-overview/shared-kernel.md",
+      "tables": []
+    },
+    {
+      "component_name": "SecurityConfig",
+      "component_type": "framework",
+      "source_file": "src/main/java/org/trebol/config/SecurityConfig.java",
+      "used_by_domains": [
+        "person",
+        "image",
+        "product-category",
+        "billing",
+        "shipper",
+        "company-profile",
+        "user",
+        "customer",
+        "salesperson",
+        "product",
+        "product-list",
+        "order"
+      ],
+      "documented_in": "domain-decomposition-overview/shared-kernel.md",
+      "tables": []
+    },
+    {
+      "component_name": "JwtKeyConfig",
+      "component_type": "framework",
+      "source_file": "src/main/java/org/trebol/config/JwtKeyConfig.java",
+      "used_by_domains": [
+        "user"
+      ],
+      "documented_in": "domain-decomposition-overview/shared-kernel.md",
+      "tables": []
+    },
+    {
+      "component_name": "SecurityProperties",
+      "component_type": "framework",
+      "source_file": "src/main/java/org/trebol/config/SecurityProperties.java",
+      "used_by_domains": [
+        "user"
+      ],
+      "documented_in": "domain-decomposition-overview/shared-kernel.md",
+      "tables": []
+    },
+    {
+      "component_name": "ValidationProperties",
+      "component_type": "framework",
+      "source_file": "src/main/java/org/trebol/config/ValidationProperties.java",
+      "used_by_domains": [],
+      "documented_in": "domain-decomposition-overview/shared-kernel.md",
+      "tables": []
+    },
+    {
+      "component_name": "CorsProperties",
+      "component_type": "framework",
+      "source_file": "src/main/java/org/trebol/config/CorsProperties.java",
+      "used_by_domains": [],
+      "documented_in": "domain-decomposition-overview/shared-kernel.md",
+      "tables": []
+    },
+    {
+      "component_name": "CorsConfigurationSourceBuilder",
+      "component_type": "utility",
+      "source_file": "src/main/java/org/trebol/config/CorsConfigurationSourceBuilder.java",
+      "used_by_domains": [],
+      "documented_in": "domain-decomposition-overview/shared-kernel.md",
+      "tables": []
+    },
+    {
+      "component_name": "JpaConfig",
+      "component_type": "framework",
+      "source_file": "src/main/java/org/trebol/config/JpaConfig.java",
+      "used_by_domains": [
+        "person",
+        "image",
+        "product-category",
+        "billing",
+        "shipper",
+        "company-profile",
+        "user",
+        "customer",
+        "salesperson",
+        "product",
+        "product-list",
+        "order"
+      ],
+      "documented_in": "domain-decomposition-overview/shared-kernel.md",
+      "tables": []
+    },
+    {
+      "component_name": "PhoneNumber",
+      "component_type": "utility",
+      "source_file": "src/main/java/org/trebol/common/annotations/PhoneNumber.java",
+      "used_by_domains": [],
+      "documented_in": "domain-decomposition-overview/shared-kernel.md",
+      "tables": []
+    },
+    {
+      "component_name": "PhoneNumberValidator",
+      "component_type": "utility",
+      "source_file": "src/main/java/org/trebol/common/annotations/validator/PhoneNumberValidator.java",
+      "used_by_domains": [],
+      "documented_in": "domain-decomposition-overview/shared-kernel.md",
+      "tables": []
+    },
+    {
+      "component_name": "BackendApp",
+      "component_type": "framework",
+      "source_file": "src/main/java/org/trebol/BackendApp.java",
+      "used_by_domains": [
+        "person",
+        "image",
+        "product-category",
+        "billing",
+        "shipper",
+        "company-profile",
+        "user",
+        "customer",
+        "salesperson",
+        "product",
+        "product-list",
+        "order"
+      ],
+      "documented_in": "domain-decomposition-overview/shared-kernel.md",
+      "tables": []
+    }
+  ],
+  "cross_cutting_concerns": [
+    {
+      "concern": "authentication",
+      "summary": "Stateless bearer tokens signed with HMAC-SHA, issued by two authentication filters (password login and guest login) and verified per request. No server-side session, no logout, no revocation and no refresh. An expired token proceeds anonymously rather than failing, and invalid token values are written to the application log.",
+      "documented_in": "cross-cutting-documentation/authentication-authorization.md"
+    },
+    {
+      "concern": "authorization",
+      "summary": "Single-role accounts with role-granted authorities, resolved transactionally at login and then frozen inside the token for its lifetime. Enforcement is entirely method-level: the security configuration declares no route-matching rules, so any endpoint without an annotation is publicly reachable. Authority codes are unchecked string literals duplicated across all eleven consuming domains.",
+      "documented_in": "cross-cutting-documentation/authentication-authorization.md"
+    },
+    {
+      "concern": "error_handling",
+      "summary": "A global advice maps exactly four conditions to a structured envelope and discards the specific internal message; five custom exception types are unmapped and surface as 500-class responses. The dominant pattern is silent tolerance - unparseable filters, unknown names and unresolvable references are logged and ignored, so a success response does not mean the request was fully applied.",
+      "documented_in": "cross-cutting-documentation/error-handling-patterns.md"
+    },
+    {
+      "concern": "event_publishing",
+      "summary": "ABSENT. No publisher, listener, broker client, outbox or webhook dispatch exists anywhere. Cross-component reactions are synchronous inline calls made after the primary write is committed, or database cascade rules that cannot survive a service split.",
+      "documented_in": "cross-cutting-documentation/event-publishing-patterns.md"
+    },
+    {
+      "concern": "caching",
+      "summary": "ABSENT. No caching abstraction of any kind; every request re-queries the database. The only memoisation is two lazily compiled regular-expression patterns. The one implicit cache is the authority set embedded in each issued token, which makes a revoked grant effective for up to one token lifetime.",
+      "documented_in": "cross-cutting-documentation/caching-patterns.md"
+    },
+    {
+      "concern": "logging",
+      "summary": "Ad-hoc log statements only - no structured logging, no correlation identifier and no audit trail. Three statements log sensitive data: full token values on parse failure, and personal identification numbers during registration and guest sessions.",
+      "documented_in": "cross-cutting-documentation/error-handling-patterns.md"
+    },
+    {
+      "concern": "serialization",
+      "summary": "Framework JSON binding with default-property-inclusion set to non_default, so unset response fields are omitted rather than nulled - a client cannot distinguish \"configured as empty\" from \"not configured\". Dates are serialised as formatted strings rather than timestamps.",
+      "documented_in": "cross-cutting-documentation/common-error-codes.md"
+    },
+    {
+      "concern": "storage",
+      "summary": "No object storage, filesystem or content-delivery integration. Image rows hold URLs pointing at externally hosted assets and the application never dereferences them; no binary content is ever accepted or served.",
+      "documented_in": "cross-cutting-documentation/shared-entities.md"
+    }
+  ],
+  "execution_order": [
+    "person",
+    "image",
+    "product-category",
+    "billing",
+    "shipper",
+    "company-profile",
+    "user",
+    "customer",
+    "salesperson",
+    "product",
+    "product-list",
+    "order"
+  ],
+  "common_artifacts": {
+    "global_schema_path": "database-documentation/00-global-schema.sql",
+    "global_seed_data_path": "database-documentation/00-seed-data.json",
+    "common_errors_path": "cross-cutting-documentation/common-error-codes.md",
+    "common_permissions_path": "cross-cutting-documentation/common-permissions.md",
+    "common_events_path": "cross-cutting-documentation/common-events.md",
+    "common_api_catalog_path": "reference-documentation/api-endpoint-catalog.md",
+    "common_integrations_path": "reference-documentation/external-integrations-map.md",
+    "architecture_diagrams_path": "diagrams/architecture-diagrams.md",
+    "sequence_diagrams_path": "diagrams/sequence-diagrams.md",
+    "class_er_diagrams_path": "diagrams/class-er-diagrams.md",
+    "shared_entities_path": "cross-cutting-documentation/shared-entities.md"
+  }
+}
