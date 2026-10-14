@@ -1,22 +1,23 @@
 # Defect register — rulings
 
-**Status:** accepted · **Reference:** transformation definition §6 · **Phase:** 0
+**Status:** accepted · **Reference:** transformation definition §6 · **Phases:** 0, 1, 2
 
 Every item below is **current observable behaviour**. Porting silently either
 preserves a defect or breaks a client contract, so each item carries an explicit
 ruling (guardrail G1 — silent fixes are forbidden).
 
-Items D19 and D20 are **new**, found while establishing the Phase 0 baseline, and
-are registered here rather than folded quietly into an existing fix.
+Items D19 and D20 are **new**, found while establishing the Phase 0 baseline; D21
+and D22 were found during Phase 1, and D23 during Phase 2. All are registered here
+rather than folded quietly into an existing fix.
 
 ## Summary
 
 | Ruling | Items |
 |---|---|
 | **FIX — before extraction (Phase 0)** | D1, D2, D6, D7, D9, D14, D17 |
-| **FIX — at the owning phase** | D3, D4, D5, D11 (Phase 3), D18 (before Phase 3), D20 (Phase 1, first extraction) |
-| **PRESERVE** | D8, D16, D19 (scope), and BR-USER-032/033 route-discovery substring matching |
-| **PRESERVE with recorded limitation / deferred** | D10, D12, D13, D15 |
+| **FIX — at the owning phase** | D3, D4, D5, D11 (Phase 3), D18 (before Phase 3), D20 (Phase 1, first extraction), transactional registration (Phase 2) |
+| **PRESERVE** | D8, D16, D19 (scope), D23, the two D14 remainders, and BR-USER-032/033 route-discovery substring matching |
+| **PRESERVE with recorded limitation / deferred** | D10, D12, D13, D15, D21 (inherited CVE, mitigation verified), D22 |
 
 ### Intentional observable-behaviour changes landing in Phase 0
 
@@ -386,3 +387,134 @@ monolith's own dependency tree with its own regression risk across 414 tests, an
 out of Phase 1 scope — but it is recorded here so the CVE position is not silently
 split between two modules. It should be actioned as its own reviewed change, not
 folded into Phase 2.
+
+---
+
+## Phase 2 additions and resolutions (Identity extraction)
+
+### HS-02 — resolved inside the monolith, before any extraction (G6)
+**Coupling hotspot, not a defect · Status: CLOSED in the monolith**
+
+Gate A's verification grep covers `import org.trebol.jpa.repositories` only, so it
+never saw this: `OrdersConverterServiceImpl` reached the identity domain at
+**service** level, not repository level — `CustomersCrudService`,
+`CustomersConverterService` and `SalespeopleConverterService` — and one of those
+calls is the identity kernel's **outward write** that HS-02 names
+(`getExisting(...)`, else convert a new `Customer` that is cascaded on order save).
+
+Closed by publishing two contracts from the order domain's point of view, mirroring
+the Gate A pattern:
+
+| Contract | Methods | Direction |
+|---|---|---|
+| `CustomerProvisioningContract` | `resolveOrCreateCustomer`, `describeCustomer` | read **and write** |
+| `SalespersonLookupContract` | `describeSalesperson` | read only |
+
+Both implementations are pure delegation to the services that were previously
+called directly, so the resolve-or-create semantics, the `BadInputException` paths
+and their literal messages are unchanged (G1, G2). The consistency implication of
+`resolveOrCreateCustomer` becoming a **remote write inside checkout** is the same one
+already recorded for `BillingContract.resolveOrCreateBillingCompany` in ADR-001.
+
+**Deliberately out of scope here:** the `Order.customer` and `Order.salesperson`
+entity associations, and the two inbound foreign keys `FK_ORDER_CUSTOM_ID` and
+`FK_ORDER_SPERSON`. Those are cut in Phase 3, by the definition's own phasing.
+
+### Registration is now transactional — a recorded improvement, not a silent fix
+**Rules:** BR-PERSON-013, BR-USER-012 · **Ruling: FIX in Phase 2 (ADR-001 §Decision.1)**
+
+`RegistrationServiceImpl.register(...)` performs three writes — `people`,
+`app_users`, `customers` — and had no `@Transactional`. A failure after the first
+`saveAndFlush` left an **orphaned `people` row that no code path in this system can
+delete**. All three writes are co-located in Identity, which is what makes a single
+transaction possible.
+
+`@Transactional(rollbackFor = {BadInputException.class, EntityExistsException.class})`
+added, covered by `RegistrationServiceImplTransactionalTest` — a `@SpringBootTest`
+that forces the third write to fail and asserts neither the person nor the user row
+survives. It exercises the boundary rather than asserting the annotation is present.
+This closes exit criterion **X8** together with ADR-001.
+
+The pre-write duplicate checks and both `EntityExistsException` message literals are
+untouched (G2). No existing assertion in `RegistrationServiceImplTest` asserted the
+non-atomic intermediate state, so none needed adjusting — all 5 still pass unchanged.
+
+### D14 remainder (a) — guest name used as both username and password
+**Ruling: PRESERVE, flagged. Not conversion work.**
+
+The configured guest name is also the stored credential that `DaoAuthenticationProvider`
+matches, and it is **seeded**. Replacing it is a credential/product decision with a
+client-visible effect — the guest checkout flow stops working for any client that
+sends the documented value — not a conversion concern. Carried into identity-service
+verbatim and recorded here so it is not mistaken for an oversight. First Identity
+backlog item alongside D15.
+
+### D14 remainder (b) — bean validation of the submitted guest profile
+**Ruling: PRESERVE. Re-verified against the ported filter, as promised in Phase 0.**
+
+The Phase 0 reasoning holds after the port: adding `@Validated` raises
+`ConstraintViolationException`, which the filter does not catch, so a rejected guest
+profile turns from **HTTP 401 into HTTP 500** — a behavioural regression (G1). The
+existing `BadInputException` path already rejects insufficient data. `/public/guest`
+remains a filter, as the definition requires.
+
+### BR-USER-032 / BR-USER-033 — route-discovery substring matching
+**Ruling: PRESERVE. Revisited in Phase 2 as promised; the answer is still preserve.**
+
+Re-examined now that the authority catalogue exists and would make exact matching
+cheap. It is still a **client-visible contract change**: `AuthorizedApiServiceImplTest`
+asserts the current substring behaviour, so a client asking about `product` today
+receives `product_lists:*` and `product_categories:*` actions too and may rely on it.
+Changing it needs its own ruling and its own release note; it is not something to fold
+into an extraction (G1, G2).
+
+Recorded as a post-conversion backlog item. The implementation is a one-line change
+once ruled: match the catalogue's `AuthorityCodes` entry exactly instead of by
+`contains`, keeping the colon-stripping that derives the route.
+
+### D21 — QueryDSL CVE-2024-49203 review trigger, actioned
+**Re-checked at the start of Phase 2, as the Phase 1 ruling required. Result: unchanged.**
+
+`querydsl-jpa` and `querydsl-apt` 5.0.0 still carry **CVE-2024-49203 (HIGH)** and the
+vulnerability database still reports **no CVE-free release**. Downgrading is forbidden
+(G5) and there is nothing to upgrade to, so the ruling stands: **ACCEPT as inherited.**
+
+Mitigation verified for Identity rather than assumed — every identity sort spec is a
+closed whitelist, read directly from source:
+
+| Sort spec | Accepted keys |
+|---|---|
+| `UsersSortSpec` | `name`, `role` |
+| `UserRolesSortSpec` | `name` |
+| `PeopleSortSpec` | `name`, `firstName`, `lastName`, `idNumber`, `email`, `phone1`, `phone2` |
+| `CustomersSortSpec` | `name`, `firstName`, `lastName`, `idNumber`, `email`, `phone1`, `phone2` |
+| `SalespeopleSortSpec` | `name`, `firstName`, `lastName`, `idNumber`, `email`, `phone1`, `phone2` |
+
+A `sortBy` value outside the map is rejected by `SortSpecParserService` before any
+QueryDSL call, so `orderBy` never receives a raw client string. The identity-service
+pom declares `querydsl.version` explicitly at 5.0.0 with this finding recorded inline.
+
+**Review trigger:** re-check again at the start of Phase 3. Orders remains the
+higher-risk consumer, since its search surface is the largest in the system.
+
+### D23 (new) — `OrdersConverterServiceImplTest`'s outer-class tests never execute
+**Ruling: PRESERVE the tests as written; record the defect. Fix is not Phase 2 work.**
+
+Surefire reports `Tests run: 0` for `OrdersConverterServiceImplTest` itself while its
+two `@Nested` classes report 16 and 2. The class declares **six** outer-level `@Test`
+methods — including the `convertToPojo` customer and salesperson assertions — so six
+tests are silently not running.
+
+This is **pre-existing, not a Phase 2 regression**: the same `Tests run: 0` line is in
+`microservices-conversion/baseline/test-baseline.txt` (line 2), captured before any
+conversion work. It was found while retargeting the mocks in that class onto the new
+HS-02 contracts, and is recorded rather than quietly fixed because making six dormant
+tests execute can surface genuine failures, which is its own change with its own
+review (G3 permits modifying tests for compatibility only).
+
+**Consequence to carry into Phase 3:** the order domain's `convertToPojo` read path is
+less covered than the per-class baseline suggests. Settle this together with D18,
+which is the same category of problem — a test that does not test what it appears to.
+
+**Action required of the owner:** diagnose and enable the six methods as its own
+reviewed change, before the Orders port relies on them.
