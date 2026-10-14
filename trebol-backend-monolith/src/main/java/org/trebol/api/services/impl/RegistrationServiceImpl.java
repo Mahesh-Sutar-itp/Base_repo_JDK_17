@@ -26,6 +26,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.trebol.api.models.PersonPojo;
 import org.trebol.api.models.RegistrationPojo;
 import org.trebol.api.services.RegistrationService;
@@ -73,7 +74,22 @@ public class RegistrationServiceImpl
         this.peopleConverterService = peopleConverterService;
     }
 
+    /**
+     * Registration writes three rows - <code>people</code>, <code>app_users</code> and
+     * <code>customers</code>.
+     * <p>
+     * <b>Phase 2 of the microservices conversion made this method transactional.</b> That is a
+     * deliberate, recorded behavioural improvement over the baseline, not a silent fix: before it,
+     * a failure after the first {@code saveAndFlush} left an orphaned {@code people} row that no
+     * code path in the system can delete (BR-PERSON-013, BR-USER-012). All three writes are
+     * co-located in the Identity service, which is what makes a single transaction possible -
+     * see {@code ADR-001} section Decision.1 and exit criterion X8.
+     * <p>
+     * The pre-write duplicate checks and their literal messages are unchanged (G2): both still
+     * throw {@link EntityExistsException} before any row is written.
+     */
     @Override
+    @Transactional(rollbackFor = {BadInputException.class, EntityExistsException.class})
     public void register(RegistrationPojo registration)
         throws BadInputException, EntityExistsException {
         String username = registration.getName();

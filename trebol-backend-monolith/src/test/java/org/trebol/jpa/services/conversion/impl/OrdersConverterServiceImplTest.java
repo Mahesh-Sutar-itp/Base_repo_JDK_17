@@ -48,13 +48,12 @@ import org.trebol.jpa.repositories.AddressesRepository;
 import org.trebol.jpa.repositories.OrderStatusesRepository;
 import org.trebol.jpa.services.contracts.BillingContract;
 import org.trebol.jpa.services.contracts.ProductLookupContract;
+import org.trebol.jpa.services.contracts.CustomerProvisioningContract;
+import org.trebol.jpa.services.contracts.SalespersonLookupContract;
 import org.trebol.jpa.services.contracts.ShipperLookupContract;
 import org.trebol.jpa.services.conversion.AddressesConverterService;
 import org.trebol.jpa.services.conversion.BillingCompaniesConverterService;
-import org.trebol.jpa.services.conversion.CustomersConverterService;
 import org.trebol.jpa.services.conversion.ProductsConverterService;
-import org.trebol.jpa.services.conversion.SalespeopleConverterService;
-import org.trebol.jpa.services.crud.CustomersCrudService;
 
 import java.time.Instant;
 import java.util.List;
@@ -71,6 +70,7 @@ import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.trebol.config.Constants.BILLING_TYPE_ENTERPRISE;
 import static org.trebol.jpa.services.conversion.impl.OrdersConverterServiceImpl.TAX_PERCENT;
@@ -82,11 +82,10 @@ import static org.trebol.testing.TestConstants.NOT_ANY;
 class OrdersConverterServiceImplTest {
     @InjectMocks
     OrdersConverterServiceImpl instance;
-    @Mock CustomersCrudService customersCrudServiceMock;
-    @Mock CustomersConverterService customersConverterServiceMock;
+    @Mock CustomerProvisioningContract customerProvisioningContractMock;
     @Mock BillingContract billingContractMock;
     @Mock BillingCompaniesConverterService billingCompaniesConverterServiceMock;
-    @Mock SalespeopleConverterService salespeopleConverterServiceMock;
+    @Mock SalespersonLookupContract salespersonLookupContractMock;
     @Mock ProductsConverterService productConverterServiceMock;
     @Mock ProductLookupContract productLookupContractMock;
     @Mock ShipperLookupContract shipperLookupContractMock;
@@ -139,7 +138,7 @@ class OrdersConverterServiceImplTest {
             .shippingAddress(SOME_ADDRESS)
             .build();
         when(billingContractMock.findPaymentTypeByName(anyString())).thenReturn(Optional.of(SOME_PAYMENT_TYPE_ENTITY));
-        when(customersCrudServiceMock.getExisting(any(PersonPojo.class))).thenReturn(Optional.of(SOME_CUSTOMER_ENTITY));
+        when(customerProvisioningContractMock.resolveOrCreateCustomer(any(PersonPojo.class))).thenReturn(SOME_CUSTOMER_ENTITY);
         when(billingContractMock.findBillingTypeByName(anyString())).thenReturn(Optional.of(SOME_BILLING_TYPE_ENTITY));
         when(billingContractMock.resolveOrCreateBillingCompany(any(BillingCompanyPojo.class))).thenReturn(SOME_BILLING_COMPANY_ENTITY);
         when(addressesRepositoryMock.findByFields(anyString(), anyString(), anyString(), anyString(), anyString(), anyString())).thenReturn(Optional.of(SOME_ADDRESS_ENTITY));
@@ -147,7 +146,7 @@ class OrdersConverterServiceImplTest {
         when(shipperLookupContractMock.findShipperByName(anyString())).thenReturn(Optional.of(SOME_SHIPPER_ENTITY));
         Order result = instance.convertToNewEntity(input);
         assertEquals(SOME_CUSTOMER_ENTITY, result.getCustomer());
-        verify(customersCrudServiceMock).getExisting(SOME_CUSTOMER);
+        verify(customerProvisioningContractMock).resolveOrCreateCustomer(SOME_CUSTOMER);
         assertEquals(SOME_BILLING_TYPE_ENTITY, result.getBillingType());
         verify(billingContractMock).findBillingTypeByName(BILLING_TYPE_ENTERPRISE);
         assertEquals(SOME_BILLING_COMPANY_ENTITY, result.getBillingCompany());
@@ -234,7 +233,7 @@ class OrdersConverterServiceImplTest {
             .shipper(null)
             .shippingAddress(null)
             .salesperson(null);
-        when(customersConverterServiceMock.convertToPojo(nullable(Customer.class))).thenReturn(SOME_CUSTOMER);
+        when(customerProvisioningContractMock.describeCustomer(nullable(Customer.class))).thenReturn(SOME_CUSTOMER);
         List.of(
             inputBuilder
                 .build(),
@@ -356,10 +355,10 @@ class OrdersConverterServiceImplTest {
             .salesperson(Salesperson.builder().build())
             .build();
         PersonPojo someSalesperson = PersonPojo.builder().build();
-        when(salespeopleConverterServiceMock.convertToPojo(any(Salesperson.class))).thenReturn(someSalesperson);
+        when(salespersonLookupContractMock.describeSalesperson(any(Salesperson.class))).thenReturn(someSalesperson);
         OrderPojo result = instance.convertToPojo(input);
         assertEquals(someSalesperson, result.getSalesperson());
-        verify(salespeopleConverterServiceMock).convertToPojo(input.getSalesperson());
+        verify(salespersonLookupContractMock).describeSalesperson(input.getSalesperson());
     }
 
     @Nested
@@ -437,7 +436,7 @@ class OrdersConverterServiceImplTest {
                 BadInputException result = assertThrows(BadInputException.class, () -> instance.convertToNewEntity(input));
                 assertEquals("A payment type has to be included", result.getMessage());
             });
-            verifyNoInteractions(customersConverterServiceMock);
+            verifyNoInteractions(customerProvisioningContractMock);
         }
 
         @Test
@@ -448,10 +447,11 @@ class OrdersConverterServiceImplTest {
                 .customer(null)
                 .build();
             when(billingContractMock.findPaymentTypeByName(anyString())).thenReturn(Optional.of(SOME_PAYMENT_TYPE_ENTITY));
-            when(customersCrudServiceMock.getExisting(isNull())).thenThrow(new BadInputException(NO_CUSTOMER_PROVIDED));
+            when(customerProvisioningContractMock.resolveOrCreateCustomer(isNull())).thenThrow(new BadInputException(NO_CUSTOMER_PROVIDED));
             BadInputException result = assertThrows(BadInputException.class, () -> instance.convertToNewEntity(input));
             assertEquals(NO_CUSTOMER_PROVIDED, result.getMessage());
-            verifyNoInteractions(customersConverterServiceMock);
+            verify(customerProvisioningContractMock).resolveOrCreateCustomer(isNull());
+            verifyNoMoreInteractions(customerProvisioningContractMock);
         }
 
         @Test

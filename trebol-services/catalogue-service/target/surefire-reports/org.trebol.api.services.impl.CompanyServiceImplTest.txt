@@ -1,4 +1,4 @@
 -------------------------------------------------------------------------------
 Test set: org.trebol.api.services.impl.CompanyServiceImplTest
 -------------------------------------------------------------------------------
-Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.175 s -- in org.trebol.api.services.impl.CompanyServiceImplTest
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.203 s -- in org.trebol.api.services.impl.CompanyServiceImplTest

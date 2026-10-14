@@ -1,4 +1,4 @@
 -------------------------------------------------------------------------------
 Test set: org.trebol.api.controllers.DataProductListContentsControllerTest
 -------------------------------------------------------------------------------
-Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.967 s -- in org.trebol.api.controllers.DataProductListContentsControllerTest
+Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.955 s -- in org.trebol.api.controllers.DataProductListContentsControllerTest

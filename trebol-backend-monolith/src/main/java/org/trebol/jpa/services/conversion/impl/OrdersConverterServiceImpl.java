@@ -34,7 +34,6 @@ import org.trebol.common.exceptions.BadInputException;
 import org.trebol.jpa.entities.Address;
 import org.trebol.jpa.entities.BillingCompany;
 import org.trebol.jpa.entities.BillingType;
-import org.trebol.jpa.entities.Customer;
 import org.trebol.jpa.entities.Order;
 import org.trebol.jpa.entities.OrderDetail;
 import org.trebol.jpa.entities.Product;
@@ -42,15 +41,14 @@ import org.trebol.jpa.entities.Shipper;
 import org.trebol.jpa.repositories.AddressesRepository;
 import org.trebol.jpa.repositories.OrderStatusesRepository;
 import org.trebol.jpa.services.contracts.BillingContract;
+import org.trebol.jpa.services.contracts.CustomerProvisioningContract;
 import org.trebol.jpa.services.contracts.ProductLookupContract;
+import org.trebol.jpa.services.contracts.SalespersonLookupContract;
 import org.trebol.jpa.services.contracts.ShipperLookupContract;
 import org.trebol.jpa.services.conversion.AddressesConverterService;
 import org.trebol.jpa.services.conversion.BillingCompaniesConverterService;
-import org.trebol.jpa.services.conversion.CustomersConverterService;
 import org.trebol.jpa.services.conversion.ProductsConverterService;
 import org.trebol.jpa.services.conversion.OrdersConverterService;
-import org.trebol.jpa.services.conversion.SalespeopleConverterService;
-import org.trebol.jpa.services.crud.CustomersCrudService;
 
 import jakarta.validation.constraints.NotNull;
 import java.util.List;
@@ -64,11 +62,10 @@ import static org.trebol.config.Constants.ORDER_STATUS_PENDING;
 @Service
 public class OrdersConverterServiceImpl
     implements OrdersConverterService {
-    private final CustomersCrudService customersCrudService;
-    private final CustomersConverterService customersConverterService;
+    private final CustomerProvisioningContract customerProvisioningContract;
     private final BillingContract billingContract;
     private final BillingCompaniesConverterService billingCompaniesConverterService;
-    private final SalespeopleConverterService salespeopleConverterService;
+    private final SalespersonLookupContract salespersonLookupContract;
     private final ProductsConverterService productConverterService;
     private final ProductLookupContract productLookupContract;
     private final ShipperLookupContract shipperLookupContract;
@@ -80,11 +77,10 @@ public class OrdersConverterServiceImpl
 
     @Autowired
     public OrdersConverterServiceImpl(
-        CustomersCrudService customersCrudService,
-        CustomersConverterService customersConverterService,
+        CustomerProvisioningContract customerProvisioningContract,
         BillingContract billingContract,
         BillingCompaniesConverterService billingCompaniesConverterService,
-        SalespeopleConverterService salespeopleConverterService,
+        SalespersonLookupContract salespersonLookupContract,
         ProductsConverterService productConverterService,
         ProductLookupContract productLookupContract,
         ShipperLookupContract shipperLookupContract,
@@ -92,11 +88,10 @@ public class OrdersConverterServiceImpl
         OrderStatusesRepository orderStatusesRepository,
         AddressesConverterService addressesConverterService
     ) {
-        this.customersCrudService = customersCrudService;
-        this.customersConverterService = customersConverterService;
+        this.customerProvisioningContract = customerProvisioningContract;
         this.billingContract = billingContract;
         this.billingCompaniesConverterService = billingCompaniesConverterService;
-        this.salespeopleConverterService = salespeopleConverterService;
+        this.salespersonLookupContract = salespersonLookupContract;
         this.productConverterService = productConverterService;
         this.productLookupContract = productLookupContract;
         this.shipperLookupContract = shipperLookupContract;
@@ -118,7 +113,7 @@ public class OrdersConverterServiceImpl
             .token(source.getTransactionToken())
             .build();
 
-        PersonPojo customer = customersConverterService.convertToPojo(source.getCustomer());
+        PersonPojo customer = customerProvisioningContract.describeCustomer(source.getCustomer());
         target.setCustomer(customer);
 
         target.setStatus(source.getStatus().getName());
@@ -136,7 +131,7 @@ public class OrdersConverterServiceImpl
         }
 
         if (source.getSalesperson()!=null) {
-            PersonPojo salesperson = salespeopleConverterService.convertToPojo(source.getSalesperson());
+            PersonPojo salesperson = salespersonLookupContract.describeSalesperson(source.getSalesperson());
             target.setSalesperson(salesperson);
         }
         return target;
@@ -231,13 +226,7 @@ public class OrdersConverterServiceImpl
      */
     private void convertCustomerInformationForEntity(OrderPojo model, Order target) throws BadInputException {
         PersonPojo pojoCustomer = model.getCustomer();
-        Optional<Customer> existingCustomer = customersCrudService.getExisting(pojoCustomer);
-        if (existingCustomer.isEmpty()) {
-            Customer customer = customersConverterService.convertToNewEntity(pojoCustomer);
-            target.setCustomer(customer);
-        } else {
-            target.setCustomer(existingCustomer.get());
-        }
+        target.setCustomer(customerProvisioningContract.resolveOrCreateCustomer(pojoCustomer));
     }
 
     /**
