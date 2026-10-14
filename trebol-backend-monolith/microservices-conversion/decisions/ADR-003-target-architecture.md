@@ -1,6 +1,6 @@
 # ADR-003 — Target architecture: three services vs modular monolith
 
-**Status:** proposed — decision point at the end of Phase 0
+**Status:** accepted — option A, three services. Ruled by the project owner at the Phase 0 exit review.
 **Reference:** transformation definition §2.3 · **Phase:** 0
 
 ## Why this document exists
@@ -42,6 +42,46 @@ and four domains are too thin to deploy alone (`customer` has no model of its ow
 - It is the **owner-approved** target.
 
 ## Decision
+
+**Option A — three services (Identity, Catalogue, Orders). Accepted.**
+**The modular monolith is rejected.**
+
+The rejection is recorded by name, as §2.3 requires, and not by default. The four
+facts the deferral required were put on the table at the Phase 0 exit review and
+measured as follows:
+
+1. **Gate A surface.** Seven cross-domain call sites were replaced by contracts
+   (five in `OrdersConverterServiceImpl`, two in `OrdersPatchServiceImpl`). The
+   product-by-barcode resolution is **per order line**, so under three services one
+   checkout becomes N remote lookups. Accepted.
+2. **Billing resolve-or-create.** It stays a write inside checkout and therefore
+   becomes a **remote write** once Orders and Catalogue are separate processes.
+   ADR-001 keeps checkout co-located in Orders, which contains the blast radius but
+   does not remove the remote call. Accepted.
+3. **D18.** The payment adapter still has no genuine unit coverage. This does not
+   block Phase 1 (Catalogue) or Phase 2 (Identity); it is a hard precondition for
+   Phase 3, where the adapter is ported with D3, D4 and D9 applied.
+4. **From-nothing infrastructure.** No broker, queue or stream exists. The D11
+   outbox, service discovery, a gateway, per-service secret distribution and three
+   pipelines are all new build. Accepted as the cost of the approved target.
+
+**Why the modular monolith was rejected,** given that it is the better fit on size
+alone (17,800 LOC, 22 tables):
+
+- It does not satisfy exit criteria X1, X2 or X12, which are written for three
+  independently deployable services. Choosing it would mean waiving three criteria.
+- It does not deliver independent deployability or independent scaling of the
+  storefront read path separately from checkout, which is the owner's stated reason
+  for the programme.
+- Boundaries enforced by convention inside one deployable erode under schedule
+  pressure; this codebase is direct evidence — 53 of 54 authority codes had drifted
+  into duplicated literals and the order domain had reached into four other
+  domains' repositories.
+
+The costs itemised above (per-line remote lookup, remote write in checkout, the
+from-nothing infrastructure) are accepted knowingly, not overlooked.
+
+### Original deferral rationale (retained for the record)
 
 **Deferred to the end of Phase 0 — deliberately, not by omission.**
 
