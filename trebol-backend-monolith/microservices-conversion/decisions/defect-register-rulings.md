@@ -282,3 +282,107 @@ Flagged prominently: an Identity service shipped without password reset is a har
 sell, and the hardcoded permissive flags mean there is no mechanism to disable a
 compromised account. Recommended as the first post-conversion backlog item for
 Identity.
+
+---
+
+## Phase 1 additions and resolutions (Catalogue extraction)
+
+### D12 — `images:create` not checked on the internal image write path
+**Phase 1 resolution: PRESERVE. The contract is now specified, not changed.**
+
+Phase 0 deferred this to Phase 1 "as an internal consistency question, not a gate".
+Phase 1 ruling: the behaviour ports **unchanged**. A principal holding only
+`products:create` or `products:update` can still insert `images` rows as a side
+effect of a product write, because `makeProductImageRelationships` builds a
+transient `Image` inline instead of calling `ImagesCrudService.create`.
+
+What changed is that the hole is now **documented where it is implemented** rather
+than inferred: `detailed-business-specification/domain-product/permissions.md` §3
+states it explicitly, and `02-product-services.md` §6 records the exact step
+sequence and what each step bypasses. Fixing it alters the observable outcome of a
+product write — a payload that currently succeeds with 201 would begin failing with
+403 — so it is a client-visible contract change requiring owner approval, and it is
+**not** folded into an extraction. Recommended as a post-conversion backlog item
+for Catalogue.
+
+Note the Phase-0 **D7** fix narrowed the blast radius: `getExisting` now resolves by
+filename, then `code`, then `url`, so a payload reusing an existing code or url
+attaches the existing image instead of inserting a colliding row. The
+create-by-side-effect path itself is untouched.
+
+### D13 — a blank image filename inside a product payload is silently dropped
+**Phase 1 resolution: PRESERVE. The contract is now defined in writing.**
+
+Phase 0 deferred "define the contract in Phase 1". The defined contract, as ported,
+is: **the product write succeeds and the unresolvable image is dropped without any
+client-visible signal.** `getExisting` throws `BadInputException("Invalid filename")`,
+`makeProductImageRelationships` catches it, logs at **DEBUG** — below the default
+level, so production leaves no trace — and the request returns 201 or 204.
+
+This is recorded as `domain-product/errors.md` E12 and `00-domain-index.md` W2, and
+is called out there as the single most important non-error in the domain: *the image
+subsystem fails open*. Changing it to a 400, or to a partial-success response body,
+is a client-visible contract change and is listed as a post-conversion backlog item
+rather than being introduced during the port (invariant G1).
+
+### D21 (new) — QueryDSL 5.0.0 carries CVE-2024-49203 with no fixed release
+**Ruling: ACCEPT as inherited, with verified mitigation. Re-review each phase.**
+
+`querydsl-jpa` and `querydsl-apt` 5.0.0 carry **CVE-2024-49203 (HIGH)** — HQL
+injection through `orderBy` — and the vulnerability database reports **no CVE-free
+release**, including 5.1.0. The monolith already ships 5.0.0 (the version is managed
+by the Spring Boot parent), so the Catalogue service **inherits** rather than
+introduces it. Downgrading is forbidden (G5) and there is nothing to upgrade to.
+
+**Mitigation, verified rather than assumed.** Every sorted read resolves its
+`OrderSpecifier` through `SortSpecParserService` against a static whitelist map, so
+`orderBy` never receives a raw client string. The whitelists were read and are
+closed sets:
+
+| Sort spec | Accepted keys |
+|---|---|
+| `ProductsSortSpec` | `name`, `barcode`, `price`, `category` |
+| `ProductCategoriesSortSpec` | `name`, `code` |
+| `ProductListsSortSpec` | `name`, `code`, `totalCount` |
+| `ProductListItemsSortSpec` | `name`, `barcode` |
+| `ImagesSortSpec` | as declared in that domain's spec |
+
+A `sortBy` value outside the map is rejected by the parser service before any
+QueryDSL call. The catalogue-service pom declares `querydsl.version` **explicitly**
+at 5.0.0 with this finding recorded inline, rather than inheriting the property
+silently — the pre-Gate-A scaffold referenced the property without declaring it at
+all.
+
+**Review trigger:** re-check for a fixed release at the start of Phase 2 and Phase
+3. Orders is the higher-risk consumer, since its search surface is larger.
+
+### D22 (new) — `CompanyDetailsPojo` contradicts BR-COMPANY-006
+**Ruling: PRESERVE the code. The recorded rule is the thing that is wrong.**
+
+`CompanyDetailsPojo` is annotated `@JsonInclude(ALWAYS)`, so an unset company-profile
+field is serialised as an explicit `null` key. **BR-COMPANY-006 asserts the opposite**
+— that unset fields are omitted from the response.
+
+The code is authoritative for the port, because the emitted JSON shape is
+client-observable contract (G2) and a storefront may already distinguish "present and
+null" from "absent". The annotation is therefore carried over verbatim into the
+Catalogue service, and the discrepancy is recorded in
+`domain-product/00-domain-index.md` §6.3 and `errors.md` §6.
+
+Found while writing the porting-depth specification, which is exactly what that
+exercise is for. **Action required of the owner:** correct BR-COMPANY-006 in
+`business-rules-extraction/detailed-domain-bre/domain-company-profile/business-rules.md`,
+or rule that the response shape should change — which would be a client-visible
+change needing its own ruling.
+
+### Follow-up recorded, not actioned — the monolith's own dependency versions
+The Catalogue service pins `mariadb-java-client` to **3.3.5** (the parent-managed
+3.3.3 carries CVE-2026-55856, CVE-2026-55857, CVE-2026-55858 and CVE-2026-61700, all
+fixed in 3.3.5) and `commons-lang3` to **3.18.0** (3.17.0 carries CVE-2025-48924).
+Both are upgrades; no version is downgraded anywhere (G5).
+
+The **monolith still ships the vulnerable versions.** Bumping them is a change to the
+monolith's own dependency tree with its own regression risk across 414 tests, and is
+out of Phase 1 scope — but it is recorded here so the CVE position is not silently
+split between two modules. It should be actioned as its own reviewed change, not
+folded into Phase 2.

@@ -52,6 +52,9 @@
 
     <!-- The monolith. Still owns and serves every route until Phase 4 decommissions it. -->
     <module>trebol-backend-monolith</module>
+
+    <!-- Phase 1: Catalogue - products, categories, lists, images, and the company-profile read. -->
+    <module>trebol-services/catalogue-service</module>
   </modules>
 
   <properties>

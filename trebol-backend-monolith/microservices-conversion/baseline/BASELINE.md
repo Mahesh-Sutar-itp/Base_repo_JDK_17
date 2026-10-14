@@ -41,6 +41,17 @@ the monolith now consumes as a dependency. **Run the build from the repository r
 . ~/opt/env.sh && cd /mnt/c/Projects/intuitive/monolith_jdk_17_transform/Base_repo_JDK_17 && mvn -B clean verify
 ```
 
+As of the Catalogue extraction the command also needs `-fae` (fail at end), because the
+monolith's three known D18 failures otherwise stop the reactor before the catalogue
+module runs:
+
+```sh
+. ~/opt/env.sh && cd /mnt/c/Projects/intuitive/monolith_jdk_17_transform/Base_repo_JDK_17 && mvn -B clean verify -fae
+```
+
+The flag weakens no gate - every module still reports and the build still exits
+non-zero. It becomes unnecessary once D18 is fixed before Phase 3.
+
 Reactor order is significant — `shared-contracts` builds before the monolith. The
 per-module command above still works, but **only after `shared-contracts` has been
 installed into the local repository**, so it is no longer the canonical invocation. The
