@@ -55,6 +55,12 @@
 
     <!-- Phase 1: Catalogue - products, categories, lists, images, and the company-profile read. -->
     <module>trebol-services/catalogue-service</module>
+
+    <!--
+      Phase 2: Identity - people, accounts, roles, authority grants, customers and salespeople.
+      The only service that issues tokens; every other service verifies locally (ADR-002).
+    -->
+    <module>trebol-services/identity-service</module>
   </modules>
 
   <properties>
