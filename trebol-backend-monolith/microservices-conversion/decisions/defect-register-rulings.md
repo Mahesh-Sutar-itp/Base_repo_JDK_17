@@ -7,7 +7,7 @@ preserves a defect or breaks a client contract, so each item carries an explicit
 ruling (guardrail G1 — silent fixes are forbidden).
 
 Items D19 and D20 are **new**, found while establishing the Phase 0 baseline; D21
-and D22 were found during Phase 1, and D23 during Phase 2. All are registered here
+and D22 were found during Phase 1, and D23 to D26 during Phase 2. All are registered here
 rather than folded quietly into an existing fix.
 
 ## Summary
@@ -16,7 +16,7 @@ rather than folded quietly into an existing fix.
 |---|---|
 | **FIX — before extraction (Phase 0)** | D1, D2, D6, D7, D9, D14, D17 |
 | **FIX — at the owning phase** | D3, D4, D5, D11 (Phase 3), D18 (before Phase 3), D20 (Phase 1, first extraction), transactional registration (Phase 2) |
-| **PRESERVE** | D8, D16, D19 (scope), D23, the two D14 remainders, and BR-USER-032/033 route-discovery substring matching |
+| **PRESERVE** | D8, D16, D19 (scope), D23, D24, D25, D26, the two D14 remainders, and BR-USER-032/033 route-discovery substring matching |
 | **PRESERVE with recorded limitation / deferred** | D10, D12, D13, D15, D21 (inherited CVE, mitigation verified), D22 |
 
 ### Intentional observable-behaviour changes landing in Phase 0
@@ -518,3 +518,69 @@ which is the same category of problem — a test that does not test what it appe
 
 **Action required of the owner:** diagnose and enable the six methods as its own
 reviewed change, before the Orders port relies on them.
+
+### D24 (new) — `cascade = ALL` on the person link contradicts BR-CUSTOMER-014 and BR-SALESPERSON-018
+**Ruling: PRESERVE the code. Both recorded rules are the thing that is wrong.**
+
+`Customer.person` and `Salesperson.person` both declare
+`cascade = CascadeType.ALL`, so deleting either row **would cascade the delete to the
+`people` row**. **BR-CUSTOMER-014 and BR-SALESPERSON-018 both assert the opposite** — that
+the person survives.
+
+Both rules appear to hold today, but **for the wrong reason**: the delete is normally
+blocked first by the inbound order foreign keys (`FK_ORDER_CUSTOM_ID`,
+`FK_ORDER_SPERSON`), which surface as a `DataIntegrityViolationException` → **HTTP 500**,
+not a 409 (BR-CUSTOMER-015, BR-SALESPERSON-019). Delete a customer or salesperson that no
+order references and the cascade is reachable.
+
+Contrast `User.person`, which has **no cascade** — so BR-USER-048 ("deleting an account
+does not delete its person") is genuinely true. Three sibling entities, two of them
+cascading and one not: another of the identity asymmetries that must be ported rather than
+harmonised.
+
+The code is authoritative for the port (G1, G2); narrowing the cascade is a behavioural
+change needing its own ruling. **Action required of the owner:** correct BR-CUSTOMER-014
+and BR-SALESPERSON-018, or rule that the cascade should be narrowed. Recorded in
+`domain-customer/errors.md` §5.4 and `domain-salesperson/errors.md` §5.4.
+
+### D25 (new) — `salespeople.person_id` is non-unique but looked up through an `Optional`
+**Ruling: PRESERVE. Record the latent fault; do not constrain the column.**
+
+`salespeople.person_id` has **no unique key** and `Salesperson.person` is `@ManyToOne`, so
+several salespeople sharing one person is **legal** by BR-SALESPERSON-002. Yet
+`SalespeopleRepository.findByPersonIdNumber` returns `Optional<Salesperson>` over that
+non-unique column — two such rows make Spring Data raise a non-unique-result exception →
+HTTP 500, with no domain message.
+
+It is unreachable today only because `people.person_id_number` carries
+`UNIQUE KEY UK_PERSON_ID_NO`, so a second salesperson can be attached to the same person
+row only by direct database manipulation or through the `Order.salesperson` cascade
+(BR-SALESPERSON-016) — a path no route exercises (BR-SALESPERSON-015).
+
+Adding a unique key would reject data the model explicitly permits; widening the return
+type to a collection is an API change. Either needs its own ruling. **Carry the exact
+schema asymmetry across:** `customers.person_id` unique, `salespeople.person_id` not,
+`app_users.person_id` not and with no constraint at all. Recorded in
+`domain-salesperson/01` §1.5 and `domain-user/01` §1.3.
+
+### D26 (new) — the untrusted-token exception message interpolates the whole token
+**Ruling: PRESERVE in Phase 2. Fix with whatever change first wants to log it.**
+
+`ClaimsAuthorizationHeaderParserServiceImpl.parseToken` builds
+`new IllegalStateException(String.format("Token %s can't be trusted", token))` — the
+**entire live credential** inside an exception message.
+
+**No token leaks today**, and that was verified rather than assumed: `JwtTokenVerifierFilter`
+catches the exception and logs only the request method and URI (the Phase 0 **D2** fix),
+and `AccessController`'s `@ExceptionHandler` has an empty body and discards it. The message
+is constructed on every failure and never emitted.
+
+This is the **same defect class as D2, one layer deeper** — D2 removed a token from a log
+statement; this leaves one in the exception that statement used to log. Any future handler
+that logs `exc.getMessage()`, or any framework default that renders an exception message,
+leaks a live bearer token.
+
+Ruled PRESERVE for Phase 2: changing the message is out of this phase's scope (G1) and the
+literal ports verbatim (G2). **Action required of the owner:** redact the token from the
+message as its own reviewed change — and in any case before any code is added that logs
+this exception's message. Recorded in `domain-user/errors.md` §5 and `domain-user/02` §9.7.
