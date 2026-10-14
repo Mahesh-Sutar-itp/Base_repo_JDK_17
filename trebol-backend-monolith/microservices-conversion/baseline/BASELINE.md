@@ -31,6 +31,22 @@ matching runtime.
 **Wall time ≈ 10 minutes** per full run (dependencies now cached; the first run was
 9m47s including the full download). This is the feedback loop for every change.
 
+### Superseded as of Phase 1 — the canonical command is now the reactor build
+
+Phase 1 added a root aggregator (`org.trebolecommerce:trebol-platform`) and the
+`trebol-shared-contracts` module, which publishes the generated authority catalogue that
+the monolith now consumes as a dependency. **Run the build from the repository root:**
+
+```sh
+. ~/opt/env.sh && cd /mnt/c/Projects/intuitive/monolith_jdk_17_transform/Base_repo_JDK_17 && mvn -B clean verify
+```
+
+Reactor order is significant — `shared-contracts` builds before the monolith. The
+per-module command above still works, but **only after `shared-contracts` has been
+installed into the local repository**, so it is no longer the canonical invocation. The
+aggregator deliberately does **not** become the monolith's parent: that module keeps its
+own parent, group, artifact and version untouched.
+
 ## Baseline result
 
 ```

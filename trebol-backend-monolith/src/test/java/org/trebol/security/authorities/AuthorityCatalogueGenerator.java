@@ -53,7 +53,8 @@ public final class AuthorityCatalogueGenerator {
     public static final Path SEED_DATA_PATH =
         Paths.get("business-rules-extraction", "database-documentation", "00-seed-data.json");
     public static final Path GENERATED_FILE_PATH =
-        Paths.get("src", "main", "java", "org", "trebol", "security", "authorities", "AuthorityCodes.java");
+        Paths.get("..", "trebol-services", "shared-contracts",
+            "src", "main", "java", "org", "trebol", "security", "authorities", "AuthorityCodes.java");
     private static final String PACKAGE_NAME = "org.trebol.security.authorities";
     private static final String CLASS_NAME = "AuthorityCodes";
     private static final String CATALOGUE_VERSION = "1.0.0";
