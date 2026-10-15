@@ -652,3 +652,63 @@ pins it with 3 tests.
 
 Phase 3's payment-adapter work is therefore **D18 (first, as its own change), then D3 and
 D4**. Nothing about D9 is reopened.
+
+### D18 — FIXED. The payment adapter now has genuine unit coverage.
+**Ruling as recorded in Phase 0: rewrite the test to mock the SDK, as its own reviewed change,
+before Phase 3. IMPLEMENTED in Phase 3, step 3.1, ahead of D3 and D4.**
+
+**Root cause, precisely.** `WebpayplusPaymentServiceImpl` constructed
+`new WebpayPlus.Transaction(wpOptions)` **inline** in a private method, so nothing could
+intercept it. The test mocked only `WebpayplusPaymentProperties`, which meant every test
+made a **real HTTP call to the Transbank sandbox** and failed with HTTP 403 off-network.
+One test - `ProductionModeWithoutConfig.will_not_fetch_transaction_result` - took roughly
+**270 seconds** to fail, because it was waiting on a network timeout. That figure appears
+in both the original and the post-Phase-0 baselines.
+
+**The consequence was the serious part:** the payment adapter had **no genuine unit-test
+coverage at all** - the most critical and least safely changeable component in the system,
+and the one this phase must port with the D3 and D4 fixes applied. Four catch branches
+were untestable.
+
+**The fix.** A one-interface, one-method seam:
+
+| Added | Role |
+|---|---|
+| `payment/impl/webpayplus/WebpayTransactionFactory` | `newTransaction()` - the only method |
+| `payment/impl/webpayplus/impl/DefaultWebpayTransactionFactory` | `@Component` holding the **verbatim** body of the former `createWebpayTransaction()` |
+
+`WebpayplusPaymentServiceImpl` takes the factory as a second constructor dependency.
+**No behavioural change:** the same `WebpayOptions` are built from the same properties in
+the same order, the same integration-versus-live branch is selected by the same
+`Boolean.TRUE.equals(properties.isProduction())` test, and only the construction site
+moves.
+
+**No new dependency was added.** An injectable collaborator was chosen specifically so the
+fix would not require `mockito-inline`'s `mockConstruction` or any other new test artefact.
+
+**Coverage after the fix** - `Tests run: 12, Failures: 0, Errors: 0`, with **no network
+access** and no test taking longer than a fraction of a second:
+
+| Method | Branches now covered |
+|---|---|
+| `requestNewPaymentPageDetails` | happy path; the four SDK arguments pinned in order; `TransactionCreateException`; `IOException` |
+| `requestPaymentResult` | response code 0; a non-zero decline passed through unchanged; `IOException`; `TransactionCommitException` |
+| `getPaymentResultPageUrl` | happy path |
+
+Both verbatim messages are asserted: `"Webpay could not create a new transaction"` and
+`"Webpay failed to confirm the transaction"`.
+
+`WebpayplusPaymentSessionIdTest` is **unchanged** - it exists precisely because of D18 and
+still passes (3 tests).
+
+**THE KNOWN-FAILURE BASELINE CHANGES HERE.** Every phase up to now diffed against "three
+known environmental failures in `WebpayplusPaymentServiceImplTest`". Those three are
+**gone**. From this point the pass condition is **zero failures and zero errors** in every
+module, and `test-baseline-post-phase3.txt` must record that the known-failure set is now
+empty.
+
+**One test deliberately pins a defect rather than fixing it.**
+`RequestPaymentResult.currently_swallows_a_commit_exception_and_returns_one` asserts the
+**current, defective** D3 behaviour - that a `TransactionCommitException` is swallowed and
+the magic value `1` returned. It exists so that the D3 fix in the next step has something
+to invert, and so the inversion appears in a diff rather than silently. Its name says so.

@@ -20,10 +20,6 @@
 
 package org.trebol.payment.impl.webpayplus;
 
-import cl.transbank.common.IntegrationApiKeys;
-import cl.transbank.common.IntegrationCommerceCodes;
-import cl.transbank.common.IntegrationType;
-import cl.transbank.webpay.common.WebpayOptions;
 import cl.transbank.webpay.exception.TransactionCommitException;
 import cl.transbank.webpay.exception.TransactionCreateException;
 import cl.transbank.webpay.webpayplus.WebpayPlus;
@@ -52,12 +48,15 @@ public class WebpayplusPaymentServiceImpl
     implements PaymentService {
     private final Logger logger = LoggerFactory.getLogger(WebpayplusPaymentServiceImpl.class);
     private final WebpayplusPaymentProperties properties;
+    private final WebpayTransactionFactory transactionFactory;
 
     @Autowired
     public WebpayplusPaymentServiceImpl(
-        WebpayplusPaymentProperties properties
+        WebpayplusPaymentProperties properties,
+        WebpayTransactionFactory transactionFactory
     ) {
         this.properties = properties;
+        this.transactionFactory = transactionFactory;
     }
 
     @Override
@@ -67,7 +66,7 @@ public class WebpayplusPaymentServiceImpl
         double amount = transaction.getTotalValue();
         String returnUrl = properties.getCallbackUrl();
 
-        WebpayPlus.Transaction webpayTransaction = this.createWebpayTransaction();
+        WebpayPlus.Transaction webpayTransaction = transactionFactory.newTransaction();
 
         try {
             WebpayPlusTransactionCreateResponse webpayResponse = webpayTransaction.create(
@@ -85,7 +84,7 @@ public class WebpayplusPaymentServiceImpl
 
     @Override
     public int requestPaymentResult(String transactionToken) throws PaymentServiceException {
-        WebpayPlus.Transaction webpayTransaction = this.createWebpayTransaction();
+        WebpayPlus.Transaction webpayTransaction = transactionFactory.newTransaction();
         try {
             return webpayTransaction.commit(transactionToken).getResponseCode();
         } catch (TransactionCommitException exc) {
@@ -114,18 +113,4 @@ public class WebpayplusPaymentServiceImpl
         return UUID.randomUUID().toString().replace("-", "");
     }
 
-    private WebpayPlus.Transaction createWebpayTransaction() {
-        String commerceCode = IntegrationCommerceCodes.WEBPAY_PLUS;
-        String apiKey = IntegrationApiKeys.WEBPAY;
-        IntegrationType integrationType = IntegrationType.TEST;
-        if (Boolean.TRUE.equals(properties.isProduction())) {
-            commerceCode = properties.getCommerceCode();
-            apiKey = properties.getApiKey();
-            integrationType = IntegrationType.LIVE;
-        }
-
-        WebpayOptions wpOptions = new WebpayOptions(commerceCode, apiKey, integrationType);
-
-        return new WebpayPlus.Transaction(wpOptions);
-    }
 }
