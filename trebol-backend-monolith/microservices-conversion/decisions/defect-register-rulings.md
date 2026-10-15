@@ -1,6 +1,6 @@
 # Defect register — rulings
 
-**Status:** accepted · **Reference:** transformation definition §6 · **Phases:** 0, 1, 2
+**Status:** accepted · **Reference:** transformation definition §6 · **Phases:** 0, 1, 2, 3
 
 Every item below is **current observable behaviour**. Porting silently either
 preserves a defect or breaks a client contract, so each item carries an explicit
@@ -584,3 +584,71 @@ Ruled PRESERVE for Phase 2: changing the message is out of this phase's scope (G
 literal ports verbatim (G2). **Action required of the owner:** redact the token from the
 message as its own reviewed change — and in any case before any code is added that logs
 this exception's message. Recorded in `domain-user/errors.md` §5 and `domain-user/02` §9.7.
+
+---
+
+## Phase 3 additions and corrections (Orders extraction)
+
+### D21 — QueryDSL CVE-2024-49203 review trigger, actioned for Phase 3
+**Re-checked at the start of Phase 3, as the Phase 1 and Phase 2 rulings required. Result: unchanged.**
+
+`querydsl-jpa` and `querydsl-apt` 5.0.0 still carry **CVE-2024-49203 (HIGH)** and the
+vulnerability database still reports **no CVE-free release**. Downgrading is forbidden
+(G5) and there is nothing to upgrade to, so the ruling stands: **ACCEPT as inherited.**
+
+**The Phase 1 ruling predicted that Orders would be the higher-risk consumer, and that is
+confirmed.** `OrdersSortSpec` exposes **nine** sort keys - the largest sort surface in the
+system, against a table with the most columns a client can influence. The mitigation still
+holds and was verified rather than assumed: every one of the nine resolves through
+`SortSpecParserService` against the static whitelist map, so `orderBy` never receives a raw
+client string. A `sortBy` value outside the map is rejected before any QueryDSL call.
+
+One of those nine keys - `customer` - does not survive the extraction; see the separate
+ruling below.
+
+**No further review trigger.** Phase 3 is the last phase that adds a QueryDSL consumer.
+
+### Correction to the register and the transformation definition — there are 12 order statuses, not 11
+**Not a defect. A factual correction, recorded because later work depends on the count.**
+
+The transformation definition's summary and this register both say "11 order statuses".
+`src/main/resources/data.sql` seeds **twelve**, ids 01-12, and
+`ALTER TABLE order_statuses ALTER COLUMN order_status_id RESTART WITH 13` confirms it:
+
+| id | code | name |
+|---|---|---|
+| 01 | -6 | `Returned` |
+| 02 | -5 | `Delivery Failed` |
+| 03 | -4 | `Delivery Cancelled` |
+| 04 | -3 | `Rejected` |
+| 05 | -2 | `Payment Failed` |
+| 06 | -1 | `Payment Cancelled` |
+| 07 | 01 | `Pending` |
+| 08 | 02 | `Payment Started` |
+| 09 | 03 | `Paid, Unconfirmed` |
+| 10 | 04 | `Paid, Confirmed` |
+| 11 | 05 | `Delivery On Route` |
+| 12 | 06 | `Delivery Complete` |
+
+`config/Constants.java` defines names for only **8** of them. The four it omits are
+exactly the four that **D10** records as seeded-but-unreachable: `Returned`,
+`Delivery Failed`, `Delivery Cancelled` and `Delivery On Route`. That is not a
+coincidence - no code path names them because no code path reaches them.
+
+Note the two names containing a comma - `Paid, Unconfirmed` and `Paid, Confirmed`. They
+are client-observable literals (G2) and the comma must survive the port.
+
+**Action required of the owner:** correct the "11 order statuses" figure in the
+transformation definition.
+
+### Correction — D9 is already fixed; Phase 3's payment work is D3 and D4 only
+**Not a defect. A scope correction, verified in source.**
+
+The definition assigns D9 - "payment session identifier is a Java hash code" - to Phase 3.
+**It was fixed in Phase 0 and the fix is in this tree.**
+`WebpayplusPaymentServiceImpl.newSessionId()` returns a UUID, its javadoc records the
+former `transaction.hashCode()` and why it was wrong, and `WebpayplusPaymentSessionIdTest`
+pins it with 3 tests.
+
+Phase 3's payment-adapter work is therefore **D18 (first, as its own change), then D3 and
+D4**. Nothing about D9 is reopened.
