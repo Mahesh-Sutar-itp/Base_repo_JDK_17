@@ -1,4 +1,4 @@
 -------------------------------------------------------------------------------
 Test set: org.trebol.architecture.NoAuthorityLiteralsArchitectureTest
 -------------------------------------------------------------------------------
-Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 11.22 s -- in org.trebol.architecture.NoAuthorityLiteralsArchitectureTest
+Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 13.75 s -- in org.trebol.architecture.NoAuthorityLiteralsArchitectureTest
