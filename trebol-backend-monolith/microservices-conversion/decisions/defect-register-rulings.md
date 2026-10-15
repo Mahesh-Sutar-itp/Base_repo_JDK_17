@@ -712,3 +712,65 @@ empty.
 **current, defective** D3 behaviour - that a `TransactionCommitException` is swallowed and
 the magic value `1` returned. It exists so that the D3 fix in the next step has something
 to invert, and so the inversion appears in a diff rather than silently. Its name says so.
+
+### D3 — FIXED. A payment-infrastructure failure is no longer recorded as a customer decline.
+**Ruling as recorded: FIX at the owning phase. IMPLEMENTED in Phase 3, step 3.2.**
+
+**The defect.** `WebpayplusPaymentServiceImpl.requestPaymentResult` caught
+`TransactionCommitException` and returned the magic value **`1`** - with no log, no cause
+and no comment. `CheckoutServiceImpl.processSellPaymentStatus` treats **any** non-zero code
+as a decline (`statusCode != 0` -> `markAsFailed`). So:
+
+> **A Transbank outage was indistinguishable from a customer declining the payment**, and
+> the customer's order was moved to `Payment Failed` on the strength of a code the provider
+> never sent.
+
+Worse, it is unrecoverable after the fact: nothing records *why* the order failed, so no
+later process can tell the two apart and retry the ones that deserve it.
+
+**The fix.** The `TransactionCommitException` branch is merged with the `IOException`
+branch that sat directly beside it and already did the right thing:
+
+```java
+} catch (TransactionCommitException | IOException exc) {
+    logger.error("Exception raised while requesting transaction result: ", exc);
+    throw new PaymentServiceException("Webpay failed to confirm the transaction");
+}
+```
+
+The literal message is **reused, not invented**, so no new client-visible string appears
+(G2).
+
+**THIS IS AN INTENTIONAL OBSERVABLE-BEHAVIOUR CHANGE.**
+
+| Before | After |
+|---|---|
+| Transbank unreachable or unable to commit -> adapter returns `1` -> order transitioned to **`Payment Failed`** -> request returns 200 with the failed order | Adapter raises `PaymentServiceException` -> **no transition at all** -> order keeps **`Payment Started`** -> request fails through `PublicCheckoutController`'s existing `@ExceptionHandler` |
+
+The order keeping `Payment Started` is the point: it is the truthful state, and it leaves
+the order eligible for a later legitimate callback - which the D4 idempotency fix in the
+next step makes safe to receive.
+
+**A genuine decline is untouched.** When the provider itself returns a non-zero response
+code, the adapter passes it through unchanged and the order is still marked
+`Payment Failed`. The existing tests covering that path
+(`acknowledges_successful_transaction_payment_integration_returns_1` and its
+`BadInputException` variant) required **no change**, which is the clearest evidence the fix
+is narrow.
+
+**One test assertion was inverted, and it is named here rather than quietly adjusted**, as
+the Phase 0 convention requires:
+
+| Test | Before | After |
+|---|---|---|
+| `WebpayplusPaymentServiceImplTest.RequestPaymentResult` | `currently_swallows_a_commit_exception_and_returns_one` - asserted `== 1` | `raises_an_infrastructure_failure_rather_than_fabricating_a_decline` - asserts `PaymentServiceException` with the verbatim message |
+
+That test was written one step earlier, under D18, **specifically so this inversion would
+appear in a diff.** The original pre-D18 test that asserted the same defect
+(`ProductionModeWithoutConfig.will_not_fetch_transaction_result`) reached the branch only
+by failing to reach the network, which is why it took ~270 seconds and why D18 had to come
+first.
+
+**New test:** `CheckoutServiceImplTest.infrastructure_failure_does_not_mark_the_order_as_failed`
+asserts not merely that the exception propagates, but that **no transition of any kind is
+attempted** (`verifyNoInteractions(ordersProcessServiceMock)`).

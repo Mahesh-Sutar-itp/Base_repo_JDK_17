@@ -82,14 +82,33 @@ public class WebpayplusPaymentServiceImpl
         }
     }
 
+    /**
+     * Requests the result of a payment from Webpay.
+     * <p>
+     * <b>Register item D3 changed this method's behaviour, deliberately.</b> A
+     * {@link TransactionCommitException} used to be swallowed and reported as the magic value
+     * {@code 1}, with no log and no cause. {@code CheckoutServiceImpl} treats any non-zero code as a
+     * decline, so <b>a Transbank outage was indistinguishable from a customer declining the
+     * payment</b>, and the customer's order was moved to {@code Payment Failed} on the strength of a
+     * fabricated code.
+     * <p>
+     * It is now treated as what it is - an infrastructure failure - and raised as
+     * {@link PaymentServiceException}, exactly as the {@link IOException} branch beside it already
+     * did. The order consequently keeps its {@code Payment Started} state, which is the truthful
+     * one and leaves it eligible for a later legitimate callback.
+     * <p>
+     * The literal message is reused rather than invented, so no new client-visible string appears.
+     *
+     * @return the provider's response code - {@code 0} for success, any other value being a genuine
+     *     decline reported by the provider itself
+     * @throws PaymentServiceException if the provider could not be reached or could not commit
+     */
     @Override
     public int requestPaymentResult(String transactionToken) throws PaymentServiceException {
         WebpayPlus.Transaction webpayTransaction = transactionFactory.newTransaction();
         try {
             return webpayTransaction.commit(transactionToken).getResponseCode();
-        } catch (TransactionCommitException exc) {
-            return 1;
-        } catch (IOException exc) {
+        } catch (TransactionCommitException | IOException exc) {
             logger.error("Exception raised while requesting transaction result: ", exc);
             throw new PaymentServiceException("Webpay failed to confirm the transaction");
         }

@@ -49,6 +49,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.trebol.config.Constants.ORDER_STATUS_PAYMENT_STARTED;
 import static org.trebol.testing.OrdersTestHelper.ORDER_TRANSACTION_TOKEN;
@@ -130,6 +131,42 @@ class CheckoutServiceImplTest {
         verify(paymentServiceMock).requestPaymentResult(ORDER_TRANSACTION_TOKEN);
         verify(ordersProcessServiceMock).markAsFailed(salesHelper.orderPojoAfterCreation());
         assertNull(result);
+    }
+
+    /**
+     * Register item <b>D3</b>: an infrastructure failure must not be recorded as a customer decline.
+     * <p>
+     * Before the fix, a {@code TransactionCommitException} inside the adapter was swallowed and
+     * reported as the magic value {@code 1}. Because this service treats <em>any</em> non-zero code
+     * as a decline, a Transbank outage moved the customer's order to {@code Payment Failed} - a
+     * state the customer never caused and which cannot be distinguished afterwards from a real
+     * decline.
+     * <p>
+     * The adapter now raises {@link PaymentServiceException}, so this service never sees a
+     * fabricated code. The order is <b>not</b> transitioned: it keeps {@code Payment Started}, which
+     * is the truthful state and leaves it eligible for a later legitimate callback.
+     * <p>
+     * Note what is asserted: not merely that the exception propagates, but that
+     * <b>no transition of any kind</b> was attempted.
+     */
+    @DisplayName("D3: an infrastructure failure propagates and does NOT mark the order as failed")
+    @Test
+    void infrastructure_failure_does_not_mark_the_order_as_failed()
+        throws PaymentServiceException, EntityNotFoundException, BadInputException {
+        Map<String, String> matcherMap = Map.of(
+            "statusCode", ORDER_STATUS_PAYMENT_STARTED,
+            "token", ORDER_TRANSACTION_TOKEN);
+        when(ordersPredicateServiceMock.parseMap(matcherMap)).thenReturn(MATCHER_PREDICATE);
+        when(ordersCrudServiceMock.readOne(MATCHER_PREDICATE)).thenReturn(salesHelper.orderPojoAfterCreation());
+        when(paymentServiceMock.requestPaymentResult(ORDER_TRANSACTION_TOKEN))
+            .thenThrow(new PaymentServiceException("Webpay failed to confirm the transaction"));
+
+        PaymentServiceException result = assertThrows(PaymentServiceException.class,
+            () -> service.confirmTransaction(ORDER_TRANSACTION_TOKEN, false));
+
+        assertEquals("Webpay failed to confirm the transaction", result.getMessage());
+        verify(paymentServiceMock, times(ONE)).requestPaymentResult(ORDER_TRANSACTION_TOKEN);
+        verifyNoInteractions(ordersProcessServiceMock);
     }
 
     @DisplayName("Confirm transaction when status code is not equal to zero call mark as failed throws BadInputException")

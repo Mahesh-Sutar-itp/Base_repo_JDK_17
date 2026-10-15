@@ -193,20 +193,27 @@ class WebpayplusPaymentServiceImplTest {
         }
 
         /**
-         * The {@link TransactionCommitException} branch - register item <b>D3</b>.
+         * The {@link TransactionCommitException} branch - register item <b>D3, now FIXED</b>.
          * <p>
-         * At the time this test was written the adapter still swallowed this exception and returned
-         * the magic value {@code 1}, which {@code CheckoutServiceImpl} cannot distinguish from a
-         * genuine decline. This test pins <b>the current, defective behaviour</b> so that the D3 fix
-         * in the next step has something to invert, and so the inversion is visible in a diff rather
-         * than silent. See {@code defect-register-rulings.md}, register item D3.
+         * <b>This assertion was inverted by the D3 fix, deliberately and visibly.</b> The previous
+         * version of this test - named {@code currently_swallows_a_commit_exception_and_returns_one}
+         * - asserted that the adapter swallowed this exception and returned the magic value
+         * {@code 1}. {@code CheckoutServiceImpl} treats any non-zero code as a decline, so that
+         * fabricated {@code 1} made a Transbank outage indistinguishable from a customer declining
+         * the payment, and moved the customer's order to {@code Payment Failed}.
+         * <p>
+         * An infrastructure failure is now raised as {@link PaymentServiceException}, exactly as the
+         * {@link IOException} branch beside it always did.
          */
         @Test
-        void currently_swallows_a_commit_exception_and_returns_one() throws Exception {
+        void raises_an_infrastructure_failure_rather_than_fabricating_a_decline() throws Exception {
             when(transactionFactoryMock.newTransaction()).thenReturn(webpayTransactionMock);
             when(webpayTransactionMock.commit(anyString())).thenThrow(new TransactionCommitException(ANY));
 
-            assertEquals(1, instance.requestPaymentResult(SOME_TOKEN));
+            PaymentServiceException result = assertThrows(PaymentServiceException.class,
+                () -> instance.requestPaymentResult(SOME_TOKEN));
+
+            assertEquals(COMMIT_FAILURE_MESSAGE, result.getMessage());
         }
     }
 
