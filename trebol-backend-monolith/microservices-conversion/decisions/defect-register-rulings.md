@@ -16,7 +16,7 @@ rather than folded quietly into an existing fix.
 |---|---|
 | **FIX — before extraction (Phase 0)** | D1, D2, D6, D7, D9, D14, D17 |
 | **FIX — at the owning phase** | D3, D4, D5, D11 (Phase 3), D18 (before Phase 3), D20 (Phase 1, first extraction), transactional registration (Phase 2) |
-| **PRESERVE** | D8, D16, D19 (scope), D23, D24, D25, D26, the two D14 remainders, and BR-USER-032/033 route-discovery substring matching |
+| **PRESERVE** | D8, D16, D19 (scope), D23, D24, D25, D26, D27, the two D14 remainders, and BR-USER-032/033 route-discovery substring matching |
 | **PRESERVE with recorded limitation / deferred** | D10, D12, D13, D15, D21 (inherited CVE, mitigation verified), D22 |
 
 ### Intentional observable-behaviour changes landing in Phase 0
@@ -876,3 +876,120 @@ coupling Gate A closed.
    three explicit `never()` checks**, because D4 legitimately added a `findCallbackNonce`
    interaction before any transition. The assertion is now narrower and says what D3
    actually means: *no transition was attempted*.
+
+### D5 — FIXED, but it is NOT the defect the register recorded. An empirical probe settled it.
+**Ruling as recorded: FIX at the owning phase. IMPLEMENTED in Phase 3, step 3.4 - with the
+finding below, which changes what "fixed" means.**
+
+**The register records D5 as "a `PATCH` that bypasses the order state machine entirely".**
+Before writing any fix, an empirical probe was written to settle an open question:
+`Order.status` is mapped `@JoinColumn(name = "order_status_id", updatable = false, nullable = false)`
+while the `markAs*` path uses an explicit `@Modifying` JPQL update
+(`OrdersRepository.setStatus`), so whether a *patched* status ever reached the database was
+**unverified**. Writing a fix against an assumption would have been writing it against a
+phantom.
+
+`OrderStatusPatchPersistenceProbeTest` asks **Hibernate itself** rather than reasoning from
+the annotation, via `EntityPersister.getPropertyUpdateability()`. **Result:**
+
+| Attribute | Updatable? | Consequence |
+|---|---|---|
+| `status` | **NO** | a patched status is **silently discarded** |
+| `paymentType` | **NO** | a patched payment type is **silently discarded** |
+| `shipper` | **NO** | a patched shipper is **silently discarded** |
+| `date` | yes | a patched date does take effect |
+
+> **D5 is therefore not a state-machine bypass.** Hibernate excludes `order_status_id` from
+> every generated `UPDATE`, so the patched status never reached the database. The defect is
+> a write that **reports success while changing nothing** - and it affects **three of the
+> four** patchable fields, not just the status.
+
+That is a different defect, and in one respect a worse one: a bypass would at least be
+visible in the data. This was invisible.
+
+**The fix.** Silently accepting an instruction that cannot be carried out is the part worth
+fixing, so a status change through `PATCH` is now **rejected outright**, naming the routes
+that do work. The transition table is consulted first, so an *illegal* target is reported as
+illegal even though no target can be applied here - and if `Order.status` is ever made
+updatable, that guard is already the right one and the probe test fails loudly to say so.
+
+| Message | When |
+|---|---|
+| `"The order cannot move to the requested status from its current one"` | the requested transition is not legal from the current status |
+| `"An order's status cannot be changed through this route; use the confirmation, rejection or completion routes instead"` | the transition is legal, but this route cannot apply it |
+
+**The truncated literal is fixed.** The `ClassCastException` branch threw
+`new BadInputException("The ")` - literally the string `"The "`, carrying no information a
+client could act on. It is now
+`"A patched field was not textual where text was expected"`. Client-observable, so recorded
+here rather than treated as a tidy-up.
+
+**`paymentType` and `shipper` remain silent no-ops**, and that is deliberate for this phase:
+fixing them is the same class of change as the status fix but touches routes no register
+item covers. Recorded as **D27** below.
+
+**Two test assertions were inverted, named here rather than quietly adjusted:**
+
+| Was | Now |
+|---|---|
+| `patches_status` - asserted the patched status was set on the returned entity | `rejects_a_status_change_because_this_route_cannot_apply_one` + `rejects_even_a_legal_status_transition_through_this_route` |
+| `patches_all_fields` - patched all four keys including status | `patches_every_other_field_at_once` - the other three keys, unchanged |
+
+### D10 — FIXED. The four unreachable statuses are now rejected as transition targets.
+**Ruling as recorded: PRESERVE the seed rows, with a recorded limitation. IMPLEMENTED in
+Phase 3, step 3.4, as part of the transition table.**
+
+`Returned` (-6), `Delivery Failed` (-5), `Delivery Cancelled` (-4) and
+`Delivery On Route` (05) are seeded but reached by no code path, and `Constants` does not
+even name them - which is not a coincidence: no code path names them because none reaches
+them.
+
+**The seed rows are preserved exactly, as the ruling requires** - the data stays, the
+transitions do not. `OrderStatusTransitions.UNREACHABLE_STATUSES` names all four, and
+`isLegal` rejects them as a target **from every source**, asserted exhaustively.
+
+They are named as string literals in that class rather than promoted to `Constants`,
+deliberately: adding a constant would imply they are usable.
+
+### The transition table — one source of truth for the status machine
+Before this phase the machine existed only as **seven separate `if` statements** inside
+`OrdersProcessServiceImpl`, each checking one expected source status. It could not be read
+in one place, tested as a machine, or enforced anywhere else.
+
+`jpa/services/OrderStatusTransitions` now states it once:
+
+```
+Pending            -> Payment Started
+Payment Started    -> Payment Cancelled | Payment Failed | Paid, Unconfirmed
+Paid, Unconfirmed  -> Paid, Confirmed   | Rejected
+Paid, Confirmed    -> Delivery Complete
+```
+
+Terminal: `Payment Cancelled`, `Payment Failed`, `Rejected`, `Delivery Complete`.
+
+**No rule changed.** All seven `markAs*` preconditions were rewritten to consult the table,
+keeping the same exception type and the same verbatim message
+(`"The transaction is not in a valid state for this api"`, including its existing wording),
+so the two write paths cannot drift apart.
+
+`OrderStatusTransitionsTest` asserts the **full cross-product of all twelve seeded
+statuses** - 144 ordered pairs - so a transition cannot be added, removed or mistyped
+without a test failing. It also pins the two comma-bearing names, `"Paid, Unconfirmed"` and
+`"Paid, Confirmed"`, which are client-observable literals a rename would silently break.
+
+### D27 (new) — `paymentType` and `shipper` patches are also silent no-ops
+**Ruling: PRESERVE in Phase 3. Recorded for the owner.**
+
+The same probe that settled D5 found that `Order.paymentType` and `Order.shipper` are also
+mapped `updatable = false`, so patching either is **also a write that reports success and
+changes nothing**. Three of `OrdersPatchServiceImpl`'s four honoured keys behave this way.
+
+Only the status case is fixed in this phase, because only the status case is what D5 and the
+state machine are about. Rejecting the other two would be the same correct change, but it
+touches `PATCH /data/orders` behaviour that no register item covers, and widening scope
+inside an extraction phase is what G1 guards against.
+
+**Action required of the owner:** decide whether `paymentType` and `shipper` should be
+rejected like the status, or made genuinely updatable. Either is a behavioural change needing
+its own ruling. The probe test pins the current mapping either way, so the decision cannot be
+made accidentally.

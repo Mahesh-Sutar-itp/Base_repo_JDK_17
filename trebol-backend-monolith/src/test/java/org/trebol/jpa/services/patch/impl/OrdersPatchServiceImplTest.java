@@ -47,6 +47,8 @@ import static com.fasterxml.jackson.databind.SerializationFeature.WRITE_DATES_AS
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.trebol.config.Constants.ORDER_STATUS_PAYMENT_STARTED;
+import static org.trebol.config.Constants.ORDER_STATUS_PENDING;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 import static org.trebol.testing.TestConstants.ANY;
@@ -118,16 +120,51 @@ class OrdersPatchServiceImplTest {
         assertEquals(whenTheMethodExecutes, result.getDate());
     }
 
+    /**
+     * <b>ASSERTION INVERTED by register items D5 and D10.</b>
+     * <p>
+     * This test was named {@code patches_status} and asserted that the patched status was set on the
+     * returned entity - which was true of the in-memory copy, and was why the register recorded D5
+     * as a state-machine bypass. The empirical probe written before the fix
+     * ({@code OrderStatusPatchPersistenceProbeTest}) established that {@code Order.status} is mapped
+     * {@code updatable = false}, so that copy's status was <b>silently discarded</b> on save and the
+     * request reported success regardless.
+     * <p>
+     * Silently accepting an instruction that cannot be carried out is the defect. A status change
+     * through this route is now rejected, naming the routes that do work.
+     */
     @Test
-    void patches_status() throws BadInputException {
-        OrderStatus existingStatus = OrderStatus.builder().id(2L).build();
+    void rejects_a_status_change_because_this_route_cannot_apply_one() {
         Map<String, Object> input = this.mapFrom(OrderPojo.builder()
             .status(NOT_ANY)
             .build());
-        when(statusesRepositoryMock.findByName(anyString())).thenReturn(Optional.of(existingStatus));
-        Order result = instance.patchExistingEntity(input, existingOrder);
-        assertNotEquals(existingOrder, result);
-        assertEquals(existingStatus, result.getStatus());
+
+        BadInputException result = assertThrows(BadInputException.class,
+            () -> instance.patchExistingEntity(input, existingOrder));
+
+        assertEquals(OrdersPatchServiceImpl.ILLEGAL_STATUS_TRANSITION, result.getMessage());
+    }
+
+    /**
+     * The same rejection, reached through the legal-transition branch rather than the illegal one.
+     * {@code existingOrder}'s status is {@code Pending}, whose only legal successor is
+     * {@code Payment Started}; that target is legal, and is still refused here because this route
+     * cannot apply any status at all.
+     */
+    @Test
+    void rejects_even_a_legal_status_transition_through_this_route() {
+        // The shared fixture's status is ANY, which the transition table does not know, so it would
+        // reach the ILLEGAL branch. Put the order in Pending - whose only legal successor is
+        // Payment Started - so the LEGAL branch is exercised and still refuses.
+        Order pendingOrder = new Order(existingOrder);
+        pendingOrder.setStatus(OrderStatus.builder().id(7L).name(ORDER_STATUS_PENDING).build());
+        Map<String, Object> input = new HashMap<>();
+        input.put("status", ORDER_STATUS_PAYMENT_STARTED);
+
+        BadInputException result = assertThrows(BadInputException.class,
+            () -> instance.patchExistingEntity(input, pendingOrder));
+
+        assertEquals(OrdersPatchServiceImpl.STATUS_IS_NOT_PATCHABLE, result.getMessage());
     }
 
     @Test
@@ -154,25 +191,27 @@ class OrdersPatchServiceImplTest {
         assertEquals(existingShipper, result.getShipper());
     }
 
+    /**
+     * <b>Narrowed by register item D5.</b> This case used to patch all four keys at once, including
+     * {@code status}. A status change is now rejected outright, so including it here would assert a
+     * rejection rather than a patch - that is covered by the two tests above. The other three keys
+     * are unchanged.
+     */
     @Test
-    void patches_all_fields() throws BadInputException {
+    void patches_every_other_field_at_once() throws BadInputException {
         Instant whenTheMethodExecutes = Instant.now();
-        OrderStatus existingStatus = OrderStatus.builder().build();
         PaymentType existingPaymentType = PaymentType.builder().build();
         Shipper existingShipper = Shipper.builder().build();
         Map<String, Object> input = this.mapFrom(OrderPojo.builder()
             .date(whenTheMethodExecutes)
-            .status(NOT_ANY)
             .paymentType(NOT_ANY)
             .shipper(NOT_ANY)
             .build());
-        when(statusesRepositoryMock.findByName(anyString())).thenReturn(Optional.of(existingStatus));
         when(billingContractMock.findPaymentTypeByName(anyString())).thenReturn(Optional.of(existingPaymentType));
         when(shipperLookupContractMock.findShipperByName(anyString())).thenReturn(Optional.of(existingShipper));
         Order result = instance.patchExistingEntity(input, existingOrder);
         assertNotEquals(existingOrder, result);
         assertEquals(whenTheMethodExecutes, result.getDate());
-        assertEquals(existingStatus, result.getStatus());
         assertEquals(existingPaymentType, result.getPaymentType());
         assertEquals(existingShipper, result.getShipper());
     }

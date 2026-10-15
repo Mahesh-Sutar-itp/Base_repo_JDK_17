@@ -30,6 +30,7 @@ import org.trebol.jpa.entities.Order;
 import org.trebol.jpa.repositories.OrderStatusesRepository;
 import org.trebol.jpa.services.contracts.BillingContract;
 import org.trebol.jpa.services.contracts.ShipperLookupContract;
+import org.trebol.jpa.services.OrderStatusTransitions;
 import org.trebol.jpa.services.patch.OrdersPatchService;
 
 import java.time.Instant;
@@ -39,6 +40,12 @@ import java.util.Map;
 @Service
 public class OrdersPatchServiceImpl
     implements OrdersPatchService {
+    static final String STATUS_IS_NOT_PATCHABLE =
+        "An order's status cannot be changed through this route; use the confirmation, rejection or completion routes instead";
+    static final String ILLEGAL_STATUS_TRANSITION =
+        "The order cannot move to the requested status from its current one";
+    static final String NON_TEXTUAL_PATCH_VALUE =
+        "A patched field was not textual where text was expected";
     private final OrderStatusesRepository statusesRepository;
     private final BillingContract billingContract;
     private final ShipperLookupContract shipperLookupContract;
@@ -69,9 +76,30 @@ public class OrdersPatchServiceImpl
             }
 
             if (changes.containsKey("status")) {
+                // Register items D5 and D10. This branch used to resolve the status by name and set
+                // it on the copy, with only a blank check and an ifPresent that silently ignored an
+                // unknown name. It looked like a state-machine bypass, and the register recorded it
+                // as one.
+                //
+                // An empirical probe written before this change - OrderStatusPatchPersistenceProbeTest
+                // - established that it is not. Order.status is mapped
+                // @JoinColumn(updatable = false), so Hibernate excludes order_status_id from every
+                // generated UPDATE: the patched status was SILENTLY DISCARDED and the request still
+                // reported success. The defect is a write that changes nothing, not a write that
+                // corrupts the status.
+                //
+                // Silently accepting an instruction that cannot be carried out is the part worth
+                // fixing, so it is now rejected outright, naming the routes that do work. The
+                // transition table is consulted first so that an ILLEGAL target is reported as such
+                // even though no target can be applied here - if Order.status is ever made updatable,
+                // this guard is already the right one and the probe test will fail loudly to say so.
                 String statusName = (String) changes.get("status");
                 if (!StringUtils.isBlank(statusName)) {
-                    statusesRepository.findByName(statusName).ifPresent(target::setStatus);
+                    String currentStatus = existing.getStatus()==null ? null:existing.getStatus().getName();
+                    if (!OrderStatusTransitions.isLegal(currentStatus, statusName)) {
+                        throw new BadInputException(ILLEGAL_STATUS_TRANSITION);
+                    }
+                    throw new BadInputException(STATUS_IS_NOT_PATCHABLE);
                 }
             }
 
@@ -89,7 +117,10 @@ public class OrdersPatchServiceImpl
                 }
             }
         } catch (ClassCastException ex) {
-            throw new BadInputException("The ");
+            // Register item D5: this literal was "The " - a truncated string carrying no
+            // information at all, which a client could do nothing with. Replaced with a message in
+            // the style of the domain's others. It is a client-observable change and is recorded.
+            throw new BadInputException(NON_TEXTUAL_PATCH_VALUE);
         }
 
         return target;

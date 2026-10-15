@@ -34,6 +34,7 @@ import org.trebol.jpa.repositories.OrdersRepository;
 import org.trebol.jpa.repositories.OrderDetailsRepository;
 import org.trebol.jpa.repositories.OrderStatusesRepository;
 import org.trebol.jpa.services.conversion.ProductsConverterService;
+import org.trebol.jpa.services.OrderStatusTransitions;
 import org.trebol.jpa.services.conversion.OrdersConverterService;
 import org.trebol.jpa.services.crud.OrdersCrudService;
 
@@ -113,7 +114,7 @@ public class OrdersProcessServiceImpl
     public OrderPojo markAsStarted(OrderPojo sell, String callbackNonce) throws BadInputException, EntityNotFoundException {
         Order existingOrder = this.fetchExistingOrThrowException(sell);
 
-        if (!existingOrder.getStatus().getName().equals(ORDER_STATUS_PENDING)) {
+        if (!OrderStatusTransitions.isLegal(existingOrder.getStatus().getName(), ORDER_STATUS_PAYMENT_STARTED)) {
             throw new BadInputException(THE_TRANSACTION_IS_NOT_IN_A_VALID_STATE_FOR_THIS_OPERATION);
         }
 
@@ -134,7 +135,7 @@ public class OrdersProcessServiceImpl
     public OrderPojo markAsAborted(OrderPojo sell) throws BadInputException, EntityNotFoundException {
         Order existingOrder = this.fetchExistingOrThrowException(sell);
 
-        if (!existingOrder.getStatus().getName().equals(ORDER_STATUS_PAYMENT_STARTED)) {
+        if (!OrderStatusTransitions.isLegal(existingOrder.getStatus().getName(), ORDER_STATUS_PAYMENT_CANCELLED)) {
             throw new BadInputException(THE_TRANSACTION_IS_NOT_IN_A_VALID_STATE_FOR_THIS_OPERATION);
         }
 
@@ -153,7 +154,7 @@ public class OrdersProcessServiceImpl
     public OrderPojo markAsFailed(OrderPojo sell) throws BadInputException, EntityNotFoundException {
         Order existingOrder = this.fetchExistingOrThrowException(sell);
 
-        if (!existingOrder.getStatus().getName().equals(ORDER_STATUS_PAYMENT_STARTED)) {
+        if (!OrderStatusTransitions.isLegal(existingOrder.getStatus().getName(), ORDER_STATUS_PAYMENT_FAILED)) {
             throw new BadInputException(THE_TRANSACTION_IS_NOT_IN_A_VALID_STATE_FOR_THIS_OPERATION);
         }
 
@@ -172,7 +173,7 @@ public class OrdersProcessServiceImpl
     public OrderPojo markAsPaid(OrderPojo sell) throws BadInputException, EntityNotFoundException {
         Order existingOrder = this.fetchExistingOrThrowException(sell);
 
-        if (!existingOrder.getStatus().getName().equals(ORDER_STATUS_PAYMENT_STARTED)) {
+        if (!OrderStatusTransitions.isLegal(existingOrder.getStatus().getName(), ORDER_STATUS_PAID_UNCONFIRMED)) {
             throw new BadInputException(THE_TRANSACTION_IS_NOT_IN_A_VALID_STATE_FOR_THIS_OPERATION);
         }
 
@@ -205,7 +206,7 @@ public class OrdersProcessServiceImpl
         throws BadInputException, EntityNotFoundException {
         Order existingOrder = this.fetchExistingOrThrowException(sell);
 
-        if (!existingOrder.getStatus().getName().equals(ORDER_STATUS_PAID_UNCONFIRMED)) {
+        if (!OrderStatusTransitions.isLegal(existingOrder.getStatus().getName(), ORDER_STATUS_PAID_CONFIRMED)) {
             throw new BadInputException(THE_TRANSACTION_IS_NOT_IN_A_VALID_STATE_FOR_THIS_OPERATION);
         }
 
@@ -239,7 +240,7 @@ public class OrdersProcessServiceImpl
         throws BadInputException, EntityNotFoundException {
         Order existingOrder = this.fetchExistingOrThrowException(sell);
 
-        if (!existingOrder.getStatus().getName().equals(ORDER_STATUS_PAID_UNCONFIRMED)) {
+        if (!OrderStatusTransitions.isLegal(existingOrder.getStatus().getName(), ORDER_STATUS_REJECTED)) {
             throw new BadInputException(THE_TRANSACTION_IS_NOT_IN_A_VALID_STATE_FOR_THIS_OPERATION);
         }
 
@@ -272,7 +273,7 @@ public class OrdersProcessServiceImpl
         throws BadInputException, EntityNotFoundException {
         Order existingOrder = this.fetchExistingOrThrowException(sell);
 
-        if (!existingOrder.getStatus().getName().equals(ORDER_STATUS_PAID_CONFIRMED)) {
+        if (!OrderStatusTransitions.isLegal(existingOrder.getStatus().getName(), ORDER_STATUS_COMPLETED)) {
             throw new BadInputException(THE_TRANSACTION_IS_NOT_IN_A_VALID_STATE_FOR_THIS_OPERATION);
         }
 
