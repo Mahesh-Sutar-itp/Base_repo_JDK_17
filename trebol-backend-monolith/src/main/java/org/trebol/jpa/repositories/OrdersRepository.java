@@ -51,4 +51,21 @@ public interface OrdersRepository
         + "SET s.transactionToken = :token "
         + "WHERE s.id = :id")
     int setTransactionToken(@Param("id") Long id, @Param("token") String token);
+
+    /**
+     * Register item D4: persists the per-order payment-callback nonce.
+     * <p>
+     * An explicit {@code @Modifying} update, for the same reason {@link #setStatus} is one - the
+     * generic save path cannot be relied upon here, because several of {@code Order}'s associations
+     * are mapped {@code updatable = false}.
+     *
+     * @param id    the order's identifier
+     * @param nonce the freshly generated nonce
+     * @return the number of rows affected
+     */
+    @Modifying(clearAutomatically = true)
+    @Query("UPDATE Order s "
+        + "SET s.callbackNonce = :nonce "
+        + "WHERE s.id = :id")
+    int setCallbackNonce(@Param("id") Long id, @Param("nonce") String nonce);
 }

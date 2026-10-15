@@ -42,6 +42,14 @@ public final class Constants {
     public static final String WEBPAY_SUCCESS_TOKEN_HEADER_NAME = "token_ws";
     public static final String WEBPAY_ABORTION_TOKEN_HEADER_NAME = "TBK_TOKEN";
     /**
+     * Register item D4: the query-parameter name carrying the per-order callback nonce.
+     * <p>
+     * Appended to the {@code returnUrl} handed to Webpay and required on both
+     * {@code /public/checkout/validate} mappings. Client-observable, so it is a constant rather
+     * than a scattered literal.
+     */
+    public static final String CHECKOUT_CALLBACK_NONCE_PARAM_NAME = "nonce";
+    /**
      * Delegating alias of {@link org.trebol.security.authorities.AuthorityCodes#CHECKOUT}.
      * The generated catalogue is the single source of truth for authority codes; this alias is
      * retained so existing call sites keep compiling.

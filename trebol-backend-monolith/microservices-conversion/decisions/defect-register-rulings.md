@@ -774,3 +774,105 @@ first.
 **New test:** `CheckoutServiceImplTest.infrastructure_failure_does_not_mark_the_order_as_failed`
 asserts not merely that the exception propagates, but that **no transition of any kind is
 attempted** (`verifyNoInteractions(ordersProcessServiceMock)`).
+
+### D4 — FIXED. Payment callbacks are now authenticated and idempotent. (Exit criterion X9)
+**Ruling as recorded: FIX at the owning phase. IMPLEMENTED in Phase 3, step 3.3.**
+
+The register called this the largest security gap in the system, and investigation found it
+to be **worse than recorded** - see (c).
+
+#### (a) Origin authentication — a per-order callback nonce
+
+**Transbank sends no callback signature.** There is nothing to verify cryptographically, so
+no HMAC check is possible. Both `/public/checkout/validate` mappings (GET and POST) carry
+**no `@PreAuthorize`**, and `SecurityConfig` declares **no request-matcher rules at all**,
+so they were reachable by anyone who could guess or observe a token.
+
+The control implemented is to make the callback URL itself unguessable and single-purpose:
+
+1. `CheckoutServiceImpl.requestTransactionStart` generates a nonce - a separator-free UUID,
+   32 hex characters - **before** asking the payment service for a redirection URL, because
+   the nonce has to be embedded in that URL;
+2. the adapter appends it to the configured callback URL (`?nonce=` or `&nonce=`, depending
+   on whether the operator's URL already carries a query string);
+3. `markAsStarted` persists it **in the same transaction as the status transition**, so an
+   order can never sit in `Payment Started` without the nonce that authenticates its
+   callback;
+4. both callback mappings require it, and a missing, blank or mismatched value is rejected
+   with `BadInputException` **before any transition is attempted**.
+
+Only the party we handed that URL to can produce the nonce, which is genuine origin
+control. **The nonce is never returned to the API caller** - it travels only to the
+provider.
+
+One additive, nullable column: `orders.order_callback_nonce varchar(64)`. No existing
+column is touched. An order with no nonce recorded cannot be confirmed by callback, which
+is the correct outcome for orders predating the column and for orders that never began a
+checkout.
+
+**One new client-visible literal** was unavoidable, because this is a new error condition:
+`"The transaction callback could not be authenticated"`. It deliberately does not say which
+check failed and does not echo either value.
+
+#### (b) Idempotency
+
+Payment providers **do** re-send callbacks. Previously a duplicate reached the `markAs*`
+precondition, which raised `BadInputException`; `CheckoutServiceImpl` converted that into
+`IllegalStateException` and the caller received **HTTP 500 for a normal event**.
+
+A replay is now a **no-op**: if the order is already in one of the three statuses a
+callback can itself produce - `Payment Cancelled`, `Payment Failed`, `Paid, Unconfirmed` -
+the order is returned unchanged, the controller issues the same 303 redirect as the first
+time, and **no second transition and no second provider commit** occur.
+
+#### (c) The silently dropped status filter — worse than the register stated
+
+`getSellRequestedWithMatchingToken` built its predicate with the map key **`"statusCode"`**.
+`OrdersPredicateServiceImpl.parseMap` recognises only `id`, `buyOrder`, `date`,
+`statusName` and `token`; an unrecognised key hits `default: break` and is **silently
+ignored**. So:
+
+> **The status filter never applied.** The lookup was by token alone, and the replay
+> protection this register credited to the status filter **did not exist**. The only thing
+> rejecting a repeated callback was the `markAs*` precondition - surfacing as HTTP 500.
+
+**The fix is deliberately not to correct the key to `statusName`.** Filtering by status in
+the query makes an already-processed order **indistinguishable from a non-existent one** -
+both return `EntityNotFoundException` - which makes idempotency impossible to implement.
+The order is resolved by token in whatever state it is in, and the status is then checked
+**explicitly, in code**: a replay short-circuits, and anything other than `Payment Started`
+is still rejected by the `markAs*` precondition exactly as before.
+
+#### Scope note
+
+The nonce lookup is exposed as `OrdersProcessService.findCallbackNonce` rather than by
+injecting `OrdersRepository` into `CheckoutServiceImpl`. That is not stylistic: the **Gate A**
+verification grep matches on `Checkout`, so a repository import there would reopen the
+coupling Gate A closed.
+
+#### Behavioural changes, all intentional and recorded
+
+| # | Before | After |
+|---|---|---|
+| 1 | Any caller with a token could drive a transition | A caller must also present the per-order nonce, or get **400** |
+| 2 | A replayed callback returned **HTTP 500** | A replayed callback returns the **same 303**, no second transition |
+| 3 | The status filter was silently dropped; lookup by token alone | Lookup by token, status checked explicitly in code |
+
+#### Tests — the X9 evidence
+
+| Test | Proves |
+|---|---|
+| `rejects_a_callback_with_no_nonce` | no nonce -> 400, and no `markAs*` call of any kind |
+| `rejects_a_callback_with_the_wrong_nonce` | a guessed or stale nonce is no better than none |
+| `rejects_a_callback_for_an_order_with_no_recorded_nonce` | null expected does not match null presented - no bypass |
+| `a_replayed_callback_is_a_no_op` | the order comes back unchanged, no transition, no second provider commit |
+
+**Three existing tests were updated, named here rather than quietly adjusted:**
+
+1. every `CheckoutServiceImplTest` lookup map lost its `"statusCode"` entry - those maps
+   asserted a filter that never applied, so the tests now say what the code actually does;
+2. `markAsStarted` and `requestNewPaymentPageDetails` call sites gained the nonce argument;
+3. **the D3 test written one step earlier had to be loosened from `verifyNoInteractions` to
+   three explicit `never()` checks**, because D4 legitimately added a `findCallbackNonce`
+   interaction before any transition. The assertion is now narrower and says what D3
+   actually means: *no transition was attempted*.

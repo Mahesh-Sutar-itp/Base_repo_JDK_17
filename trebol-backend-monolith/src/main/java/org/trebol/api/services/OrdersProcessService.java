@@ -37,7 +37,19 @@ public interface OrdersProcessService {
      * @throws BadInputException       When the transaction is not in "pending" state, or when it doesn't have a token
      * @throws EntityNotFoundException When the transaction is not found in the persistence context
      */
-    OrderPojo markAsStarted(OrderPojo sell) throws BadInputException, EntityNotFoundException;
+    OrderPojo markAsStarted(OrderPojo sell, String callbackNonce) throws BadInputException, EntityNotFoundException;
+
+    /**
+     * Register item D4: reads back the payment-callback nonce recorded for an order.
+     * <p>
+     * Exposed here rather than through a repository so that the checkout service never imports
+     * {@code org.trebol.jpa.repositories} - that is the coupling Gate A of this conversion closed,
+     * and it is verified by a grep that matches on "Checkout".
+     *
+     * @param transactionToken the token the payment provider issued for the order
+     * @return the recorded nonce, or {@code null} if the order has none or does not exist
+     */
+    String findCallbackNonce(String transactionToken);
 
     /**
      * Updates status of a sell to "aborted", meaning nothing more can be done about it.

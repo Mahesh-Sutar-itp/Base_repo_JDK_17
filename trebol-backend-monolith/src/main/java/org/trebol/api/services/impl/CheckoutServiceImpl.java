@@ -43,6 +43,12 @@ import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
 
+import java.util.Set;
+import java.util.UUID;
+
+import static org.trebol.config.Constants.ORDER_STATUS_PAID_UNCONFIRMED;
+import static org.trebol.config.Constants.ORDER_STATUS_PAYMENT_CANCELLED;
+import static org.trebol.config.Constants.ORDER_STATUS_PAYMENT_FAILED;
 import static org.trebol.config.Constants.ORDER_STATUS_PAYMENT_STARTED;
 
 @Service
@@ -53,6 +59,17 @@ public class CheckoutServiceImpl
     private final OrdersProcessService ordersProcessService;
     private final OrdersPredicateService ordersPredicateService;
     private final PaymentService paymentIntegrationService;
+    /**
+     * Register item D4(b): the statuses a payment callback can itself produce.
+     * <p>
+     * An order already in one of these has had its callback processed, so a further callback is a
+     * replay and is answered identically rather than raised as an error.
+     */
+    static final Set<String> ALREADY_RESOLVED_STATUSES = Set.of(
+        ORDER_STATUS_PAYMENT_CANCELLED,
+        ORDER_STATUS_PAYMENT_FAILED,
+        ORDER_STATUS_PAID_UNCONFIRMED);
+    static final String CALLBACK_NONCE_REJECTED = "The transaction callback could not be authenticated";
 
     @Autowired
     public CheckoutServiceImpl(
@@ -67,22 +84,64 @@ public class CheckoutServiceImpl
         this.paymentIntegrationService = paymentIntegrationService;
     }
 
+    /**
+     * Begins a checkout.
+     * <p>
+     * <b>Register item D4:</b> a per-order callback nonce is generated here, before the payment
+     * service is asked for a redirection URL, because the nonce has to be embedded in that URL. It
+     * is then persisted by {@code markAsStarted} in the same transaction as the status transition,
+     * so an order can never sit in {@code Payment Started} without the nonce that authenticates its
+     * callback.
+     * <p>
+     * The nonce is <b>not</b> returned to the caller. It travels only to the payment provider, which
+     * is what makes a callback presenting it evidence of origin.
+     */
     @Override
     public PaymentRedirectionDetailsPojo requestTransactionStart(OrderPojo transaction) throws PaymentServiceException, BadInputException {
-        PaymentRedirectionDetailsPojo response = paymentIntegrationService.requestNewPaymentPageDetails(transaction);
+        String callbackNonce = newCallbackNonce();
+        PaymentRedirectionDetailsPojo response = paymentIntegrationService.requestNewPaymentPageDetails(transaction, callbackNonce);
         try {
             transaction.setToken(response.getToken());
-            ordersProcessService.markAsStarted(transaction);
+            ordersProcessService.markAsStarted(transaction, callbackNonce);
             return response;
         } catch (EntityNotFoundException exc) {
             throw new IllegalStateException("The server had a problem requesting the transaction", exc);
         }
     }
 
+    /**
+     * Confirms or aborts a payment, from a provider callback.
+     * <p>
+     * <b>Register item D4 made three changes here, all of them behavioural.</b>
+     * <ol>
+     *   <li><b>Origin authentication.</b> The callback must present the per-order nonce that was
+     *       embedded in the {@code returnUrl} handed to the provider. Transbank sends no signature,
+     *       so this is the only origin control available: a caller who did not receive that URL
+     *       cannot produce the nonce. A missing or mismatched nonce is rejected before any
+     *       transition is attempted.</li>
+     *   <li><b>Idempotency.</b> Payment providers do re-send callbacks. Previously a duplicate
+     *       produced a {@code BadInputException} from the {@code markAs*} precondition, which this
+     *       method converted into an {@code IllegalStateException} and the client saw <b>HTTP
+     *       500</b>. A replay is now a <b>no-op returning the order unchanged</b>, so the caller
+     *       receives the same redirect as the first time.</li>
+     *   <li><b>The lookup.</b> It used to pass a map key {@code "statusCode"} that
+     *       {@code OrdersPredicateServiceImpl} does not recognise, so <b>the status filter was
+     *       silently dropped</b> and the lookup was by token alone. The status is now checked
+     *       explicitly, in code - see {@link #getSellRequestedWithMatchingToken}.</li>
+     * </ol>
+     */
     @Override
-    public OrderPojo confirmTransaction(String transactionToken, boolean wasAborted)
-        throws EntityNotFoundException, PaymentServiceException {
+    public OrderPojo confirmTransaction(String transactionToken, boolean wasAborted, String callbackNonce)
+        throws EntityNotFoundException, PaymentServiceException, BadInputException {
         OrderPojo sellByToken = this.getSellRequestedWithMatchingToken(transactionToken);
+        this.assertCallbackNonceMatches(transactionToken, callbackNonce);
+
+        if (ALREADY_RESOLVED_STATUSES.contains(sellByToken.getStatus())) {
+            logger.info("Ignoring a repeated payment callback for an order already in '{}'",
+                sellByToken.getStatus());
+            return sellByToken;
+        }
+
         try {
             if (wasAborted) {
                 return ordersProcessService.markAsAborted(sellByToken);
@@ -128,11 +187,61 @@ public class CheckoutServiceImpl
         }
     }
 
+    /**
+     * Resolves the order a callback refers to, <b>by token alone</b>.
+     * <p>
+     * Register item D4(c). This method used to build its predicate with a map key
+     * {@code "statusCode"}, which {@code OrdersPredicateServiceImpl} does not recognise - its
+     * switch accepts only {@code id}, {@code buyOrder}, {@code date}, {@code statusName} and
+     * {@code token}. The status filter was therefore <b>silently dropped</b>, and the replay
+     * protection the defect register credited to it never existed; the only thing rejecting a
+     * repeated callback was the {@code markAs*} precondition, surfacing as HTTP 500.
+     * <p>
+     * The fix does <b>not</b> simply correct the key to {@code statusName}. Filtering by status in
+     * the query makes an already-processed order <b>indistinguishable from a non-existent one</b> -
+     * both come back as {@code EntityNotFoundException} - which makes idempotency impossible to
+     * implement. The order is resolved by token in whatever state it is in, and the caller then
+     * decides: a status in {@link #ALREADY_RESOLVED_STATUSES} is a replay, anything other than
+     * {@code Payment Started} is rejected by the {@code markAs*} precondition exactly as before.
+     */
     private OrderPojo getSellRequestedWithMatchingToken(String transactionToken) throws EntityNotFoundException {
-        Map<String, String> startedWithTokenMatcher = new HashMap<>(Map.of(
-            "statusCode", ORDER_STATUS_PAYMENT_STARTED,
+        Map<String, String> tokenMatcher = new HashMap<>(Map.of(
             "token", transactionToken));
-        Predicate startedTransactionWithMatchingToken = ordersPredicateService.parseMap(startedWithTokenMatcher);
-        return ordersCrudService.readOne(startedTransactionWithMatchingToken);
+        Predicate transactionWithMatchingToken = ordersPredicateService.parseMap(tokenMatcher);
+        return ordersCrudService.readOne(transactionWithMatchingToken);
+    }
+
+    /**
+     * Register item D4(a): rejects a callback that does not present the order's nonce.
+     * <p>
+     * Compared with {@link java.security.MessageDigest#isEqual} semantics in mind, but a plain
+     * equality check is used: the nonce is a 32-character random value, not a MAC, and there is no
+     * oracle here that a timing attack could exploit - an attacker who can guess the nonce has
+     * already won.
+     *
+     * @throws BadInputException if the order has no nonce recorded, or the presented value differs
+     */
+    private void assertCallbackNonceMatches(String transactionToken, String presentedNonce) throws BadInputException {
+        String expectedNonce = ordersProcessService.findCallbackNonce(transactionToken);
+        if (expectedNonce==null || expectedNonce.isBlank()
+            || presentedNonce==null || !expectedNonce.equals(presentedNonce)) {
+            // Deliberately does not say WHICH check failed, and does not echo either value.
+            logger.warn("Rejected a payment callback presenting an invalid nonce");
+            throw new BadInputException(CALLBACK_NONCE_REJECTED);
+        }
+    }
+
+    /**
+     * Register item D4(a): generates a per-order callback nonce.
+     * <p>
+     * A UUID without separators - 32 hexadecimal characters, 122 bits of randomness from
+     * {@link UUID#randomUUID()}'s cryptographically strong source. It is not a MAC and does not
+     * need to be: it only has to be unguessable and single-use, and it fits the column's 64
+     * characters with room to spare.
+     *
+     * @return a fresh nonce
+     */
+    static String newCallbackNonce() {
+        return UUID.randomUUID().toString().replace("-", "");
     }
 }

@@ -62,6 +62,8 @@ class WebpayplusPaymentServiceImplTest {
     static final String RETURN_URL = "http://localhost";
     static final String SOME_TOKEN = "some-transaction-token";
     static final String SOME_URL = "https://webpay.example/redirect";
+    /** Register item D4: the per-order callback nonce the adapter appends to the return URL. */
+    static final String SOME_NONCE = "0123456789abcdef0123456789abcdef";
     static final String CREATE_FAILURE_MESSAGE = "Webpay could not create a new transaction";
     static final String COMMIT_FAILURE_MESSAGE = "Webpay failed to confirm the transaction";
 
@@ -83,7 +85,7 @@ class WebpayplusPaymentServiceImplTest {
             when(webpayTransactionMock.create(anyString(), anyString(), anyDouble(), anyString()))
                 .thenReturn(response);
 
-            PaymentRedirectionDetailsPojo result = instance.requestNewPaymentPageDetails(input);
+            PaymentRedirectionDetailsPojo result = instance.requestNewPaymentPageDetails(input, SOME_NONCE);
 
             assertNotNull(result);
             assertEquals(SOME_TOKEN, result.getToken());
@@ -106,7 +108,7 @@ class WebpayplusPaymentServiceImplTest {
             when(webpayTransactionMock.create(anyString(), anyString(), anyDouble(), anyString()))
                 .thenReturn(response);
 
-            instance.requestNewPaymentPageDetails(input);
+            instance.requestNewPaymentPageDetails(input, SOME_NONCE);
 
             // Every argument must be a matcher once any of them is - the session id is a fresh
             // UUID per call (register item D9), so it is matched by shape rather than by value.
@@ -115,7 +117,7 @@ class WebpayplusPaymentServiceImplTest {
                 argThat(sessionId ->
                     sessionId != null && sessionId.length() == 32 && !sessionId.contains("-")),
                 eq((double) input.getTotalValue()),
-                eq(RETURN_URL));
+                eq(RETURN_URL + "?nonce=" + SOME_NONCE));
         }
 
         /**
@@ -130,7 +132,7 @@ class WebpayplusPaymentServiceImplTest {
                 .thenThrow(new TransactionCreateException(ANY));
 
             PaymentServiceException result = assertThrows(PaymentServiceException.class,
-                () -> instance.requestNewPaymentPageDetails(input));
+                () -> instance.requestNewPaymentPageDetails(input, SOME_NONCE));
 
             assertEquals(CREATE_FAILURE_MESSAGE, result.getMessage());
         }
@@ -145,7 +147,7 @@ class WebpayplusPaymentServiceImplTest {
                 .thenThrow(new IOException(ANY));
 
             PaymentServiceException result = assertThrows(PaymentServiceException.class,
-                () -> instance.requestNewPaymentPageDetails(input));
+                () -> instance.requestNewPaymentPageDetails(input, SOME_NONCE));
 
             assertEquals(CREATE_FAILURE_MESSAGE, result.getMessage());
         }

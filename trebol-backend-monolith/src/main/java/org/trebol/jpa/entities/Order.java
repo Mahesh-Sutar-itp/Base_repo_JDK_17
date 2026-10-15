@@ -84,6 +84,21 @@ public class Order
     @Size(min = 64, max = 64)
     @Column(name = "order_transaction_token")
     private String transactionToken;
+    /**
+     * Register item D4: the per-order payment-callback nonce.
+     * <p>
+     * Transbank sends no callback signature, so there is nothing to verify cryptographically from
+     * the provider. Instead the callback URL itself is made unguessable and single-purpose: this
+     * value is generated when the order moves to {@code Payment Started}, embedded in the
+     * {@code returnUrl} handed to Webpay, and required on the callback. Only the party we handed the
+     * URL to can call back, which is genuine origin control.
+     * <p>
+     * <b>Nullable and additive.</b> Orders created before this column existed, and orders that never
+     * begin a checkout, simply have no nonce - and a callback for them is rejected, which is the
+     * correct outcome.
+     */
+    @Column(name = "order_callback_nonce")
+    private String callbackNonce;
     @JoinColumn(name = "customer_id")
     @ManyToOne(optional = false, cascade = {CascadeType.PERSIST, CascadeType.REFRESH}, fetch = FetchType.LAZY)
     private Customer customer;

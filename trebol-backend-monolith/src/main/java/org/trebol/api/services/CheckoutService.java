@@ -52,11 +52,17 @@ public interface CheckoutService {
      *
      * @param token      Previously emitted by the payment service
      * @param wasAborted Whether the transaction was aborted by the user doing the payment.
+     * @param callbackNonce Register item D4: the per-order nonce the callback must present. It is
+     *                      generated when the order moves to "Payment Started" and embedded in the
+     *                      returnUrl handed to the payment provider, which sends no signature of
+     *                      its own. A callback whose nonce does not match the resolved order is
+     *                      rejected.
      * @return The "completed/failed" URI for requesting it later on
      * @throws EntityNotFoundException When no transaction matches the provided hash
      * @throws PaymentServiceException On unexpected failures
      */
-    OrderPojo confirmTransaction(String token, boolean wasAborted) throws EntityNotFoundException, PaymentServiceException;
+    OrderPojo confirmTransaction(String token, boolean wasAborted, String callbackNonce)
+        throws EntityNotFoundException, PaymentServiceException, BadInputException;
 
     /**
      * From a given token, generate a corresponding URL to redirect users to view their receipt

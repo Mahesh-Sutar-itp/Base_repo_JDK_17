@@ -62,6 +62,8 @@ import static org.trebol.config.Constants.ORDER_STATUS_REJECTED;
 
 @ExtendWith(MockitoExtension.class)
 class OrdersProcessServiceImplTest {
+    /** Register item D4: the nonce markAsStarted now records alongside the status transition. */
+    static final String SOME_CALLBACK_NONCE = "0123456789abcdef0123456789abcdef";
     @InjectMocks
     OrdersProcessServiceImpl instance;
     @Mock
@@ -99,7 +101,7 @@ class OrdersProcessServiceImplTest {
             // Stubbing
             when(crudServiceMock.getExisting(any(OrderPojo.class))).thenReturn(Optional.of(orderMock));
 
-            assertThrows(BadInputException.class, () -> instance.markAsStarted(orderPojoMock));
+            assertThrows(BadInputException.class, () -> instance.markAsStarted(orderPojoMock, SOME_CALLBACK_NONCE));
         }
 
         @Test
@@ -117,7 +119,7 @@ class OrdersProcessServiceImplTest {
             when(crudServiceMock.getExisting(any(OrderPojo.class))).thenReturn(Optional.of(orderMock)); // fetchExistingOrThrowException
             when(orderStatusesRepositoryMock.findByName(anyString())).thenReturn(Optional.empty());
 
-            assertThrows(IllegalStateException.class, () -> instance.markAsStarted(orderPojoMock));
+            assertThrows(IllegalStateException.class, () -> instance.markAsStarted(orderPojoMock, SOME_CALLBACK_NONCE));
         }
 
         @Test
@@ -136,7 +138,7 @@ class OrdersProcessServiceImplTest {
             when(orderStatusesRepositoryMock.findByName(anyString())).thenReturn(Optional.of(orderStatusMock));
             when(sellConverterServiceMock.convertToPojo(any())).thenReturn(orderPojoMock); // convertOrThrowException
 
-            assertEquals(ORDER_STATUS_PAYMENT_STARTED, instance.markAsStarted(orderPojoMock).getStatus());
+            assertEquals(ORDER_STATUS_PAYMENT_STARTED, instance.markAsStarted(orderPojoMock, SOME_CALLBACK_NONCE).getStatus());
         }
     }
 

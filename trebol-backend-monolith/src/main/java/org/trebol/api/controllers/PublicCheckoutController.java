@@ -56,6 +56,7 @@ import java.util.Map;
 
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static org.springframework.http.HttpStatus.SEE_OTHER;
+import static org.trebol.config.Constants.CHECKOUT_CALLBACK_NONCE_PARAM_NAME;
 import static org.trebol.config.Constants.WEBPAY_ABORTION_TOKEN_HEADER_NAME;
 import static org.trebol.config.Constants.WEBPAY_SUCCESS_TOKEN_HEADER_NAME;
 import static org.trebol.security.authorities.AuthorityCodes.CHECKOUT;
@@ -103,6 +104,18 @@ public class PublicCheckoutController {
 
     /**
      * Validate token sent from WebPay Plus after a succesful transaction
+     * <p>
+     * <b>Register item D4.</b> This mapping, and the aborted-transaction one below it, were fully
+     * anonymous and non-idempotent: {@code SecurityConfig} declares no request-matcher rules at all,
+     * and neither mapping carries a {@code @PreAuthorize}. Transbank sends no callback signature,
+     * so there is nothing to verify cryptographically; instead the callback must now present the
+     * per-order nonce that was embedded in the {@code returnUrl} handed to the provider. A missing
+     * or mismatched nonce is rejected with {@code BadInputException} before any transition is
+     * attempted, and a replayed callback is answered with the same 303 redirect without performing
+     * a second transition.
+     * <p>
+     * These two mappings stay anonymous by design - the provider cannot authenticate - so the nonce
+     * is the access control.
      *
      * @param transactionData The HTTP headers
      * @return A 303 SEE OTHER response
@@ -118,7 +131,8 @@ public class PublicCheckoutController {
             throw new BadInputException("No transaction token was provided");
         }
         String token = transactionData.get(WEBPAY_SUCCESS_TOKEN_HEADER_NAME);
-        OrderPojo orderPojo = service.confirmTransaction(token, false);
+        String callbackNonce = transactionData.get(CHECKOUT_CALLBACK_NONCE_PARAM_NAME);
+        OrderPojo orderPojo = service.confirmTransaction(token, false, callbackNonce);
         if (this.mailingService!=null) {
             mailingService.notifyOrderStatusToClient(orderPojo);
         }
@@ -147,7 +161,8 @@ public class PublicCheckoutController {
             throw new BadInputException("No transaction token was provided");
         }
         String token = transactionData.get(WEBPAY_ABORTION_TOKEN_HEADER_NAME);
-        service.confirmTransaction(token, true);
+        String callbackNonce = transactionData.get(CHECKOUT_CALLBACK_NONCE_PARAM_NAME);
+        service.confirmTransaction(token, true, callbackNonce);
         URI resultPageUrl = service.generateResultPageUrl(token);
         return ResponseEntity
             .status(SEE_OTHER)

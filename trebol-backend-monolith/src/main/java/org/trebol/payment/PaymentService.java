@@ -34,7 +34,7 @@ public interface PaymentService {
      * @return The information with which to proceed to a payment page.
      * @throws PaymentServiceException If the payment service is caught under unexpected circumstances.
      */
-    PaymentRedirectionDetailsPojo requestNewPaymentPageDetails(OrderPojo transaction) throws PaymentServiceException;
+    PaymentRedirectionDetailsPojo requestNewPaymentPageDetails(OrderPojo transaction, String callbackNonce) throws PaymentServiceException;
 
     /**
      * Request the external payment service to report the status of the transaction matching a given token.

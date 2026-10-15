@@ -36,6 +36,8 @@ import org.trebol.payment.PaymentServiceException;
 import java.io.IOException;
 import java.util.UUID;
 
+import static org.trebol.config.Constants.CHECKOUT_CALLBACK_NONCE_PARAM_NAME;
+
 /**
  * Implements Webpay Plus as a payment gateway, using their official SDK.<br/>
  * Usage of Webpay Plus requires an affiliation to Transbank.
@@ -59,12 +61,26 @@ public class WebpayplusPaymentServiceImpl
         this.transactionFactory = transactionFactory;
     }
 
+    /**
+     * Asks Webpay for a payment page and the token that identifies the attempt.
+     * <p>
+     * <b>Register item D4 added the {@code callbackNonce} parameter.</b> It is appended to the
+     * configured callback URL, so the URL handed to the provider is unguessable and single-purpose.
+     * The provider sends no callback signature, so this is the only origin control available: only
+     * the party we handed this URL to can produce a callback that passes verification.
+     * <p>
+     * The nonce is appended with {@code ?} or {@code &} depending on whether the configured URL
+     * already carries a query string, so an operator's existing configuration keeps working either
+     * way.
+     *
+     * @param callbackNonce the per-order nonce that the callback must present
+     */
     @Override
-    public PaymentRedirectionDetailsPojo requestNewPaymentPageDetails(OrderPojo transaction) throws PaymentServiceException {
+    public PaymentRedirectionDetailsPojo requestNewPaymentPageDetails(OrderPojo transaction, String callbackNonce) throws PaymentServiceException {
         String buyOrder = transaction.getBuyOrder().toString();
         String sessionId = newSessionId();
         double amount = transaction.getTotalValue();
-        String returnUrl = properties.getCallbackUrl();
+        String returnUrl = appendCallbackNonce(properties.getCallbackUrl(), callbackNonce);
 
         WebpayPlus.Transaction webpayTransaction = transactionFactory.newTransaction();
 
@@ -130,6 +146,25 @@ public class WebpayplusPaymentServiceImpl
      */
     static String newSessionId() {
         return UUID.randomUUID().toString().replace("-", "");
+    }
+
+    /**
+     * Register item D4: appends the callback nonce to the configured return URL.
+     * <p>
+     * A blank nonce leaves the URL untouched, so a caller that has none cannot silently produce a
+     * URL carrying an empty parameter - the callback would then be rejected by the verification
+     * step, which is the correct outcome.
+     *
+     * @param callbackUrl the configured callback URL, with or without an existing query string
+     * @param nonce       the per-order nonce
+     * @return the URL the provider should return the customer to
+     */
+    static String appendCallbackNonce(String callbackUrl, String nonce) {
+        if (callbackUrl==null || nonce==null || nonce.isBlank()) {
+            return callbackUrl;
+        }
+        String separator = callbackUrl.contains("?") ? "&":"?";
+        return callbackUrl + separator + CHECKOUT_CALLBACK_NONCE_PARAM_NAME + "=" + nonce;
     }
 
 }

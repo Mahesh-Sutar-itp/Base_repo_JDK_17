@@ -46,12 +46,17 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
-import static org.trebol.config.Constants.ORDER_STATUS_PAYMENT_STARTED;
+import static org.trebol.config.Constants.ORDER_STATUS_PAID_UNCONFIRMED;
 import static org.trebol.testing.OrdersTestHelper.ORDER_TRANSACTION_TOKEN;
 import static org.trebol.testing.TestConstants.ANY;
 import static org.trebol.testing.TestConstants.ONE;
@@ -69,10 +74,16 @@ class CheckoutServiceImplTest {
     final OrdersTestHelper salesHelper = new OrdersTestHelper();
     static final String PAYMENT_URL = "https://example.com/pay";
     static final Predicate MATCHER_PREDICATE = new BooleanBuilder();
+    /** Register item D4: the per-order callback nonce a valid callback must present. */
+    static final String SOME_CALLBACK_NONCE = "0123456789abcdef0123456789abcdef";
 
     @BeforeEach
     void beforeEach() {
         salesHelper.resetOrders();
+        // Register item D4: every callback is now nonce-checked, so the happy path needs the
+        // recorded nonce to match. lenient() because several tests fail before reaching the check.
+        lenient().when(ordersProcessServiceMock.findCallbackNonce(anyString()))
+            .thenReturn(SOME_CALLBACK_NONCE);
     }
 
     @Test
@@ -82,12 +93,12 @@ class CheckoutServiceImplTest {
             .url(PAYMENT_URL)
             .token(ORDER_TRANSACTION_TOKEN)
             .build();
-        when(paymentServiceMock.requestNewPaymentPageDetails(salesHelper.orderPojoAfterCreation())).thenReturn(payload);
+        when(paymentServiceMock.requestNewPaymentPageDetails(eq(salesHelper.orderPojoAfterCreation()), anyString())).thenReturn(payload);
 
         PaymentRedirectionDetailsPojo result = service.requestTransactionStart(salesHelper.orderPojoAfterCreation());
 
-        verify(paymentServiceMock).requestNewPaymentPageDetails(salesHelper.orderPojoAfterCreation());
-        verify(ordersProcessServiceMock).markAsStarted(salesHelper.orderPojoAfterCreation());
+        verify(paymentServiceMock).requestNewPaymentPageDetails(eq(salesHelper.orderPojoAfterCreation()), anyString());
+        verify(ordersProcessServiceMock).markAsStarted(eq(salesHelper.orderPojoAfterCreation()), anyString());
         assertEquals(PAYMENT_URL, result.getUrl());
         assertEquals(ORDER_TRANSACTION_TOKEN, result.getToken());
     }
@@ -95,15 +106,17 @@ class CheckoutServiceImplTest {
     @Test
     void acknowledges_successful_transaction()
         throws PaymentServiceException, EntityNotFoundException, BadInputException {
+        // Register item D4(c): the lookup is by token alone now. It always WAS, in effect - the
+        // "statusCode" key these tests used to pass is not recognised by OrdersPredicateServiceImpl,
+        // so the status filter was silently dropped. The map now says what the code actually does.
         Map<String, String> matcherMap = Map.of(
-            "statusCode", ORDER_STATUS_PAYMENT_STARTED,
             "token", ORDER_TRANSACTION_TOKEN);
         when(ordersPredicateServiceMock.parseMap(matcherMap)).thenReturn(MATCHER_PREDICATE);
         when(ordersCrudServiceMock.readOne(MATCHER_PREDICATE)).thenReturn(salesHelper.orderPojoAfterCreation());
         when(paymentServiceMock.requestPaymentResult(ORDER_TRANSACTION_TOKEN)).thenReturn(0);
         when(ordersProcessServiceMock.markAsPaid(salesHelper.orderPojoAfterCreation())).thenReturn(null);
 
-        OrderPojo result = service.confirmTransaction(ORDER_TRANSACTION_TOKEN, false);
+        OrderPojo result = service.confirmTransaction(ORDER_TRANSACTION_TOKEN, false, SOME_CALLBACK_NONCE);
 
         verify(ordersPredicateServiceMock).parseMap(matcherMap);
         verify(ordersCrudServiceMock).readOne(MATCHER_PREDICATE);
@@ -116,15 +129,17 @@ class CheckoutServiceImplTest {
     @Test
     void acknowledges_successful_transaction_payment_integration_returns_1()
         throws PaymentServiceException, EntityNotFoundException, BadInputException {
+        // Register item D4(c): the lookup is by token alone now. It always WAS, in effect - the
+        // "statusCode" key these tests used to pass is not recognised by OrdersPredicateServiceImpl,
+        // so the status filter was silently dropped. The map now says what the code actually does.
         Map<String, String> matcherMap = Map.of(
-            "statusCode", ORDER_STATUS_PAYMENT_STARTED,
             "token", ORDER_TRANSACTION_TOKEN);
         when(ordersPredicateServiceMock.parseMap(matcherMap)).thenReturn(MATCHER_PREDICATE);
         when(ordersCrudServiceMock.readOne(MATCHER_PREDICATE)).thenReturn(salesHelper.orderPojoAfterCreation());
         when(paymentServiceMock.requestPaymentResult(ORDER_TRANSACTION_TOKEN)).thenReturn(1);
         when(ordersProcessServiceMock.markAsFailed(salesHelper.orderPojoAfterCreation())).thenReturn(null);
 
-        OrderPojo result = service.confirmTransaction(ORDER_TRANSACTION_TOKEN, false);
+        OrderPojo result = service.confirmTransaction(ORDER_TRANSACTION_TOKEN, false, SOME_CALLBACK_NONCE);
 
         verify(ordersPredicateServiceMock).parseMap(matcherMap);
         verify(ordersCrudServiceMock).readOne(MATCHER_PREDICATE);
@@ -153,8 +168,10 @@ class CheckoutServiceImplTest {
     @Test
     void infrastructure_failure_does_not_mark_the_order_as_failed()
         throws PaymentServiceException, EntityNotFoundException, BadInputException {
+        // Register item D4(c): the lookup is by token alone now. It always WAS, in effect - the
+        // "statusCode" key these tests used to pass is not recognised by OrdersPredicateServiceImpl,
+        // so the status filter was silently dropped. The map now says what the code actually does.
         Map<String, String> matcherMap = Map.of(
-            "statusCode", ORDER_STATUS_PAYMENT_STARTED,
             "token", ORDER_TRANSACTION_TOKEN);
         when(ordersPredicateServiceMock.parseMap(matcherMap)).thenReturn(MATCHER_PREDICATE);
         when(ordersCrudServiceMock.readOne(MATCHER_PREDICATE)).thenReturn(salesHelper.orderPojoAfterCreation());
@@ -162,26 +179,32 @@ class CheckoutServiceImplTest {
             .thenThrow(new PaymentServiceException("Webpay failed to confirm the transaction"));
 
         PaymentServiceException result = assertThrows(PaymentServiceException.class,
-            () -> service.confirmTransaction(ORDER_TRANSACTION_TOKEN, false));
+            () -> service.confirmTransaction(ORDER_TRANSACTION_TOKEN, false, SOME_CALLBACK_NONCE));
 
         assertEquals("Webpay failed to confirm the transaction", result.getMessage());
         verify(paymentServiceMock, times(ONE)).requestPaymentResult(ORDER_TRANSACTION_TOKEN);
-        verifyNoInteractions(ordersProcessServiceMock);
+        // Not verifyNoInteractions: register item D4 added a findCallbackNonce lookup that runs
+        // before any transition. What matters for D3 is that NO TRANSITION was attempted.
+        verify(ordersProcessServiceMock, never()).markAsPaid(any());
+        verify(ordersProcessServiceMock, never()).markAsFailed(any());
+        verify(ordersProcessServiceMock, never()).markAsAborted(any());
     }
 
     @DisplayName("Confirm transaction when status code is not equal to zero call mark as failed throws BadInputException")
     @Test
     void acknowledges_successful_transaction_payment_integration_returns_1_mark_as_failed_throws_bad_input_exception()
         throws PaymentServiceException, EntityNotFoundException, BadInputException {
+        // Register item D4(c): the lookup is by token alone now. It always WAS, in effect - the
+        // "statusCode" key these tests used to pass is not recognised by OrdersPredicateServiceImpl,
+        // so the status filter was silently dropped. The map now says what the code actually does.
         Map<String, String> matcherMap = Map.of(
-            "statusCode", ORDER_STATUS_PAYMENT_STARTED,
             "token", ORDER_TRANSACTION_TOKEN);
         when(ordersPredicateServiceMock.parseMap(matcherMap)).thenReturn(MATCHER_PREDICATE);
         when(ordersCrudServiceMock.readOne(MATCHER_PREDICATE)).thenReturn(salesHelper.orderPojoAfterCreation());
         when(paymentServiceMock.requestPaymentResult(ORDER_TRANSACTION_TOKEN)).thenReturn(1);
         when(ordersProcessServiceMock.markAsFailed(salesHelper.orderPojoAfterCreation())).thenThrow(BadInputException.class);
 
-        assertThrows(IllegalStateException.class, () -> service.confirmTransaction(ORDER_TRANSACTION_TOKEN, false));
+        assertThrows(IllegalStateException.class, () -> service.confirmTransaction(ORDER_TRANSACTION_TOKEN, false, SOME_CALLBACK_NONCE));
 
         verify(ordersPredicateServiceMock, times(ONE)).parseMap(matcherMap);
         verify(ordersCrudServiceMock, times(ONE)).readOne(MATCHER_PREDICATE);
@@ -192,14 +215,16 @@ class CheckoutServiceImplTest {
     @Test
     void acknowledges_aborted_transaction()
         throws PaymentServiceException, EntityNotFoundException, BadInputException {
+        // Register item D4(c): the lookup is by token alone now. It always WAS, in effect - the
+        // "statusCode" key these tests used to pass is not recognised by OrdersPredicateServiceImpl,
+        // so the status filter was silently dropped. The map now says what the code actually does.
         Map<String, String> matcherMap = Map.of(
-            "statusCode", ORDER_STATUS_PAYMENT_STARTED,
             "token", ORDER_TRANSACTION_TOKEN);
         when(ordersPredicateServiceMock.parseMap(matcherMap)).thenReturn(MATCHER_PREDICATE);
         when(ordersCrudServiceMock.readOne(MATCHER_PREDICATE)).thenReturn(salesHelper.orderPojoAfterCreation());
         when(ordersProcessServiceMock.markAsAborted(salesHelper.orderPojoAfterCreation())).thenReturn(null);
 
-        OrderPojo result = service.confirmTransaction(ORDER_TRANSACTION_TOKEN, true);
+        OrderPojo result = service.confirmTransaction(ORDER_TRANSACTION_TOKEN, true, SOME_CALLBACK_NONCE);
 
         verify(ordersPredicateServiceMock, times(ONE)).parseMap(matcherMap);
         verify(ordersCrudServiceMock, times(ONE)).readOne(MATCHER_PREDICATE);
@@ -210,15 +235,17 @@ class CheckoutServiceImplTest {
     @DisplayName("Confirm Transaction when mark as aborted catch BadInputException throw IllegalArgumentException")
     @Test
     void acknowledges_aborted_transaction_illegal_bad_input_exception() throws EntityNotFoundException, BadInputException {
+        // Register item D4(c): the lookup is by token alone now. It always WAS, in effect - the
+        // "statusCode" key these tests used to pass is not recognised by OrdersPredicateServiceImpl,
+        // so the status filter was silently dropped. The map now says what the code actually does.
         Map<String, String> matcherMap = Map.of(
-            "statusCode", ORDER_STATUS_PAYMENT_STARTED,
             "token", ORDER_TRANSACTION_TOKEN);
         when(ordersPredicateServiceMock.parseMap(matcherMap)).thenReturn(MATCHER_PREDICATE);
         when(ordersCrudServiceMock.readOne(MATCHER_PREDICATE)).thenReturn(salesHelper.orderPojoAfterCreation());
         when(ordersProcessServiceMock.markAsAborted(salesHelper.orderPojoAfterCreation())).thenThrow(BadInputException.class);
 
         assertThrows(IllegalStateException.class,
-            () -> service.confirmTransaction(ORDER_TRANSACTION_TOKEN, true), "Transaction could not be confirmed");
+            () -> service.confirmTransaction(ORDER_TRANSACTION_TOKEN, true, SOME_CALLBACK_NONCE), "Transaction could not be confirmed");
 
         verify(ordersPredicateServiceMock, times(ONE)).parseMap(matcherMap);
         verify(ordersCrudServiceMock, times(ONE)).readOne(MATCHER_PREDICATE);
@@ -233,26 +260,28 @@ class CheckoutServiceImplTest {
             .token(ORDER_TRANSACTION_TOKEN)
             .build();
         String exceptionMessage = "No match";
-        when(paymentServiceMock.requestNewPaymentPageDetails(salesHelper.orderPojoAfterCreation())).thenReturn(payload);
+        when(paymentServiceMock.requestNewPaymentPageDetails(eq(salesHelper.orderPojoAfterCreation()), anyString())).thenReturn(payload);
         doThrow(new EntityNotFoundException(exceptionMessage)).
-            when(ordersProcessServiceMock).markAsStarted(salesHelper.orderPojoAfterCreation());
+            when(ordersProcessServiceMock).markAsStarted(eq(salesHelper.orderPojoAfterCreation()), anyString());
 
         PaymentRedirectionDetailsPojo result = null;
         try {
             result = service.requestTransactionStart(salesHelper.orderPojoAfterCreation());
         } catch (Exception ex) {
-            verify(paymentServiceMock).requestNewPaymentPageDetails(salesHelper.orderPojoAfterCreation());
+            verify(paymentServiceMock).requestNewPaymentPageDetails(eq(salesHelper.orderPojoAfterCreation()), anyString());
         }
 
         assertNull(result);
-        verify(ordersProcessServiceMock).markAsStarted(salesHelper.orderPojoAfterCreation());
+        verify(ordersProcessServiceMock).markAsStarted(eq(salesHelper.orderPojoAfterCreation()), anyString());
     }
 
     @Test
     void throws_exceptions_at_invalid_transactions_before_confirming()
-        throws PaymentServiceException, EntityNotFoundException {
+        throws PaymentServiceException, EntityNotFoundException, BadInputException {
+        // Register item D4(c): the lookup is by token alone now. It always WAS, in effect - the
+        // "statusCode" key these tests used to pass is not recognised by OrdersPredicateServiceImpl,
+        // so the status filter was silently dropped. The map now says what the code actually does.
         Map<String, String> matcherMap = Map.of(
-            "statusCode", ORDER_STATUS_PAYMENT_STARTED,
             "token", ORDER_TRANSACTION_TOKEN);
         String exceptionMessage = "No match";
         when(ordersPredicateServiceMock.parseMap(matcherMap)).thenReturn(MATCHER_PREDICATE);
@@ -260,12 +289,104 @@ class CheckoutServiceImplTest {
 
         OrderPojo result = null;
         try {
-            result = service.confirmTransaction(ORDER_TRANSACTION_TOKEN, true);
+            result = service.confirmTransaction(ORDER_TRANSACTION_TOKEN, true, SOME_CALLBACK_NONCE);
         } catch (EntityNotFoundException e) {
             assertEquals(exceptionMessage, e.getMessage());
         }
 
         assertNull(result);
+    }
+
+    /**
+     * Register item <b>D4(a)</b>, and the evidence for exit criterion <b>X9</b>: the callback is
+     * authenticated.
+     * <p>
+     * Transbank sends no signature, so there is nothing to verify cryptographically. The control is
+     * that the callback must present the per-order nonce that was embedded in the {@code returnUrl}
+     * handed to the provider - a value a third party never saw. Both these mappings are, and remain,
+     * fully anonymous; the nonce <em>is</em> the access control.
+     */
+    @DisplayName("D4: a callback presenting no nonce is rejected before any transition")
+    @Test
+    void rejects_a_callback_with_no_nonce() throws Exception {
+        Map<String, String> matcherMap = Map.of("token", ORDER_TRANSACTION_TOKEN);
+        when(ordersPredicateServiceMock.parseMap(matcherMap)).thenReturn(MATCHER_PREDICATE);
+        when(ordersCrudServiceMock.readOne(MATCHER_PREDICATE)).thenReturn(salesHelper.orderPojoAfterCreation());
+
+        BadInputException result = assertThrows(BadInputException.class,
+            () -> service.confirmTransaction(ORDER_TRANSACTION_TOKEN, false, null));
+
+        assertEquals("The transaction callback could not be authenticated", result.getMessage());
+        verify(ordersProcessServiceMock, times(ONE)).findCallbackNonce(ORDER_TRANSACTION_TOKEN);
+        verify(ordersProcessServiceMock, never()).markAsPaid(any());
+        verify(ordersProcessServiceMock, never()).markAsFailed(any());
+        verify(ordersProcessServiceMock, never()).markAsAborted(any());
+        verifyNoInteractions(paymentServiceMock);
+    }
+
+    /** Register item D4(a): a guessed or stale nonce is no better than none. */
+    @DisplayName("D4: a callback presenting the wrong nonce is rejected before any transition")
+    @Test
+    void rejects_a_callback_with_the_wrong_nonce() throws Exception {
+        Map<String, String> matcherMap = Map.of("token", ORDER_TRANSACTION_TOKEN);
+        when(ordersPredicateServiceMock.parseMap(matcherMap)).thenReturn(MATCHER_PREDICATE);
+        when(ordersCrudServiceMock.readOne(MATCHER_PREDICATE)).thenReturn(salesHelper.orderPojoAfterCreation());
+
+        BadInputException result = assertThrows(BadInputException.class,
+            () -> service.confirmTransaction(ORDER_TRANSACTION_TOKEN, false, "not-the-right-nonce"));
+
+        assertEquals("The transaction callback could not be authenticated", result.getMessage());
+        verify(ordersProcessServiceMock, never()).markAsPaid(any());
+        verifyNoInteractions(paymentServiceMock);
+    }
+
+    /**
+     * Register item <b>D4(a)</b>: an order with no nonce recorded cannot be confirmed by callback.
+     * <p>
+     * This covers orders that predate the column and orders that never began a checkout. Rejecting
+     * them is the correct outcome - the alternative would be a bypass in which a null expected value
+     * matches a null presented value.
+     */
+    @DisplayName("D4: an order with no recorded nonce cannot be confirmed by callback")
+    @Test
+    void rejects_a_callback_for_an_order_with_no_recorded_nonce() throws Exception {
+        Map<String, String> matcherMap = Map.of("token", ORDER_TRANSACTION_TOKEN);
+        when(ordersPredicateServiceMock.parseMap(matcherMap)).thenReturn(MATCHER_PREDICATE);
+        when(ordersCrudServiceMock.readOne(MATCHER_PREDICATE)).thenReturn(salesHelper.orderPojoAfterCreation());
+        when(ordersProcessServiceMock.findCallbackNonce(anyString())).thenReturn(null);
+
+        assertThrows(BadInputException.class,
+            () -> service.confirmTransaction(ORDER_TRANSACTION_TOKEN, false, null));
+
+        verify(ordersProcessServiceMock, never()).markAsPaid(any());
+    }
+
+    /**
+     * Register item <b>D4(b)</b>, the second half of the X9 evidence: the callback is idempotent.
+     * <p>
+     * Payment providers re-send callbacks. Previously a duplicate reached the {@code markAs*}
+     * precondition, which raised {@code BadInputException}; this service converted that into
+     * {@code IllegalStateException} and the caller saw <b>HTTP 500</b> for what is a normal event.
+     * <p>
+     * A replay is now a no-op: the order is returned unchanged, so the controller issues the same
+     * 303 redirect as the first time, and <b>no second transition is attempted</b>.
+     */
+    @DisplayName("D4: a replayed callback performs no second transition and returns the order unchanged")
+    @Test
+    void a_replayed_callback_is_a_no_op() throws Exception {
+        OrderPojo alreadyPaid = salesHelper.orderPojoAfterCreation();
+        alreadyPaid.setStatus(ORDER_STATUS_PAID_UNCONFIRMED);
+        Map<String, String> matcherMap = Map.of("token", ORDER_TRANSACTION_TOKEN);
+        when(ordersPredicateServiceMock.parseMap(matcherMap)).thenReturn(MATCHER_PREDICATE);
+        when(ordersCrudServiceMock.readOne(MATCHER_PREDICATE)).thenReturn(alreadyPaid);
+
+        OrderPojo result = service.confirmTransaction(ORDER_TRANSACTION_TOKEN, false, SOME_CALLBACK_NONCE);
+
+        assertEquals(ORDER_STATUS_PAID_UNCONFIRMED, result.getStatus());
+        verify(ordersProcessServiceMock, never()).markAsPaid(any());
+        verify(ordersProcessServiceMock, never()).markAsFailed(any());
+        // The provider is not consulted a second time either - no double commit.
+        verifyNoInteractions(paymentServiceMock);
     }
 
     @DisplayName("Generate result page proper url to URI")

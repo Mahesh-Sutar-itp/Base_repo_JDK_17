@@ -264,6 +264,10 @@ CREATE TABLE `orders` (
   `order_total_items` int(11) NOT NULL,
   `order_total_value` int(11) NOT NULL,
   `order_transaction_token` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  -- Register item D4: per-order payment-callback nonce. Additive and nullable; no existing
+  -- column is touched. Generated at Payment Started, embedded in the returnUrl handed to
+  -- Webpay, and required on the callback.
+  `order_callback_nonce` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `order_transport_value` int(11) NOT NULL,
   `billing_address_id` bigint(20) DEFAULT NULL,
   `billing_company_id` bigint(20) DEFAULT NULL,
