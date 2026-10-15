@@ -35,6 +35,8 @@ import org.trebol.jpa.repositories.OrderDetailsRepository;
 import org.trebol.jpa.repositories.OrderStatusesRepository;
 import org.trebol.jpa.services.conversion.ProductsConverterService;
 import org.trebol.jpa.services.OrderStatusTransitions;
+import org.trebol.mailing.outbox.MailOutboxService;
+import org.trebol.mailing.outbox.MailRecipientKind;
 import org.trebol.jpa.services.conversion.OrdersConverterService;
 import org.trebol.jpa.services.crud.OrdersCrudService;
 
@@ -65,6 +67,7 @@ public class OrdersProcessServiceImpl
     private final OrderStatusesRepository orderStatusesRepository;
     private final OrdersConverterService converterService;
     private final ProductsConverterService productConverterService;
+    private final MailOutboxService mailOutboxService;
 
     public OrdersProcessServiceImpl(
         OrdersCrudService crudService,
@@ -72,7 +75,8 @@ public class OrdersProcessServiceImpl
         OrderDetailsRepository orderDetailsRepository,
         OrderStatusesRepository orderStatusesRepository,
         OrdersConverterService converterService,
-        ProductsConverterService productConverterService
+        ProductsConverterService productConverterService,
+        MailOutboxService mailOutboxService
     ) {
         this.crudService = crudService;
         this.ordersRepository = ordersRepository;
@@ -80,6 +84,7 @@ public class OrdersProcessServiceImpl
         this.orderStatusesRepository = orderStatusesRepository;
         this.converterService = converterService;
         this.productConverterService = productConverterService;
+        this.mailOutboxService = mailOutboxService;
     }
 
     // TODO figure out how to shorten below methods
@@ -166,6 +171,11 @@ public class OrdersProcessServiceImpl
 
         OrderPojo target = this.convertOrThrowException(existingOrder);
         target.setStatus(ORDER_STATUS_PAYMENT_FAILED);
+        // Register item D11: recorded in THIS transaction, alongside the transition the
+        // notification is about. The controllers used to send mail after this method had
+        // already committed, so a mail failure surfaced as an error with the status
+        // changed and the notification lost.
+        mailOutboxService.enqueue(target, MailRecipientKind.CUSTOMER);
         return target;
     }
 
@@ -198,6 +208,11 @@ public class OrdersProcessServiceImpl
         target.setStatus(ORDER_STATUS_PAID_UNCONFIRMED);
         target.setDetails(pojoDetails);
 
+        // Register item D11: recorded in THIS transaction, alongside the transition the
+        // notification is about. The controllers used to send mail after this method had
+        // already committed, so a mail failure surfaced as an error with the status
+        // changed and the notification lost.
+        mailOutboxService.enqueue(target, MailRecipientKind.CUSTOMER);
         return target;
     }
 
@@ -232,6 +247,12 @@ public class OrdersProcessServiceImpl
         target.setStatus(ORDER_STATUS_PAID_CONFIRMED);
 
 
+        // Register item D11: recorded in THIS transaction, alongside the transition the
+        // notification is about. The controllers used to send mail after this method had
+        // already committed, so a mail failure surfaced as an error with the status
+        // changed and the notification lost.
+        mailOutboxService.enqueue(target, MailRecipientKind.CUSTOMER);
+        mailOutboxService.enqueue(target, MailRecipientKind.OWNERS);
         return target;
     }
 
@@ -265,6 +286,11 @@ public class OrdersProcessServiceImpl
         target.setDetails(pojoDetails);
         target.setStatus(ORDER_STATUS_REJECTED);
 
+        // Register item D11: recorded in THIS transaction, alongside the transition the
+        // notification is about. The controllers used to send mail after this method had
+        // already committed, so a mail failure surfaced as an error with the status
+        // changed and the notification lost.
+        mailOutboxService.enqueue(target, MailRecipientKind.CUSTOMER);
         return target;
     }
 
@@ -298,6 +324,11 @@ public class OrdersProcessServiceImpl
         target.setDetails(pojoDetails);
         target.setStatus(ORDER_STATUS_COMPLETED);
 
+        // Register item D11: recorded in THIS transaction, alongside the transition the
+        // notification is about. The controllers used to send mail after this method had
+        // already committed, so a mail failure surfaced as an error with the status
+        // changed and the notification lost.
+        mailOutboxService.enqueue(target, MailRecipientKind.CUSTOMER);
         return target;
     }
 

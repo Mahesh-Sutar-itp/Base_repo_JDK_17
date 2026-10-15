@@ -161,11 +161,11 @@ public class DataOrdersController
     @PreAuthorize("hasAuthority('" + ORDERS_UPDATE + "')")
     public void confirmSell(@RequestBody OrderPojo sell)
         throws BadInputException, MailingServiceException {
-        OrderPojo updatedSell = processService.markAsConfirmed(sell);
-        if (this.mailingService!=null) {
-            mailingService.notifyOrderStatusToClient(updatedSell);
-            mailingService.notifyOrderStatusToOwners(updatedSell);
-        }
+        processService.markAsConfirmed(sell);
+        // Register item D11: the mail send that used to sit here has moved into the
+        // transition's own transaction, as an outbox entry - see MailOutboxService.
+        // A mail failure can no longer fail a request whose transition already
+        // committed, nor be lost without trace when it does fail.
     }
 
     @PostMapping("/rejection")
@@ -173,10 +173,11 @@ public class DataOrdersController
     @PreAuthorize("hasAuthority('" + ORDERS_UPDATE + "')")
     public void rejectSell(@RequestBody OrderPojo sell)
         throws BadInputException, MailingServiceException {
-        OrderPojo updatedSell = processService.markAsRejected(sell);
-        if (this.mailingService!=null) {
-            mailingService.notifyOrderStatusToClient(updatedSell);
-        }
+        processService.markAsRejected(sell);
+        // Register item D11: the mail send that used to sit here has moved into the
+        // transition's own transaction, as an outbox entry - see MailOutboxService.
+        // A mail failure can no longer fail a request whose transition already
+        // committed, nor be lost without trace when it does fail.
     }
 
     @PostMapping("/completion")
@@ -184,10 +185,11 @@ public class DataOrdersController
     @PreAuthorize("hasAuthority('" + ORDERS_UPDATE + "')")
     public void completeSell(@RequestBody OrderPojo sell)
         throws BadInputException, MailingServiceException {
-        OrderPojo updatedSell = processService.markAsCompleted(sell);
-        if (this.mailingService!=null) {
-            mailingService.notifyOrderStatusToClient(updatedSell);
-        }
+        processService.markAsCompleted(sell);
+        // Register item D11: the mail send that used to sit here has moved into the
+        // transition's own transaction, as an outbox entry - see MailOutboxService.
+        // A mail failure can no longer fail a request whose transition already
+        // committed, nor be lost without trace when it does fail.
     }
 
     @Override

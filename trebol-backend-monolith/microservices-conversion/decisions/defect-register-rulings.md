@@ -16,7 +16,7 @@ rather than folded quietly into an existing fix.
 |---|---|
 | **FIX — before extraction (Phase 0)** | D1, D2, D6, D7, D9, D14, D17 |
 | **FIX — at the owning phase** | D3, D4, D5, D11 (Phase 3), D18 (before Phase 3), D20 (Phase 1, first extraction), transactional registration (Phase 2) |
-| **PRESERVE** | D8, D16, D19 (scope), D23, D24, D25, D26, D27, the two D14 remainders, and BR-USER-032/033 route-discovery substring matching |
+| **PRESERVE** | D8, D16, D19 (scope), D23, D24, D25, D26, D27, D28, the two D14 remainders, and BR-USER-032/033 route-discovery substring matching |
 | **PRESERVE with recorded limitation / deferred** | D10, D12, D13, D15, D21 (inherited CVE, mitigation verified), D22 |
 
 ### Intentional observable-behaviour changes landing in Phase 0
@@ -993,3 +993,102 @@ inside an extraction phase is what G1 guards against.
 rejected like the status, or made genuinely updatable. Either is a behavioural change needing
 its own ruling. The probe test pins the current mapping either way, so the decision cannot be
 made accidentally.
+
+### D11 — FIXED. Mail is now behind a transactional outbox.
+**Ruling as recorded: FIX via a transactional outbox, with a recorded fallback if descoped.
+IMPLEMENTED in full in Phase 3, step 3.5 - the fallback was not needed.**
+
+**The defect.** Mail was sent **after** the status transition had committed, synchronously,
+from a **non-transactional controller method**, at four call sites
+(`PublicCheckoutController.validateSuccesfulTransaction`, and `DataOrdersController`'s
+`confirmSell` / `rejectSell` / `completeSell`). A `MailingServiceException` at that point
+produced the worst of both outcomes:
+
+> the caller saw an **error**, the order's status was **already changed**, and the
+> notification was **lost with nothing recording that it had been owed**.
+
+**This is the only genuinely new infrastructure in the programme.** No broker, queue,
+stream, retry or outbox existed anywhere in the codebase - ADR-003 accepted that it would
+have to be built from nothing. What is added is the minimum that actually fixes the defect.
+
+| Added | Role |
+|---|---|
+| `jpa/entities/OrderMailOutboxEntry` + table `order_mail_outbox` | one row per owed notification |
+| `jpa/repositories/OrderMailOutboxRepository` | one paged query, `findPending` |
+| `mailing/outbox/MailRecipientKind` | `CUSTOMER` or `OWNERS` |
+| `mailing/outbox/MailOutboxService` + impl | records an entry, **inside the caller's transaction** |
+| `mailing/outbox/MailOutboxDispatcher` | `@Scheduled` drain with bounded retry |
+| `config/SchedulingConfig` | `@EnableScheduling` - this application had **no scheduled work of any kind** before now |
+
+#### Where the enqueue happens, and why it matters
+
+**The entry is written inside `OrdersProcessServiceImpl`, not in the controllers.** That is
+the whole point of an outbox: `OrdersProcessServiceImpl` is `@Transactional`, so the entry
+and the status transition commit or roll back **together**. Writing it from a controller -
+which is *not* transactional - would have produced a post-commit queue with exactly D11's
+original failure mode, just moved.
+
+`MailOutboxServiceImpl.enqueue` is annotated
+**`@Transactional(propagation = MANDATORY)`** to enforce that structurally: a caller that
+invokes it outside a transaction gets `IllegalTransactionStateException` immediately, rather
+than silently starting a second transaction.
+
+The recipient mapping reproduces exactly what the four call sites did:
+
+| Transition | Notifications | Matches the former call site |
+|---|---|---|
+| `markAsPaid` | CUSTOMER | `PublicCheckoutController` (GET `/validate`) |
+| `markAsFailed` | CUSTOMER | same controller, decline path |
+| `markAsConfirmed` | CUSTOMER **and** OWNERS | `DataOrdersController.confirmSell` |
+| `markAsRejected` | CUSTOMER | `DataOrdersController.rejectSell` |
+| `markAsCompleted` | CUSTOMER | `DataOrdersController.completeSell` |
+| `markAsStarted`, `markAsAborted` | none | neither ever mailed - POST `/validate` sends nothing |
+
+#### Properties preserved deliberately
+
+- **The `MailingService` contract is untouched**, so Mailgun behaviour, templates, subjects
+  and both verbatim exception messages are unaffected by D11.
+- **The silent-skip semantics survive.** Only four customer statuses and three owner
+  statuses have templates; any other produces no mail and no error. That rule stays in the
+  adapter and is not re-implemented - the dispatcher treats "nothing to send" as success,
+  exactly as the synchronous sites did.
+- **`@Nullable @Autowired(required = false) MailingService` is preserved.** With no mailing
+  profile active, **nothing is recorded and nothing fails** - and, importantly, no entries
+  accumulate that nothing would ever drain.
+- **The status is stored on the entry, not re-read at dispatch time.** The mail must describe
+  the status the order was in *when the transition happened*; by the time the dispatcher
+  runs, the order may have moved on, and the current status would be the wrong answer.
+
+#### One trap worth recording
+
+`dispatchOne` is deliberately **not** annotated `@Transactional`. It is invoked from
+`dispatchPending` on `this`, so Spring's proxy would never intercept it and the annotation
+would be a **decorative guarantee that does not exist** - a mistake that is easy to make and
+hard to notice. None is needed: `save` commits on its own, and per-entry isolation is exactly
+what is wanted, so one unreachable recipient cannot roll back the successful sends beside it.
+A comment on the method says so, so it is not "helpfully" added later.
+
+#### Tests
+
+`MailOutboxTest` - 12 tests across two nested groups:
+
+| Group | Proves |
+|---|---|
+| `Enqueueing` (4) | an entry is recorded with the status as at the transition; OWNERS is recorded distinctly; an order with no identifier is skipped rather than raised; **nothing is recorded when no mailing service is active** |
+| `Dispatching` (8) | each recipient kind routes to the right method; **the stored status is sent, not the order's current one**; a mail failure neither propagates nor loses the entry and records `last_error`; an unresolvable order is treated the same; the retry bound is applied by the query; **one failing entry does not stop the rest of the batch**; nothing happens with no mailing service |
+
+**One existing test was updated:** `OrdersProcessServiceImplTest` gained a
+`@Mock MailOutboxService`, because the transitions now take it as a collaborator. No
+assertion was changed.
+
+#### New register item
+
+**D28 — `MailgunMailingServiceImpl` builds one shared mutable `Unirest`
+`HttpRequestWithBody` in its constructor and mutates it per call via `.field(...)`.**
+Ruling: **PRESERVE in Phase 3, flagged.** It was a latent thread-safety hazard before and it
+remains one; the dispatcher does not make it worse today, because it drains entries
+sequentially on a single scheduled thread. But it becomes materially more likely the moment
+anyone raises the dispatcher's concurrency or runs more than one instance.
+**Action required of the owner:** make the adapter build a fresh request per call. Rewriting
+a working adapter inside an extraction phase is exactly the scope creep G1 guards against,
+so it is recorded rather than done here.

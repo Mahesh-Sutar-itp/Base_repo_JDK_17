@@ -38,6 +38,7 @@ import org.trebol.jpa.repositories.OrdersRepository;
 import org.trebol.jpa.repositories.OrderDetailsRepository;
 import org.trebol.jpa.repositories.OrderStatusesRepository;
 import org.trebol.jpa.services.conversion.ProductsConverterService;
+import org.trebol.mailing.outbox.MailOutboxService;
 import org.trebol.jpa.services.conversion.OrdersConverterService;
 import org.trebol.jpa.services.crud.OrdersCrudService;
 import org.trebol.testing.ProductsTestHelper;
@@ -77,6 +78,11 @@ class OrdersProcessServiceImplTest {
     @Mock
     OrdersConverterService sellConverterServiceMock;
     @Mock ProductsConverterService productConverterServiceMock;
+    /**
+     * Register item D11: the transitions now record an outbox entry in their own transaction,
+     * replacing the mail the controllers used to send after this service had already committed.
+     */
+    @Mock MailOutboxService mailOutboxServiceMock;
     final ProductsTestHelper productsHelper = new ProductsTestHelper();
 
     @BeforeEach

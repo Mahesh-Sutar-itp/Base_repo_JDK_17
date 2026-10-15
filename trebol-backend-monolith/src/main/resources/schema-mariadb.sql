@@ -140,6 +140,31 @@ CREATE TABLE `product_categories` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
+-- Register item D11: the order-status notification outbox.
+--
+-- Written in the SAME transaction as a status transition, which is what makes it an outbox rather
+-- than a queue: either the order moved and the notification is recorded, or neither happened. A
+-- scheduled dispatcher drains it with bounded retry. No broker is involved - ADR-003 accepted that
+-- no event infrastructure exists anywhere in this codebase and that this would be built from
+-- nothing.
+--
+-- order_id is a plain identifier, NOT a foreign key: this table is infrastructure, and an FK here
+-- would drag the outbox into the order aggregate's delete semantics for no benefit. It is also one
+-- fewer foreign key for Phase 3's extraction to reason about.
+DROP TABLE IF EXISTS `order_mail_outbox`;
+CREATE TABLE `order_mail_outbox` (
+  `outbox_id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `order_id` bigint(20) NOT NULL,
+  `outbox_recipient_kind` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `outbox_order_status_name` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `outbox_attempts` int(11) NOT NULL DEFAULT 0,
+  `outbox_created_at` datetime NOT NULL,
+  `outbox_dispatched_at` datetime DEFAULT NULL,
+  `outbox_last_error` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  PRIMARY KEY (`outbox_id`),
+  KEY `IDX_OUTBOX_DISPATCHED_AT` (`outbox_dispatched_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 DROP TABLE IF EXISTS `order_statuses`;
 CREATE TABLE `order_statuses` (
   `order_status_id` bigint(20) NOT NULL AUTO_INCREMENT,

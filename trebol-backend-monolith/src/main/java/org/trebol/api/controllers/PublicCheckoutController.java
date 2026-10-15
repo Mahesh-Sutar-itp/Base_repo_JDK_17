@@ -132,10 +132,11 @@ public class PublicCheckoutController {
         }
         String token = transactionData.get(WEBPAY_SUCCESS_TOKEN_HEADER_NAME);
         String callbackNonce = transactionData.get(CHECKOUT_CALLBACK_NONCE_PARAM_NAME);
-        OrderPojo orderPojo = service.confirmTransaction(token, false, callbackNonce);
-        if (this.mailingService!=null) {
-            mailingService.notifyOrderStatusToClient(orderPojo);
-        }
+        service.confirmTransaction(token, false, callbackNonce);
+        // Register item D11: the mail send that used to sit here has moved into the
+        // transition's own transaction, as an outbox entry - see MailOutboxService.
+        // A mail failure can no longer fail a request whose transition already
+        // committed, nor be lost without trace when it does fail.
         URI transactionUri = service.generateResultPageUrl(token);
         return ResponseEntity
             .status(SEE_OTHER)
