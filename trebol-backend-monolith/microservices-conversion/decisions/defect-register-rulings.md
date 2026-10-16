@@ -1092,3 +1092,90 @@ anyone raises the dispatcher's concurrency or runs more than one instance.
 **Action required of the owner:** make the adapter build a fresh request per call. Rewriting
 a working adapter inside an extraction phase is exactly the scope creep G1 guards against,
 so it is recorded rather than done here.
+
+
+---
+
+## Phase 3, steps 3.8-3.9 — additions at the Orders extraction exit
+
+Dated 2026-10-16. Phase 3 is complete; the five-module reactor is green at 906 tests.
+
+### D29 (new) — FIXED. The orders-service could not have started in any environment.
+
+`src/main/resources/application.properties` declared the payment settings under
+`trebol.integration.webpayplus.*`, but `WebpayplusPaymentProperties` is bound at prefix
+**`trebol.payment.webpayplus`** and its `callbackUrl` and `browserRedirectionUrl` are
+`@NotBlank`. Both therefore bound to `null` and the application context failed validation on
+startup. The same file declared an `environment` key that is **not a field on the class** —
+the real switch is the boolean `production` — which `ignoreUnknownFields = true` would have
+accepted in silence.
+
+Introduced in step 3.7 while externalising the payment secrets, so the prefix rename was
+accidental rather than intended. Ruling: **FIXED** — corrected to the monolith's prefix,
+with `production` externalised as `WEBPAY_PRODUCTION`. Every value remains
+environment-overridable and no secret is committed, so G7 and X10 are unaffected.
+
+**Why this one is worth reading twice.** It was caught only because three
+`@SpringBootTest` context-probe tests failed. No unit test touches property binding, no
+compile step checks a property name against a `@ConfigurationProperties` prefix, and
+`ignoreUnknownFields = true` means a misspelled key is never reported. A module can compile
+cleanly, pass every unit test, and still be unable to start. **The context-load test in each
+extracted module is what stands between that and a deployment**, and this is the concrete
+case that proves it.
+
+### D30 (new) — FIXED. Configuration copied from identity-service described the wrong service.
+
+Both property files in orders-service were copied wholesale from identity-service in
+step 3.7 and still described it:
+
+- **`src/test/resources/application.properties`** carried Identity's CORS route list
+  (`/data/users`, `/data/user_roles`, `/public/login`), an H2 url named `identity-test`, and
+  `spring.sql.init.data-locations` pinned to a `data-test.sql` **that does not exist in this
+  module** — which would have failed the moment any test reached datasource initialisation.
+- **`src/main/resources/application.properties`** asserted in its comments that this service
+  **"SIGNS"** tokens, is **"the issuer"**, and **"owns the password store and the
+  `PasswordEncoder` bean"**. All three contradict ADR-002 and this module's own verify-only
+  `SecurityConfig`, in which `jjwt-impl` is deliberately a runtime-scope dependency.
+
+Ruling: **FIXED.** The test fixture was rewritten for this service. The main file's comments
+were corrected; the **keys were deliberately retained**, because `SecurityProperties` is
+shared-kernel code and `@Validated` (`@NotBlank` signing key, `@Min(6)` bcrypt strength), so
+the context cannot start without them. Only the false claims were removed, not the
+configuration.
+
+The functional half of this item is a **documentation defect about security posture**, which
+is why it is recorded rather than quietly tidied: a reader auditing which service holds
+credentials would have been told the wrong answer by the file itself.
+
+**Recorded, not fixed:** `trebol.validation.id-number-regexp` and `.phonenumber-regexp`
+remain in the orders-service main file but are **inert** — `ValidationProperties` was not
+ported and nothing in this module reads them. Retained with a corrected comment so the two
+patterns stay visibly identical across services. Also noted: that file carries **mixed line
+endings** (53 CRLF, 110 LF) from step 3.7's authoring, in a repository that is otherwise
+CRLF throughout.
+
+### D23 — re-measured. Does NOT reproduce in orders-service.
+
+D23 recorded that `OrdersConverterServiceImplTest`'s six outer-class tests never execute in
+the monolith (`Tests run: 0`), and Phase 2 passed it to Phase 3.
+
+Measured in the extracted module rather than assumed: five orders-service classes do report
+`Tests run: 0` for the **outer** class, but in every case the declared and executed counts
+match, because all of their `@Test` methods live in `@Nested` groups and are counted against
+those. `OrdersConverterServiceImplTest` declares 18 and executes 18, including the 6 at
+outer level.
+
+Ruling: **unchanged and still OPEN in the monolith**; **not applicable** to orders-service.
+The order domain's `convertToPojo` read path is therefore better covered in the extracted
+service than the monolith's per-class baseline suggests — the opposite of what Phase 2
+expected to inherit.
+
+### D21 — closed out for Phase 3, and now asserted rather than argued.
+
+CVE-2024-49203 (HIGH) in QueryDSL 5.0.0 still has **no fixed release**. The accepted
+mitigation has always been that `orderBy` receives only an `OrderSpecifier` from a closed
+map. As of step 3.8 that is no longer an argument from reading the code: **`OrdersSortSpecTest`
+asserts the exact eight-key set**, so the closed-map property is now enforced by the suite in
+the service that is the largest search surface in the system.
+
+Re-review trigger moves to **Phase 4**.

@@ -52,6 +52,24 @@ module runs:
 The flag weakens no gate - every module still reports and the build still exits
 non-zero. It becomes unnecessary once D18 is fixed before Phase 3.
 
+### Confirmed as of Phase 3 exit
+
+D18 was fixed in step 3.1, and the prediction above held: the full reactor now reaches
+**BUILD SUCCESS** with 906 tests and zero failures across all five modules, so `-fae` no
+longer changes the outcome. It is retained in the documented command only so that a future
+failure still reports every module rather than stopping at the first.
+
+**Do not add `-o` (offline).** A run with `-o` fails at the monolith's
+`maven-war-plugin:3.4.0:war` goal, because three of its dependencies
+(`maven-shared-utils`, `plexus-archiver`, `maven-mapping`) were never fetched into this
+machine's local repository. That is an environment artefact, not a code fault - the same
+tree passes online. Per-module `test`-phase runs are safe offline because they never reach
+packaging; a root `verify` is not.
+
+Also worth knowing when reading a green log: Surefire emits
+`[ERROR] Surefire is going to kill self fork JVM. The exit has elapsed 30 seconds after
+System.exit(0)` on a successful run. It is a shutdown-timing message, not a test result.
+
 Reactor order is significant — `shared-contracts` builds before the monolith. The
 per-module command above still works, but **only after `shared-contracts` has been
 installed into the local repository**, so it is no longer the canonical invocation. The
