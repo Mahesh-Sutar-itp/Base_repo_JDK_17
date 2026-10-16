@@ -1,1 +1,4 @@
 *.log
+
+# Word/Office lock files
+~$*
