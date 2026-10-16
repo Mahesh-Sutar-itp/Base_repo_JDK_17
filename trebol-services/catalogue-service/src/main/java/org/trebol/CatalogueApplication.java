@@ -22,6 +22,7 @@ package org.trebol;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration;
 
 /**
  * Starting point of the Catalogue service.
@@ -31,7 +32,21 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * {@code app_params} - and reads no other service's schema. Serves the six catalogue route surfaces
  * ported verbatim from the monolith.
  */
-@SpringBootApplication
+/*
+ * Phase 4, register item D31: Spring Boot's UserDetailsServiceAutoConfiguration creates an
+ * InMemoryUserDetailsManager with a RANDOM GENERATED PASSWORD whenever no UserDetailsService,
+ * AuthenticationProvider or AuthenticationManager bean is defined - which is exactly the situation
+ * in a verify-only service. The result was a credential printed to the log on every startup
+ * ("Using generated security password: ..."), in a service whose SecurityConfig javadoc states it
+ * has no UserDetailsService and whose ADR-002 role is to verify tokens, never to authenticate.
+ *
+ * It was inert: the filter chain configures no formLogin and no httpBasic, so that user had no way
+ * to authenticate over HTTP. It is excluded anyway, because "inert" depended on an absence
+ * elsewhere - adding httpBasic() for any reason would have silently promoted it to a working
+ * account. Asserted going forward by the context test's
+ * no_token_issuing_or_credential_machinery_is_present.
+ */
+@SpringBootApplication(exclude = UserDetailsServiceAutoConfiguration.class)
 public class CatalogueApplication {
     /**
      * Application starting point

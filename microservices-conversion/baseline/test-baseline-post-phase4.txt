@@ -1,0 +1,170 @@
+Phase 4 test baseline - captured 2026-10-16, after the monolith was decommissioned.
+Command: . ~/opt/env.sh && mvn -B -fae clean verify   (repository root, online)
+Result:  BUILD SUCCESS in 09:59. 495 tests, 0 failures, 0 errors, 0 skipped.
+
+Per-module totals:
+  shared-contracts    7 / 0 / 0   (hosts the authority generator + integrity test from Phase 4)
+  catalogue-service 131 / 0 / 0
+  identity-service  127 / 0 / 0
+  orders-service    230 / 0 / 0
+
+The total falls from Phase 3's 906 because the monolith's 460 tests were almost entirely
+DUPLICATES of the service tests - it had been a verified copy since Phase 1. What matters is
+test-CLASS parity against the baseline, which is recorded in PHASE-4-EXIT.md section 4:
+132 baseline classes, 5 restored in this phase (including CheckoutServiceImplTest, the only
+executing evidence for X9), and exactly 2 deliberately not carried forward (BackendAppTest,
+superseded by three per-service context tests; PhoneNumberValidatorTest, which covered code
+referenced by nothing even in the monolith).
+
+==========================================================================
+Per-class results, all four modules (raw, as reported by surefire, de-duplicated)
+==========================================================================
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.001 s -- in org.trebol.common.converters.OrderDetailEntity2ReceiptDetailPojoTest
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.001 s -- in org.trebol.common.converters.OrderEntity2ReceiptPojoTest
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.001 s -- in org.trebol.config.exceptions.CorsMappingParseExceptionTest
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.001 s -- in org.trebol.jpa.services.conversion.impl.BillingCompaniesConverterServiceImplTest
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.001 s -- in org.trebol.jpa.services.conversion.impl.BillingTypesConverterServiceImplTest
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.001 s -- in org.trebol.jpa.services.conversion.impl.ImagesConverterServiceImplTest
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.001 s -- in org.trebol.jpa.services.conversion.impl.PeopleConverterServiceImplTest
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.001 s -- in org.trebol.jpa.services.conversion.impl.UserRolesConverterServiceImplTest
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.001 s -- in org.trebol.jpa.services.crud.impl.CustomersCrudServiceImplTest
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.001 s -- in org.trebol.jpa.services.crud.impl.PeopleCrudServiceImplTest
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.001 s -- in org.trebol.jpa.services.crud.impl.UserRolesCrudServiceImplTest
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.001 s -- in org.trebol.jpa.services.predicates.impl.BillingTypesPredicateServiceImplTest
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.001 s -- in org.trebol.security.exceptions.AccountProtectionViolationExceptionTest
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.002 s -- in org.trebol.jpa.services.conversion.impl.AddressesConverterServiceImplTest
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.002 s -- in org.trebol.jpa.services.conversion.impl.OrderStatusesConverterServiceImplTest
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.002 s -- in org.trebol.jpa.services.conversion.impl.ProductListConverterServiceImplTest
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.002 s -- in org.trebol.jpa.services.conversion.impl.SalespeopleConverterServiceImplTest
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.002 s -- in org.trebol.jpa.services.crud.impl.BillingTypesCrudServiceImplTest
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.002 s -- in org.trebol.jpa.services.predicates.impl.SalespeoplePredicateServiceImplTest
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.002 s -- in org.trebol.jpa.services.predicates.impl.UserRolesPredicateServiceTest
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.002 s -- in org.trebol.jpa.services.predicates.impl.UsersPredicateServiceTest
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.002 s -- in org.trebol.security.services.impl.AuthorizedApiServiceImplTest
+Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.003 s -- in org.trebol.common.exceptions.BadInputExceptionTest
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.003 s -- in org.trebol.jpa.services.conversion.impl.CustomersConverterServiceImplTest
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.003 s -- in org.trebol.jpa.services.predicates.impl.CustomersPredicateServiceImplTest
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.003 s -- in org.trebol.jpa.services.predicates.impl.PeoplePredicateServiceImplTest
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.003 s -- in org.trebol.jpa.services.predicates.impl.ShippersPredicateServiceImplTest
+Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.004 s -- in org.trebol.api.services.impl.OrdersProcessServiceImplTest$MarkAsStarted
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.004 s -- in org.trebol.jpa.services.crud.impl.OrderStatusesCrudServiceImplTest
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.004 s -- in org.trebol.jpa.services.predicates.impl.BillingCompaniesPredicateServiceImplTest
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.004 s -- in org.trebol.jpa.services.predicates.impl.OrderStatusesPredicateServiceImplTest
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.004 s -- in org.trebol.jpa.services.predicates.impl.ProductsPredicateServiceImplTest
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.004 s -- in org.trebol.mailing.MailingServiceExceptionTest
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.004 s -- in org.trebol.security.authorities.AuthorityCheckoutAliasTest
+Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.005 s -- in org.trebol.api.services.impl.OrdersProcessServiceImplTest$MarkAsAborted
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.005 s -- in org.trebol.jpa.services.conversion.impl.OrdersConverterServiceImplTest$NewEntityCascadingCases
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.005 s -- in org.trebol.payment.exceptions.PaymentServiceExceptionTest
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 5.005 s -- in org.trebol.security.JwtLoginAuthenticationFilterTest
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.006 s -- in org.trebol.jpa.services.crud.impl.ShippersCrudServiceImplTest
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.007 s -- in org.trebol.api.controllers.RootControllerTest
+Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.007 s -- in org.trebol.jpa.services.OrderStatusTransitionsTest$LegalTransitions
+Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.007 s -- in org.trebol.jpa.services.conversion.impl.UsersConverterServiceImplTest
+Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.007 s -- in org.trebol.jpa.services.crud.impl.ProductListCrudServiceImplTest
+Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.008 s -- in org.trebol.api.services.impl.OrdersProcessServiceImplTest$MarkAsFailed
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.008 s -- in org.trebol.jpa.entities.UserRolePermissionUniquenessTest
+Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.008 s -- in org.trebol.jpa.services.OrderStatusTransitionsTest$DefensiveCases
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.008 s -- in org.trebol.jpa.services.predicates.impl.OrdersPredicateServiceImplTest
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.009 s -- in org.trebol.jpa.services.patch.impl.SalespeoplePatchServiceImplTest
+Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.010 s -- in org.trebol.api.services.impl.OrdersProcessServiceImplTest$MarkAsPaid
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.010 s -- in org.trebol.jpa.services.OrderStatusTransitionsTest$TerminalStates
+Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.010 s -- in org.trebol.jpa.services.patch.impl.ShippersPatchServiceImplTest
+Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.011 s -- in org.trebol.api.services.impl.OrdersProcessServiceImplTest$MarkAsConfirmed
+Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.011 s -- in org.trebol.jpa.services.patch.impl.UserRolesPatchServiceImplTest
+Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.015 s -- in org.trebol.jpa.services.impl.SortSpecParserServiceImplTest
+Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.015 s -- in org.trebol.jpa.services.predicates.impl.ImagesPredicateServiceImplTest
+Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.016 s -- in org.trebol.jpa.services.patch.impl.BillingTypesPatchServiceImplTest
+Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.017 s -- in org.trebol.jpa.sortspecs.OrdersSortSpecTest
+Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.018 s -- in org.trebol.api.services.impl.OrdersProcessServiceImplTest$MarkAsRejected
+Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.018 s -- in org.trebol.jpa.services.OrderStatusTransitionsTest$UnreachableStatuses
+Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.018 s -- in org.trebol.jpa.services.patch.impl.ProductCategoriesPatchServiceImplTest
+Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.023 s -- in org.trebol.jpa.services.patch.impl.OrderStatusesPatchServiceImplTest
+Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.023 s -- in org.trebol.jpa.services.patch.impl.UsersPatchServiceImplTest
+Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.027 s -- in org.trebol.mailing.outbox.MailOutboxTest$Enqueueing
+Tests run: 16, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.030 s -- in org.trebol.jpa.services.conversion.impl.OrdersConverterServiceImplTest$NewEntityValidationFailureCases
+Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.030 s -- in org.trebol.jpa.services.patch.impl.ProductListPatchServiceImplTest
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.032 s -- in org.trebol.api.controllers.PublicReceiptControllerTest
+Tests run: 10, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.032 s -- in org.trebol.jpa.services.patch.impl.ProductsPatchServiceImplTest
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.035 s -- in org.trebol.jpa.services.contracts.impl.SalespersonLookupContractImplTest
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.036 s -- in org.trebol.api.controllers.PublicRegisterControllerTest
+Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.036 s -- in org.trebol.payment.impl.webpayplus.WebpayplusPaymentSessionIdTest
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.037 s -- in org.trebol.jpa.services.conversion.impl.ProductListItemsConverterServiceImplTest
+Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.039 s -- in org.trebol.payment.impl.webpayplus.WebpayplusPaymentServiceImplTest$RequestNewPaymentPageDetails
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.040 s -- in org.trebol.api.controllers.RootControllerTest
+Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.041 s -- in org.trebol.jpa.services.patch.impl.PeoplePatchServiceImplTest
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.043 s -- in org.trebol.jpa.services.crud.impl.SalespeopleCrudServiceImplTest
+Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.046 s -- in org.trebol.payment.impl.webpayplus.WebpayplusPaymentServiceImplTest$RequestPaymentResult
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.048 s -- in org.trebol.security.UserDetailsServiceImplTest
+Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.051 s -- in org.trebol.jpa.services.contracts.impl.CustomerProvisioningContractImplTest
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.052 s -- in org.trebol.api.controllers.AccountProfileControllerTest
+Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.054 s -- in org.trebol.jpa.services.conversion.impl.ProductCategoriesConverterServiceImplTest
+Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.054 s -- in org.trebol.jpa.services.crud.impl.ImagesCrudServiceImplTest
+Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.054 s -- in org.trebol.jpa.services.crud.impl.ProductCategoriesCrudServiceImplTest
+Tests run: 0, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.060 s -- in org.trebol.jpa.services.OrderStatusTransitionsTest
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.061 s -- in org.trebol.api.controllers.PublicAboutControllerTest
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.062 s -- in org.trebol.api.controllers.DataOrderStatusesControllerTest
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.063 s -- in org.trebol.jpa.services.crud.impl.BillingCompaniesCrudServiceImplTest
+Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.065 s -- in org.trebol.jpa.services.contracts.impl.ShipperLookupContractImplTest
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.068 s -- in org.trebol.api.controllers.DataPeopleControllerTest
+Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.072 s -- in org.trebol.architecture.OrdersRouteParityTest
+Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.074 s -- in org.trebol.api.controllers.DataProductsControllerTest
+Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.085 s -- in org.trebol.jpa.services.crud.impl.ProductsCrudServiceImplTest
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.085 s -- in org.trebol.jpa.services.predicates.impl.ProductCategoriesPredicateServiceImplTest
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.086 s -- in org.trebol.security.services.impl.UserPermissionsServiceImplTest
+Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.093 s -- in org.trebol.api.controllers.DataShippersControllerTest
+Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.115 s -- in org.trebol.jpa.services.patch.impl.OrdersPatchServiceImplTest
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.116 s -- in org.trebol.jpa.services.crud.impl.UsersCrudServiceImplTest
+Tests run: 20, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.118 s -- in org.trebol.jpa.services.CrudGenericServiceTest
+Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.119 s -- in org.trebol.api.controllers.DataSalespeopleControllerTest
+Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.122 s -- in org.trebol.jpa.services.conversion.impl.ProductsConverterServiceImplTest
+Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.125 s -- in org.trebol.api.services.impl.ReceiptServiceImplTest
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.127 s -- in org.trebol.api.services.impl.CompanyServiceImplTest
+Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.129 s -- in org.trebol.jpa.services.crud.impl.OrdersCrudServiceImplTest
+Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.132 s -- in org.trebol.api.services.impl.RegistrationServiceImplTest
+Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.133 s -- in org.trebol.api.controllers.DataProductListsControllerTest
+Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.140 s -- in org.trebol.api.controllers.DataUserRolesControllerTest
+Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.146 s -- in org.trebol.jpa.services.impl.ProductCategoryTreeResolverServiceImplTest
+Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.149 s -- in org.trebol.api.controllers.DataUsersControllerTest
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.153 s -- in org.trebol.api.controllers.RootControllerTest
+Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.182 s -- in org.trebol.api.controllers.DataProductCategoriesControllerTest
+Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.198 s -- in org.trebol.jpa.services.contracts.impl.BillingContractImplTest
+Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 60.21 s -- in org.trebol.jpa.entities.OrderStatusPatchPersistenceProbeTest
+Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.256 s -- in org.trebol.api.controllers.PublicCheckoutControllerTest
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.282 s -- in org.trebol.jpa.services.patch.impl.CustomersPatchServiceImplTest
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.316 s -- in org.trebol.security.services.impl.ClaimsAuthorizationHeaderParserServiceImplTest
+Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.318 s -- in org.trebol.mailing.outbox.MailOutboxTest$Dispatching
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 59.34 s -- in org.trebol.CatalogueApplicationTest
+Tests run: 0, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.352 s -- in org.trebol.mailing.outbox.MailOutboxTest
+Tests run: 0, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.356 s -- in org.trebol.jpa.services.conversion.impl.OrdersConverterServiceImplTest
+Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.370 s -- in org.trebol.jpa.services.patch.impl.ImagesPatchServiceImplTest
+Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.371 s -- in org.trebol.api.services.impl.GuestCustomerProvisioningServiceImplTest
+Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.372 s -- in org.trebol.security.JwtGuestAuthenticationFilterOrderingTest
+Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 7.374 s -- in org.trebol.api.controllers.DataImagesControllerTest
+Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.380 s -- in org.trebol.architecture.CatalogueRouteParityTest
+Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.386 s -- in org.trebol.api.services.impl.OrdersProcessServiceImplTest$MarkAsCompleted
+Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 5.418 s -- in org.trebol.architecture.NoAuthorityLiteralsArchitectureTest
+Tests run: 9, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.427 s -- in org.trebol.api.services.impl.ProfileServiceImplTest
+Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 4.431 s -- in org.trebol.api.controllers.AccessControllerTest
+Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.432 s -- in org.trebol.OrdersApplicationTest
+Tests run: 0, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.445 s -- in org.trebol.api.services.impl.OrdersProcessServiceImplTest
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.467 s -- in org.trebol.payment.impl.webpayplus.WebpayplusPaymentServiceImplTest$ResultPageUrl
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 8.475 s -- in org.trebol.IdentityApplicationTest
+Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.487 s -- in org.trebol.api.controllers.DataOrdersControllerTest
+Tests run: 15, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.490 s -- in org.trebol.api.services.impl.CheckoutServiceImplTest
+Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 2.497 s -- in org.trebol.architecture.NoAuthorityLiteralsArchitectureTest
+Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.500 s -- in org.trebol.jpa.services.patch.impl.BillingCompaniesPatchServiceImplTest
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 7.539 s -- in org.trebol.security.JwtGuestAuthenticationFilterTest
+Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.547 s -- in org.trebol.api.controllers.DataCustomersControllerTest
+Tests run: 0, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.561 s -- in org.trebol.payment.impl.webpayplus.WebpayplusPaymentServiceImplTest
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 4.593 s -- in org.trebol.api.controllers.DataBillingTypesControllerTest
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.603 s -- in org.trebol.mailing.impl.mailgun.MailgunMailingPropertiesTest
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.645 s -- in org.trebol.security.JwtVerifiterFilterTest
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 43.68 s -- in org.trebol.api.services.impl.RegistrationServiceImplTransactionalTest
+Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.685 s -- in org.trebol.architecture.IdentityRouteParityTest
+Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.692 s -- in org.trebol.security.authorities.AuthorityCatalogueIntegrityTest
+Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 5.736 s -- in org.trebol.architecture.NoAuthorityLiteralsArchitectureTest
+Tests run: 16, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 3.919 s -- in org.trebol.mailing.impl.mailgun.MailgunMailingServiceImplTest
+Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.940 s -- in org.trebol.api.controllers.DataProductListContentsControllerTest
+Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.996 s -- in org.trebol.architecture.OrderDomainCouplingArchitectureTest
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0 s -- in org.trebol.jpa.services.conversion.impl.ShippersConverterServiceImplTest

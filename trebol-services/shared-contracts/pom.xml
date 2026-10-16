@@ -44,14 +44,43 @@
     It currently holds the generated authority catalogue (org.trebol.security.authorities.AuthorityCodes),
     whose 54 codes are a client-observable contract embedded in every issued token. The catalogue is
     generated from business-rules-extraction/database-documentation/00-seed-data.json and verified
-    against it on every build by AuthorityCatalogueIntegrityTest, which lives with the seed data in
-    the monolith module and fails the build on any drift or unknown code.
+    against it on every build by AuthorityCatalogueIntegrityTest, which fails the build on any drift
+    or unknown code.
+
+    Phase 4: the generator and that integrity test MOVED HERE from the monolith's test tree when the
+    monolith was decommissioned. They have to live in the module that owns the generated artefact,
+    because exit criterion X6 requires the catalogue to be a generated, versioned artefact - not
+    merely free of literals. Had they been deleted with the monolith, AuthorityCodes would have
+    silently become hand-maintained while still appearing to satisfy X6.
+
+    The test-scope dependencies below are the only ones in this module. They do not reach the
+    produced jar, and spring-boot-starter-test is deliberately NOT used: pulling Spring in, even for
+    tests, would undercut the point of keeping this module dependency-free.
   </description>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <java.version>21</java.version>
   </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.assertj</groupId>
+      <artifactId>assertj-core</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <!-- The generator reads the seed-data JSON that is the catalogue's source of truth. -->
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
 
   <build>
     <plugins>

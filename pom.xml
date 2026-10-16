@@ -38,20 +38,23 @@
 
   <name>Trébol Platform</name>
   <description>
-    Aggregator for the Trébol eCommerce platform during its decomposition from a single monolith into
-    three independently deployable services. It AGGREGATES the monolith; it is deliberately NOT the
-    monolith's parent, so that module keeps its own parent, group, artifact and version untouched.
+    Aggregator for the Trébol eCommerce platform, now decomposed into three independently deployable
+    services.
+
+    Phase 4 removed the trebol-backend-monolith module. Every one of the 67 routes it served is now
+    served by exactly one of the three services below, which own their schemas exclusively. The
+    monolith remains in git history - it was deleted, not rewritten - so nothing is lost, but it is
+    no longer built, tested or deployable.
 
     Reactor order is significant: shared-contracts publishes the generated authority catalogue that
-    both the monolith and every service consume, so it builds first.
+    every service consumes, so it builds first. It also now hosts the generator and the integrity
+    test that keep that catalogue a generated artefact rather than a hand-maintained one (X6); both
+    moved out of the monolith's test tree during decommissioning.
   </description>
 
   <modules>
     <!-- Published cross-service contracts, including the generated authority catalogue. -->
     <module>trebol-services/shared-contracts</module>
-
-    <!-- The monolith. Still owns and serves every route until Phase 4 decommissions it. -->
-    <module>trebol-backend-monolith</module>
 
     <!-- Phase 1: Catalogue - products, categories, lists, images, and the company-profile read. -->
     <module>trebol-services/catalogue-service</module>
