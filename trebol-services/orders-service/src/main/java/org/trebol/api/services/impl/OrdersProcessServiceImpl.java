@@ -22,7 +22,6 @@ package org.trebol.api.services.impl;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.trebol.api.models.ProductPojo;
 import org.trebol.api.models.OrderDetailPojo;
 import org.trebol.api.models.OrderPojo;
 import org.trebol.api.services.OrdersProcessService;
@@ -33,7 +32,6 @@ import org.trebol.jpa.entities.OrderStatus;
 import org.trebol.jpa.repositories.OrdersRepository;
 import org.trebol.jpa.repositories.OrderDetailsRepository;
 import org.trebol.jpa.repositories.OrderStatusesRepository;
-import org.trebol.jpa.services.conversion.ProductsConverterService;
 import org.trebol.jpa.services.OrderStatusTransitions;
 import org.trebol.mailing.outbox.MailOutboxService;
 import org.trebol.mailing.outbox.MailRecipientKind;
@@ -66,7 +64,6 @@ public class OrdersProcessServiceImpl
     private final OrderDetailsRepository orderDetailsRepository;
     private final OrderStatusesRepository orderStatusesRepository;
     private final OrdersConverterService converterService;
-    private final ProductsConverterService productConverterService;
     private final MailOutboxService mailOutboxService;
 
     public OrdersProcessServiceImpl(
@@ -75,7 +72,6 @@ public class OrdersProcessServiceImpl
         OrderDetailsRepository orderDetailsRepository,
         OrderStatusesRepository orderStatusesRepository,
         OrdersConverterService converterService,
-        ProductsConverterService productConverterService,
         MailOutboxService mailOutboxService
     ) {
         this.crudService = crudService;
@@ -83,7 +79,6 @@ public class OrdersProcessServiceImpl
         this.orderDetailsRepository = orderDetailsRepository;
         this.orderStatusesRepository = orderStatusesRepository;
         this.converterService = converterService;
-        this.productConverterService = productConverterService;
         this.mailOutboxService = mailOutboxService;
     }
 
@@ -197,13 +192,10 @@ public class OrdersProcessServiceImpl
 
         List<OrderDetailPojo> pojoDetails = new ArrayList<>();
         for (OrderDetail detail : orderDetailsRepository.findBySellId(existingOrder.getId())) {
-            ProductPojo productPojo = productConverterService.convertToPojo(detail.getProduct());
-            OrderDetailPojo orderDetailPojo = OrderDetailPojo.builder()
-                .units(detail.getUnits())
-                .unitValue(detail.getUnitValue())
-                .product(productPojo)
-                .build();
-            pojoDetails.add(orderDetailPojo);
+            // Phase 3 cut C1: the product is no longer an association on the line, so resolution
+            // goes through the converter - which owns the single remote-lookup policy. These four
+            // sites used to build the pojo inline, which meant four places to keep in step.
+            pojoDetails.add(converterService.convertDetailToPojo(detail));
         }
         target.setStatus(ORDER_STATUS_PAID_UNCONFIRMED);
         target.setDetails(pojoDetails);
@@ -235,13 +227,10 @@ public class OrdersProcessServiceImpl
 
         List<OrderDetailPojo> pojoDetails = new ArrayList<>();
         for (OrderDetail detail : orderDetailsRepository.findBySellId(existingOrder.getId())) {
-            ProductPojo productPojo = productConverterService.convertToPojo(detail.getProduct());
-            OrderDetailPojo orderDetailPojo = OrderDetailPojo.builder()
-                .units(detail.getUnits())
-                .unitValue(detail.getUnitValue())
-                .product(productPojo)
-                .build();
-            pojoDetails.add(orderDetailPojo);
+            // Phase 3 cut C1: the product is no longer an association on the line, so resolution
+            // goes through the converter - which owns the single remote-lookup policy. These four
+            // sites used to build the pojo inline, which meant four places to keep in step.
+            pojoDetails.add(converterService.convertDetailToPojo(detail));
         }
         target.setDetails(pojoDetails);
         target.setStatus(ORDER_STATUS_PAID_CONFIRMED);
@@ -275,13 +264,10 @@ public class OrdersProcessServiceImpl
 
         List<OrderDetailPojo> pojoDetails = new ArrayList<>();
         for (OrderDetail detail : orderDetailsRepository.findBySellId(existingOrder.getId())) {
-            ProductPojo productPojo = productConverterService.convertToPojo(detail.getProduct());
-            OrderDetailPojo orderDetailPojo = OrderDetailPojo.builder()
-                .units(detail.getUnits())
-                .unitValue(detail.getUnitValue())
-                .product(productPojo)
-                .build();
-            pojoDetails.add(orderDetailPojo);
+            // Phase 3 cut C1: the product is no longer an association on the line, so resolution
+            // goes through the converter - which owns the single remote-lookup policy. These four
+            // sites used to build the pojo inline, which meant four places to keep in step.
+            pojoDetails.add(converterService.convertDetailToPojo(detail));
         }
         target.setDetails(pojoDetails);
         target.setStatus(ORDER_STATUS_REJECTED);
@@ -313,13 +299,10 @@ public class OrdersProcessServiceImpl
 
         List<OrderDetailPojo> pojoDetails = new ArrayList<>();
         for (OrderDetail detail : orderDetailsRepository.findBySellId(existingOrder.getId())) {
-            ProductPojo productPojo = productConverterService.convertToPojo(detail.getProduct());
-            OrderDetailPojo orderDetailPojo = OrderDetailPojo.builder()
-                .units(detail.getUnits())
-                .unitValue(detail.getUnitValue())
-                .product(productPojo)
-                .build();
-            pojoDetails.add(orderDetailPojo);
+            // Phase 3 cut C1: the product is no longer an association on the line, so resolution
+            // goes through the converter - which owns the single remote-lookup policy. These four
+            // sites used to build the pojo inline, which meant four places to keep in step.
+            pojoDetails.add(converterService.convertDetailToPojo(detail));
         }
         target.setDetails(pojoDetails);
         target.setStatus(ORDER_STATUS_COMPLETED);

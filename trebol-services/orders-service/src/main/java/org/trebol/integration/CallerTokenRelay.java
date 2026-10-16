@@ -55,7 +55,7 @@ import jakarta.servlet.http.HttpServletRequest;
  * No option is selected here. The relay below is the mechanism; which principal it relays is the
  * decision.
  */
-final class CallerTokenRelay {
+public final class CallerTokenRelay {
     private CallerTokenRelay() {
     }
 
@@ -63,7 +63,7 @@ final class CallerTokenRelay {
      * @return the inbound {@code Authorization} header, or {@code null} when there is no request in
      *         scope - which is the case for the scheduled outbox dispatcher
      */
-    static String currentAuthorizationHeader() {
+    public static String currentAuthorizationHeader() {
         if (!(RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes attributes)) {
             return null;
         }

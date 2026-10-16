@@ -23,7 +23,6 @@ package org.trebol.jpa.sortspecs;
 import com.querydsl.core.types.OrderSpecifier;
 import lombok.NoArgsConstructor;
 import org.trebol.jpa.entities.QOrder;
-import org.trebol.jpa.entities.QPerson;
 
 import java.util.Map;
 
@@ -31,13 +30,31 @@ import static lombok.AccessLevel.PRIVATE;
 
 @NoArgsConstructor(access = PRIVATE)
 public class OrdersSortSpec {
+    /*
+     * Phase 3 cut C3. This map had NINE keys. The ninth, "customer", resolved through
+     *
+     *     private static final QPerson CUSTOMER_PATH = BASE_PATH.customer.person;
+     *     "customer", CUSTOMER_PATH.lastName.asc()
+     *
+     * which is a QueryDSL path from `orders` into the Identity service's `people` table, by way of
+     * `customers`. It generated a two-level join across what is now a service boundary, so it cannot
+     * survive the extraction.
+     *
+     * The key is DROPPED rather than reimplemented. Three alternatives were considered and rejected:
+     * denormalising the surname onto `orders` needs a column, a write path to keep it in step and a
+     * migration; fetching identifiers from Identity and sorting in memory breaks pagination, because
+     * sorting must happen before the page is cut; and a database view reintroduces the shared schema
+     * that Phase 4 exists to retire.
+     *
+     * This is the ONE client-visible capability the conversion removes. It is recorded in
+     * PHASE-3-EXIT.md, and OrdersSortSpecTest asserts the remaining eight keys so a reintroduction
+     * fails the build rather than silently reaching across the boundary again.
+     */
     private static final QOrder BASE_PATH = QOrder.order;
-    private static final QPerson CUSTOMER_PATH = BASE_PATH.customer.person;
     public static final Map<String, OrderSpecifier<?>> ORDER_SPEC_MAP = Map.of(
         "buyOrder", BASE_PATH.id.asc(),
         "date", BASE_PATH.date.asc(),
         "status", BASE_PATH.status.code.asc(),
-        "customer", CUSTOMER_PATH.lastName.asc(),
         "shipper", BASE_PATH.shipper.name.asc(),
         "totalValue", BASE_PATH.totalValue.asc(),
         "netValue", BASE_PATH.netValue.asc(),

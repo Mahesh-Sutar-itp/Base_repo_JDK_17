@@ -36,18 +36,17 @@ import org.trebol.jpa.entities.BillingCompany;
 import org.trebol.jpa.entities.BillingType;
 import org.trebol.jpa.entities.Order;
 import org.trebol.jpa.entities.OrderDetail;
-import org.trebol.jpa.entities.Product;
 import org.trebol.jpa.entities.Shipper;
 import org.trebol.jpa.repositories.AddressesRepository;
 import org.trebol.jpa.repositories.OrderStatusesRepository;
 import org.trebol.jpa.services.contracts.BillingContract;
 import org.trebol.jpa.services.contracts.CustomerProvisioningContract;
 import org.trebol.jpa.services.contracts.ProductLookupContract;
+import org.trebol.jpa.services.contracts.ProductSnapshot;
 import org.trebol.jpa.services.contracts.SalespersonLookupContract;
 import org.trebol.jpa.services.contracts.ShipperLookupContract;
 import org.trebol.jpa.services.conversion.AddressesConverterService;
 import org.trebol.jpa.services.conversion.BillingCompaniesConverterService;
-import org.trebol.jpa.services.conversion.ProductsConverterService;
 import org.trebol.jpa.services.conversion.OrdersConverterService;
 
 import jakarta.validation.constraints.NotNull;
@@ -66,7 +65,6 @@ public class OrdersConverterServiceImpl
     private final BillingContract billingContract;
     private final BillingCompaniesConverterService billingCompaniesConverterService;
     private final SalespersonLookupContract salespersonLookupContract;
-    private final ProductsConverterService productConverterService;
     private final ProductLookupContract productLookupContract;
     private final ShipperLookupContract shipperLookupContract;
     private final AddressesRepository addressesRepository;
@@ -81,7 +79,6 @@ public class OrdersConverterServiceImpl
         BillingContract billingContract,
         BillingCompaniesConverterService billingCompaniesConverterService,
         SalespersonLookupContract salespersonLookupContract,
-        ProductsConverterService productConverterService,
         ProductLookupContract productLookupContract,
         ShipperLookupContract shipperLookupContract,
         AddressesRepository addressesRepository,
@@ -92,7 +89,6 @@ public class OrdersConverterServiceImpl
         this.billingContract = billingContract;
         this.billingCompaniesConverterService = billingCompaniesConverterService;
         this.salespersonLookupContract = salespersonLookupContract;
-        this.productConverterService = productConverterService;
         this.productLookupContract = productLookupContract;
         this.shipperLookupContract = shipperLookupContract;
         this.addressesRepository = addressesRepository;
@@ -113,7 +109,7 @@ public class OrdersConverterServiceImpl
             .token(source.getTransactionToken())
             .build();
 
-        PersonPojo customer = customerProvisioningContract.describeCustomer(source.getCustomer());
+        PersonPojo customer = customerProvisioningContract.describeCustomer(source.getCustomerId());
         target.setCustomer(customer);
 
         target.setStatus(source.getStatus().getName());
@@ -130,8 +126,8 @@ public class OrdersConverterServiceImpl
             target.setShipper(source.getShipper().getName());
         }
 
-        if (source.getSalesperson()!=null) {
-            PersonPojo salesperson = salespersonLookupContract.describeSalesperson(source.getSalesperson());
+        if (source.getSalespersonId()!=null) {
+            PersonPojo salesperson = salespersonLookupContract.describeSalesperson(source.getSalespersonId());
             target.setSalesperson(salesperson);
         }
         return target;
@@ -160,10 +156,34 @@ public class OrdersConverterServiceImpl
         return target;
     }
 
+    /**
+     * Renders an order line, resolving its product through the published catalogue contract.
+     * <p>
+     * <b>Phase 3 cut C1.</b> This used to read {@code source.getProduct()} - an EAGER-loaded
+     * {@code Product} entity - and hand it to {@code ProductsConverterService}. The line now stores
+     * only an identifier, so the product is looked up remotely.
+     * <p>
+     * <b>A failed or empty lookup is not an error.</b> The order line already carries its own
+     * {@code description} and {@code unitValue}, written at creation precisely so history stays
+     * price-stable (BR-ORDER-011), so an order renders correctly even when the Catalogue is
+     * unavailable or the product has since been deleted - it simply renders without live product
+     * details. Failing the whole order read because an incidental lookup missed would be a worse
+     * outcome than rendering what the order itself knows.
+     * <p>
+     * This is the single place product resolution happens for a rendered line. The four call sites
+     * in {@code OrdersProcessServiceImpl} that used to build this pojo themselves now delegate here,
+     * so there is one lookup policy rather than five.
+     */
     @Override
     public OrderDetailPojo convertDetailToPojo(OrderDetail source) {
-        Product sourceProduct = source.getProduct();
-        ProductPojo product = productConverterService.convertToPojo(sourceProduct);
+        ProductPojo product = productLookupContract.findProductById(source.getProductId())
+            .map(snapshot -> ProductPojo.builder()
+                .id(snapshot.id())
+                .barcode(snapshot.barcode())
+                .name(snapshot.name())
+                .price(snapshot.price())
+                .build())
+            .orElse(null);
         return OrderDetailPojo.builder()
             .unitValue(source.getUnitValue())
             .units(source.getUnits())
@@ -184,16 +204,19 @@ public class OrdersConverterServiceImpl
             if (StringUtils.isBlank(barcode)) {
                 throw new BadInputException("Product barcode must be valid");
             }
-            Optional<Product> productByBarcode = productLookupContract.findProductByBarcode(barcode);
+            // Phase 3 cut C1: resolves a four-field snapshot from the Catalogue service rather than
+            // an entity. The two literals below, and the generated description's "x " with its
+            // trailing space, are unchanged - they are client-observable (BR-ORDER-008, -010).
+            Optional<ProductSnapshot> productByBarcode = productLookupContract.findProductByBarcode(barcode);
             if (productByBarcode.isEmpty()) {
                 throw new BadInputException("Unexisting product in sell details");
             }
-            Product product = productByBarcode.get();
-            String description = detail.getUnits() + "x " + product.getName();
+            ProductSnapshot product = productByBarcode.get();
+            String description = detail.getUnits() + "x " + product.name();
             return OrderDetail.builder()
                 .units(detail.getUnits())
-                .product(product)
-                .unitValue(product.getPrice())
+                .productId(product.id())
+                .unitValue(product.price())
                 .description(description)
                 .build();
         } catch (BadInputException exc) {

@@ -20,114 +20,71 @@
 
 package org.trebol.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.jsonwebtoken.Claims;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.ProviderManager;
-import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
-import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.trebol.api.services.GuestCustomerProvisioningService;
-import org.trebol.security.JwtGuestAuthenticationFilter;
-import org.trebol.security.JwtLoginAuthenticationFilter;
 import org.trebol.security.JwtTokenVerifierFilter;
 import org.trebol.security.services.AuthorizationHeaderParserService;
 
-import javax.crypto.SecretKey;
-
 import static org.springframework.security.config.http.SessionCreationPolicy.STATELESS;
 
+/**
+ * Security configuration of the Catalogue service - the <strong>verify-only</strong> half of the
+ * monolith's {@code SecurityConfig}.
+ * <p>
+ * Per ADR-002 (Gate D) the decision recorded for the conversion is: one shared signing key, token
+ * verification performed <strong>locally by each service</strong>, and method-level authority
+ * enforcement retained; a gateway handles routing and TLS only. This class implements the Catalogue
+ * end of that decision.
+ * <p>
+ * Deliberately <strong>absent</strong>, because this service issues no tokens and owns no user
+ * tables - those belong to Identity:
+ * <ul>
+ *   <li>{@code JwtLoginAuthenticationFilter} and the {@code /public/login} route</li>
+ *   <li>{@code JwtGuestAuthenticationFilter} and the {@code /public/guest} route</li>
+ *   <li>{@code UserDetailsService}, the {@code DaoAuthenticationProvider} and the
+ *       {@code AuthenticationManager}</li>
+ *   <li>the bcrypt {@code PasswordEncoder}</li>
+ * </ul>
+ * <p>
+ * Everything else is preserved exactly as the monolith behaves today, including the two properties
+ * that are easy to mistake for oversights and are <strong>not</strong> to be corrected here:
+ * <ol>
+ *   <li><strong>No request-matcher rules are declared.</strong> Enforcement is entirely
+ *       method-level, so any endpoint without an authority annotation is publicly reachable. The
+ *       catalogue's read endpoints rely on this - the storefront reads products, categories, lists,
+ *       list contents and the company profile anonymously.</li>
+ *   <li>The verifier filter authenticates a request only when an {@code Authorization} header is
+ *       present; a request without one proceeds unauthenticated rather than being rejected.</li>
+ * </ol>
+ * Changing either would break clients and would require a defect-register ruling (invariant G1).
+ */
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
 public class SecurityConfig {
-    private final UserDetailsService userDetailsService;
-    private final SecretKey secretKey;
-    private final SecurityProperties securityProperties;
     private final AuthorizationHeaderParserService<Claims> jwtClaimsParserService;
-    private final GuestCustomerProvisioningService guestCustomerProvisioningService;
-    private final ObjectMapper objectMapper;
-    private AuthenticationManager authenticationManager;
 
     @Autowired
-    public SecurityConfig(UserDetailsService userDetailsService,
-                          SecretKey secretKey,
-                          SecurityProperties securityProperties,
-                          AuthorizationHeaderParserService<Claims> jwtClaimsParserService,
-                          GuestCustomerProvisioningService guestCustomerProvisioningService,
-                          ObjectMapper objectMapper) {
-        this.userDetailsService = userDetailsService;
-        this.secretKey = secretKey;
-        this.securityProperties = securityProperties;
+    public SecurityConfig(AuthorizationHeaderParserService<Claims> jwtClaimsParserService) {
         this.jwtClaimsParserService = jwtClaimsParserService;
-        this.guestCustomerProvisioningService = guestCustomerProvisioningService;
-        this.objectMapper = objectMapper;
     }
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception {
         return httpSecurity
-            .authenticationManager(this.authenticationManager())
             .headers(configure -> configure.frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin))
             .csrf(AbstractHttpConfigurer::disable)
             .sessionManagement(configure -> configure.sessionCreationPolicy(STATELESS))
-            .addFilter(this.loginFilterForUrl("/public/login"))
-            .addFilterAfter(this.guestFilterForUrl("/public/guest"),
-                            JwtLoginAuthenticationFilter.class)
-            .addFilterAfter(new JwtTokenVerifierFilter(jwtClaimsParserService),
-                            JwtGuestAuthenticationFilter.class)
+            .addFilterBefore(new JwtTokenVerifierFilter(jwtClaimsParserService),
+                             org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class)
             .build();
-    }
-
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        int strength = securityProperties.getBcryptEncoderStrength();
-        return new BCryptPasswordEncoder(strength);
-    }
-
-    @Bean
-    public AuthenticationManager authenticationManager() {
-        if (this.authenticationManager == null) {
-            this.authenticationManager = new ProviderManager(this.daoAuthenticationProvider());
-        }
-        return this.authenticationManager;
-    }
-
-    private DaoAuthenticationProvider daoAuthenticationProvider() {
-        DaoAuthenticationProvider provider = new DaoAuthenticationProvider(this.passwordEncoder());
-        provider.setUserDetailsService(userDetailsService);
-        return provider;
-    }
-
-    private UsernamePasswordAuthenticationFilter loginFilterForUrl(String url) throws Exception {
-        JwtLoginAuthenticationFilter filter = new JwtLoginAuthenticationFilter(
-            securityProperties,
-            secretKey,
-            authenticationManager);
-        filter.setFilterProcessesUrl(url);
-        return filter;
-    }
-
-    private UsernamePasswordAuthenticationFilter guestFilterForUrl(String url) throws Exception {
-        JwtGuestAuthenticationFilter filter = new JwtGuestAuthenticationFilter(
-            securityProperties,
-            secretKey,
-            authenticationManager,
-            guestCustomerProvisioningService,
-            objectMapper);
-        filter.setFilterProcessesUrl(url);
-        return filter;
     }
 }
