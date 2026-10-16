@@ -1,0 +1,291 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ~ Copyright (c) 2020-2024 The Trebol eCommerce Project
+  ~
+  ~ Permission is hereby granted, free of charge, to any person obtaining a copy of this software
+  ~ and associated documentation files (the "Software"), to deal in the Software without restriction,
+  ~ including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense,
+  ~ and/or sell copies of the Software, and to permit persons to whom the Software is furnished
+  ~ to do so, subject to the following conditions:
+  ~
+  ~ The above copyright notice and this permission notice shall be included in all copies or substantial
+  ~ portions of the Software.
+  ~
+  ~ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+  ~ INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+  ~ PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+  ~ HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+  ~ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+  ~ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+  -->
+
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>org.trebolecommerce</groupId>
+    <artifactId>trebol-platform</artifactId>
+    <version>0.3.0-SNAPSHOT</version>
+    <relativePath>../../pom.xml</relativePath>
+  </parent>
+
+  <artifactId>trebol-orders-service</artifactId>
+  <packaging>jar</packaging>
+
+  <name>Trébol Orders Service</name>
+  <description>
+    The Orders service: the transactional core. Orders, order lines, the status lifecycle, checkout,
+    the Webpay Plus payment adapter, the order-status notification outbox and the public receipt.
+    Carries the billing and shipper domains with it, because every foreign key between them and
+    `orders` points inward and nothing in either domain points out.
+
+    Owns eight tables exclusively - orders, order_details, order_statuses, order_mail_outbox,
+    billing_types, billing_companies, addresses, payment_types - plus shippers, and reads no other
+    service's schema.
+
+    THREE cross-service couplings are cut here, and they are the reason this service is extracted
+    last:
+
+      C1  OrderDetail.product was a @ManyToOne to the catalogue's Product entity, mapped EAGER.
+          It is now a plain product_id identifier; the line's own description and unit_value already
+          carry the price-stable copy the order needs (BR-ORDER-011).
+      C2  ReceiptServiceImpl imported org.trebol.jpa.entities.Product and dereferenced it directly
+          for name and barcode. Gate A's repository-only grep did not catch it. It now goes through
+          the published catalogue contract.
+      C3  OrdersSortSpec's "customer" key traversed QOrder.order.customer.person into the Identity
+          service's people table. The key is DROPPED, leaving eight. That is the one client-visible
+          capability this conversion removes, and it is recorded in PHASE-3-EXIT.md.
+
+    Order.customer and Order.salesperson likewise become identifiers rather than associations, and
+    the two inbound keys from Identity (FK_ORDER_CUSTOM_ID, FK_ORDER_SPERSON) are cut.
+
+    This service VERIFIES tokens and never issues them - it has no UserDetailsService, no
+    AuthenticationManager and no PasswordEncoder (ADR-002). It holds the only outbound third-party
+    call in the platform, to Transbank.
+
+    Ported classes keep their exact fully-qualified names, their literal error messages, their filter
+    parameter names, their sort keys and their status names, because all of those are
+    client-observable contract.
+  </description>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <java.version>21</java.version>
+    <lombok.version>1.18.36</lombok.version>
+
+    <!--
+      Declared explicitly rather than inherited, matching catalogue-service.
+
+      NOTE: 5.0.0 carries CVE-2024-49203 (HIGH, HQL injection via orderBy) and the vulnerability
+      database reports no CVE-free release, including 5.1.0. The monolith and catalogue-service both
+      already ship 5.0.0, so this is inherited rather than introduced, and G5 forbids a downgrade. It
+      is recorded as register item D21, and the Phase 2 review trigger was actioned - the position is
+      unchanged.
+
+      Mitigation, verified rather than assumed, for THIS service: every sorted read resolves its
+      OrderSpecifier through SortSpecParserService against a closed whitelist map - OrdersSortSpec
+      (eight keys after C3 drops "customer"), OrderStatusesSortSpec, BillingTypesSortSpec (name) and
+      ShippersSortSpec (name). A sortBy value outside the map is rejected before any QueryDSL call,
+      so orderBy never receives a raw client string.
+    -->
+    <querydsl.version>5.0.0</querydsl.version>
+
+    <jjwt.version>0.12.6</jjwt.version>
+    <unirest.version>3.13.8</unirest.version>
+    <java.endorsed-api.dir>${project.build.directory}/endorsed</java.endorsed-api.dir>
+  </properties>
+
+  <dependencies>
+    <!-- Published cross-service contracts (the generated authority catalogue) -->
+    <dependency>
+      <groupId>org.trebolecommerce</groupId>
+      <artifactId>trebol-shared-contracts</artifactId>
+      <version>0.3.0-SNAPSHOT</version>
+    </dependency>
+
+    <!-- Core -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-web</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-validation</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-configuration-processor</artifactId>
+      <optional>true</optional>
+    </dependency>
+
+    <!-- Persistence -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-data-jpa</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.h2database</groupId>
+      <artifactId>h2</artifactId>
+      <version>2.3.232</version>
+      <scope>runtime</scope>
+    </dependency>
+    <dependency>
+      <!-- Pinned above the parent-managed version: 3.3.3 carries CVE-2026-55856/55857/55858 and
+           CVE-2026-61700, all fixed in 3.3.5. An upgrade, never a downgrade. -->
+      <groupId>org.mariadb.jdbc</groupId>
+      <artifactId>mariadb-java-client</artifactId>
+      <version>3.3.5</version>
+    </dependency>
+    <dependency>
+      <groupId>com.querydsl</groupId>
+      <artifactId>querydsl-apt</artifactId>
+      <version>${querydsl.version}</version>
+      <classifier>jakarta</classifier>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.querydsl</groupId>
+      <artifactId>querydsl-jpa</artifactId>
+      <version>${querydsl.version}</version>
+      <classifier>jakarta</classifier>
+    </dependency>
+
+    <!--
+      Security: this service only VERIFIES tokens (ADR-002), so jjwt-impl is a runtime dependency
+      rather than a compile one - there is no signing path here. spring-boot-starter-security is
+      still needed for the filter chain and @PreAuthorize, but no PasswordEncoder and no
+      DaoAuthenticationProvider are declared.
+    -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-security</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.jsonwebtoken</groupId>
+      <artifactId>jjwt-api</artifactId>
+      <version>${jjwt.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.jsonwebtoken</groupId>
+      <artifactId>jjwt-impl</artifactId>
+      <version>${jjwt.version}</version>
+      <scope>runtime</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.jsonwebtoken</groupId>
+      <artifactId>jjwt-jackson</artifactId>
+      <version>${jjwt.version}</version>
+      <scope>runtime</scope>
+    </dependency>
+
+    <!-- Utility -->
+    <dependency>
+      <groupId>org.projectlombok</groupId>
+      <artifactId>lombok</artifactId>
+      <version>${lombok.version}</version>
+    </dependency>
+    <dependency>
+      <!-- Pinned above the monolith's 3.17.0, which carries CVE-2025-48924 (fixed in 3.18.0). -->
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-lang3</artifactId>
+      <version>3.18.0</version>
+    </dependency>
+    <dependency>
+      <groupId>org.springdoc</groupId>
+      <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+      <version>2.6.0</version>
+    </dependency>
+
+    <!--
+      The payment provider SDK and the HTTP client the Mailgun adapter uses. Versions are taken
+      verbatim from the monolith - this is a port, not an upgrade, and neither is flagged by the
+      vulnerability database at these versions.
+    -->
+    <dependency>
+      <groupId>com.github.transbankdevelopers</groupId>
+      <artifactId>transbank-sdk-java</artifactId>
+      <version>3.0.2</version>
+    </dependency>
+    <dependency>
+      <groupId>com.konghq</groupId>
+      <artifactId>unirest-java</artifactId>
+      <version>${unirest.version}</version>
+    </dependency>
+
+    <!-- Testing -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.security</groupId>
+      <artifactId>spring-security-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <!-- Used by the Mailgun adapter tests, exactly as in the monolith. -->
+      <groupId>com.konghq</groupId>
+      <artifactId>unirest-mocks</artifactId>
+      <version>${unirest.version}</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+
+      <!-- Compile using the specified java version -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <configuration>
+          <source>${java.version}</source>
+          <target>${java.version}</target>
+          <annotationProcessorPaths>
+            <path>
+              <groupId>org.projectlombok</groupId>
+              <artifactId>lombok</artifactId>
+              <version>${lombok.version}</version>
+            </path>
+          </annotationProcessorPaths>
+        </configuration>
+      </plugin>
+
+      <!-- Generate QueryDSL Q-classes -->
+      <plugin>
+        <groupId>com.mysema.maven</groupId>
+        <artifactId>apt-maven-plugin</artifactId>
+        <version>1.1.3</version>
+        <executions>
+          <execution>
+            <goals>
+              <goal>process</goal>
+            </goals>
+            <configuration>
+              <outputDirectory>target/generated-sources/java</outputDirectory>
+              <processor>com.querydsl.apt.jpa.JPAAnnotationProcessor</processor>
+            </configuration>
+          </execution>
+        </executions>
+        <dependencies>
+          <dependency>
+            <groupId>com.querydsl</groupId>
+            <artifactId>querydsl-apt</artifactId>
+            <version>${querydsl.version}</version>
+          </dependency>
+        </dependencies>
+      </plugin>
+
+      <!-- Support 'spring-boot:{action}' commands and produce an executable jar -->
+      <plugin>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-maven-plugin</artifactId>
+      </plugin>
+
+    </plugins>
+  </build>
+
+</project>

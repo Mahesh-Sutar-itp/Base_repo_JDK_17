@@ -1,0 +1,108 @@
+/*
+ * Copyright (c) 2020-2024 The Trebol eCommerce Project
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of this software
+ * and associated documentation files (the "Software"), to deal in the Software without restriction,
+ * including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the Software is furnished
+ * to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all copies or substantial
+ * portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+ * PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+ * HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+ * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+ * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
+
+package org.trebol.api.services;
+
+import org.trebol.api.models.OrderPojo;
+import org.trebol.common.exceptions.BadInputException;
+
+import jakarta.persistence.EntityNotFoundException;
+
+/**
+ * Declares methods to advance through steps of transaction.
+ */
+public interface OrdersProcessService {
+
+    /**
+     * Updates status of a sell to "started", meaning its bill must be paid.
+     *
+     * @param sell The sell whose status will be updated
+     * @throws BadInputException       When the transaction is not in "pending" state, or when it doesn't have a token
+     * @throws EntityNotFoundException When the transaction is not found in the persistence context
+     */
+    OrderPojo markAsStarted(OrderPojo sell, String callbackNonce) throws BadInputException, EntityNotFoundException;
+
+    /**
+     * Register item D4: reads back the payment-callback nonce recorded for an order.
+     * <p>
+     * Exposed here rather than through a repository so that the checkout service never imports
+     * {@code org.trebol.jpa.repositories} - that is the coupling Gate A of this conversion closed,
+     * and it is verified by a grep that matches on "Checkout".
+     *
+     * @param transactionToken the token the payment provider issued for the order
+     * @return the recorded nonce, or {@code null} if the order has none or does not exist
+     */
+    String findCallbackNonce(String transactionToken);
+
+    /**
+     * Updates status of a sell to "aborted", meaning nothing more can be done about it.
+     *
+     * @param sell The sell whose status will be updated
+     * @throws BadInputException       When the transaction is not in "started" state
+     * @throws EntityNotFoundException When the transaction is not found in the persistence context
+     */
+    OrderPojo markAsAborted(OrderPojo sell) throws BadInputException, EntityNotFoundException;
+
+    /**
+     * Updates status of a sell to "failed", meaning nothing more can be done about it.
+     *
+     * @param sell The sell whose status will be updated
+     * @throws BadInputException       When the transaction is not in "started" state
+     * @throws EntityNotFoundException When the transaction is not found in the persistence context
+     */
+    OrderPojo markAsFailed(OrderPojo sell) throws BadInputException, EntityNotFoundException;
+
+    /**
+     * Updates status of a sell to "paid/unconfirmed", meaning it can be "rejected" or "confirmed" afterwards.
+     * This must be only possible right after the sell has been created.
+     *
+     * @param sell The sell whose status will be updated
+     * @throws BadInputException       When the transaction is not in "started" state
+     * @throws EntityNotFoundException When the transaction is not found in the persistence context
+     */
+    OrderPojo markAsPaid(OrderPojo sell) throws BadInputException, EntityNotFoundException;
+
+    /**
+     * Updates status of a sell to "confirmed", meaning it must be eventually delivered, or fail to do so.
+     *
+     * @param sell The sell whose status will be updated
+     * @throws BadInputException       When the transaction is not in "paid/unconfirmed" state
+     * @throws EntityNotFoundException When the transaction is not found in the persistence context
+     */
+    OrderPojo markAsConfirmed(OrderPojo sell) throws BadInputException, EntityNotFoundException;
+
+    /**
+     * Updates status of a sell to "rejected", meaning a refund must be issued to the customer.
+     * This must be only possible after payment is completed, notified and saved in the application state.
+     *
+     * @throws BadInputException       When the transaction is not "paid/unconfirmed" state
+     * @throws EntityNotFoundException When the transaction is not found in the persistence context
+     */
+    OrderPojo markAsRejected(OrderPojo sell) throws BadInputException, EntityNotFoundException;
+
+    /**
+     * Updates status of a sell to "completed", meaning the whole process is finished and the customer is contempt.
+     *
+     * @param sell The sell whose status will be updated
+     * @throws BadInputException       When the transaction is not in "confirmed" state
+     * @throws EntityNotFoundException When the transaction is not found in the persistence context
+     */
+    OrderPojo markAsCompleted(OrderPojo sell) throws BadInputException, EntityNotFoundException;
+}

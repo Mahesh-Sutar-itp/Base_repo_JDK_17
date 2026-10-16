@@ -61,6 +61,15 @@
       The only service that issues tokens; every other service verifies locally (ADR-002).
     -->
     <module>trebol-services/identity-service</module>
+
+    <!--
+      Phase 3: Orders - the transactional core. Orders, lines, the status lifecycle, checkout, the
+      Webpay Plus adapter, the notification outbox and the public receipt, carrying the billing and
+      shipper domains with it. Extracted last, because it is the only service with cross-service
+      couplings to cut: the catalogue product reference, the receipt's entity dereference, and the
+      "customer" sort key that reached into Identity.
+    -->
+    <module>trebol-services/orders-service</module>
   </modules>
 
   <properties>
