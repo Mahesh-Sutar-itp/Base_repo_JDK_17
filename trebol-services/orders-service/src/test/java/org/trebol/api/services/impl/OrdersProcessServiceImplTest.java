@@ -334,6 +334,14 @@ class OrdersProcessServiceImplTest {
             when(orderStatusesRepositoryMock.findByName(anyString())).thenReturn(Optional.of(orderStatusMock));
             when(sellConverterServiceMock.convertToPojo(any())).thenReturn(orderPojoMock); // convertOrThrowException
             when(orderDetailsRepositoryMock.findBySellId(any())).thenReturn(orderDetailsMock);
+            when(sellConverterServiceMock.convertDetailToPojo(any(OrderDetail.class)))
+                .thenAnswer(invocation -> {
+                    OrderDetail source = invocation.getArgument(0);
+                    return OrderDetailPojo.builder()
+                        .units(source.getUnits())
+                        .unitValue(source.getUnitValue())
+                        .build();
+                });
 
             Collection<OrderDetailPojo> actualSellDetailsPojo = instance.markAsPaid(orderPojoMock).getDetails();
             OrderDetailPojo actualOrderDetailPojo = actualSellDetailsPojo.iterator().next();
@@ -423,6 +431,14 @@ class OrdersProcessServiceImplTest {
             when(orderStatusesRepositoryMock.findByName(anyString())).thenReturn(Optional.of(orderStatusMock));
             when(sellConverterServiceMock.convertToPojo(any())).thenReturn(orderPojoMock); // convertOrThrowException
             when(orderDetailsRepositoryMock.findBySellId(any())).thenReturn(orderDetailsMock);
+            when(sellConverterServiceMock.convertDetailToPojo(any(OrderDetail.class)))
+                .thenAnswer(invocation -> {
+                    OrderDetail source = invocation.getArgument(0);
+                    return OrderDetailPojo.builder()
+                        .units(source.getUnits())
+                        .unitValue(source.getUnitValue())
+                        .build();
+                });
 
             Collection<OrderDetailPojo> actualSellDetailsPojo = instance.markAsConfirmed(orderPojoMock).getDetails();
             OrderDetailPojo actualOrderDetailPojo = actualSellDetailsPojo.iterator().next();
@@ -512,6 +528,14 @@ class OrdersProcessServiceImplTest {
             when(orderStatusesRepositoryMock.findByName(anyString())).thenReturn(Optional.of(orderStatusMock));
             when(sellConverterServiceMock.convertToPojo(any())).thenReturn(orderPojoMock); // convertOrThrowException
             when(orderDetailsRepositoryMock.findBySellId(any())).thenReturn(orderDetailsMock);
+            when(sellConverterServiceMock.convertDetailToPojo(any(OrderDetail.class)))
+                .thenAnswer(invocation -> {
+                    OrderDetail source = invocation.getArgument(0);
+                    return OrderDetailPojo.builder()
+                        .units(source.getUnits())
+                        .unitValue(source.getUnitValue())
+                        .build();
+                });
 
             Collection<OrderDetailPojo> actualSellDetailsPojo = instance.markAsRejected(orderPojoMock).getDetails();
             OrderDetailPojo actualOrderDetailPojo = actualSellDetailsPojo.iterator().next();
@@ -601,6 +625,14 @@ class OrdersProcessServiceImplTest {
             when(orderStatusesRepositoryMock.findByName(anyString())).thenReturn(Optional.of(orderStatusMock));
             when(sellConverterServiceMock.convertToPojo(any())).thenReturn(orderPojoMock); // convertOrThrowException
             when(orderDetailsRepositoryMock.findBySellId(any())).thenReturn(orderDetailsMock);
+            when(sellConverterServiceMock.convertDetailToPojo(any(OrderDetail.class)))
+                .thenAnswer(invocation -> {
+                    OrderDetail source = invocation.getArgument(0);
+                    return OrderDetailPojo.builder()
+                        .units(source.getUnits())
+                        .unitValue(source.getUnitValue())
+                        .build();
+                });
 
             Collection<OrderDetailPojo> actualSellDetailsPojo = instance.markAsCompleted(orderPojoMock).getDetails();
             OrderDetailPojo actualOrderDetailPojo = actualSellDetailsPojo.iterator().next();

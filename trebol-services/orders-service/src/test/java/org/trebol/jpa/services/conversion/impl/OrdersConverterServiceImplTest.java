@@ -152,7 +152,7 @@ class OrdersConverterServiceImplTest {
         assertEquals(SOME_ADDRESS_ENTITY, result.getBillingAddress());
         assertFalse(result.getDetails().isEmpty());
         assertEquals(1, result.getDetails().size());
-        assertEquals(SOME_PRODUCT_ENTITY, result.getDetails().iterator().next().getProduct());
+        assertEquals(SOME_PRODUCT_BARCODE, result.getDetails().iterator().next().getProductBarcode());
         verify(productLookupContractMock, times(1)).findProductByBarcode(ANY);
         assertEquals(SOME_SHIPPER_ENTITY, result.getShipper());
         assertEquals(SOME_ADDRESS_ENTITY, result.getShippingAddress());
@@ -170,9 +170,7 @@ class OrdersConverterServiceImplTest {
         int totalTaxValue = (taxPerProduct * productUnits);
         int totalNetValue = (netProductValue * productUnits);
         int totalValue = (totalNetValue + totalTaxValue + transportValue);
-        Product productEntityWithPrice = Product.builder()
-            .price(productValue)
-            .build();
+        ProductSnapshot productSnapshotWithPrice = new ProductSnapshot(SOME_PRODUCT_BARCODE, ANY, productValue);
         OrderPojo input = OrderPojo.builder()
             .date(SOME_INSTANT)
             .customer(SOME_CUSTOMER)
@@ -195,7 +193,7 @@ class OrdersConverterServiceImplTest {
         when(billingContractMock.findBillingTypeByName(anyString())).thenReturn(Optional.of(SOME_BILLING_TYPE_ENTITY));
         when(billingContractMock.resolveOrCreateBillingCompany(any(BillingCompanyPojo.class))).thenReturn(SOME_BILLING_COMPANY_ENTITY);
         when(addressesRepositoryMock.findByFields(anyString(), anyString(), anyString(), anyString(), anyString(), anyString())).thenReturn(Optional.of(SOME_ADDRESS_ENTITY));
-        when(productLookupContractMock.findProductByBarcode(anyString())).thenReturn(Optional.of(productEntityWithPrice));
+        when(productLookupContractMock.findProductByBarcode(anyString())).thenReturn(Optional.of(productSnapshotWithPrice));
         when(shipperLookupContractMock.findShipperByName(anyString())).thenReturn(Optional.of(SOME_SHIPPER_ENTITY));
         Order result = instance.convertToNewEntity(input);
         assertEquals(productUnits, result.getTotalItems());
@@ -216,7 +214,7 @@ class OrdersConverterServiceImplTest {
             .totalItems(0)
             .transportValue(0)
             .transactionToken(null)
-            .customer(null)
+            .customerIdNumber(null)
             .status(OrderStatus.builder()
                 .name(ANY)
                 .build())
@@ -230,8 +228,8 @@ class OrdersConverterServiceImplTest {
             .billingAddress(null)
             .shipper(null)
             .shippingAddress(null)
-            .salesperson(null);
-        when(customerProvisioningContractMock.describeCustomer(nullable(Customer.class))).thenReturn(SOME_CUSTOMER);
+            .salespersonIdNumber(null);
+        when(customerProvisioningContractMock.describeCustomer(nullable(String.class))).thenReturn(SOME_CUSTOMER);
         List.of(
             inputBuilder
                 .build(),
@@ -439,10 +437,10 @@ class OrdersConverterServiceImplTest {
                 .customer(null)
                 .build();
             when(billingContractMock.findPaymentTypeByName(anyString())).thenReturn(Optional.of(SOME_PAYMENT_TYPE_ENTITY));
-            when(customerProvisioningContractMock.resolveOrCreateCustomer(isNull())).thenThrow(new BadInputException(NO_CUSTOMER_PROVIDED));
+            when(customerProvisioningContractMock.resolveOrCreateCustomerIdNumber(isNull())).thenThrow(new BadInputException(NO_CUSTOMER_PROVIDED));
             BadInputException result = assertThrows(BadInputException.class, () -> instance.convertToNewEntity(input));
             assertEquals(NO_CUSTOMER_PROVIDED, result.getMessage());
-            verify(customerProvisioningContractMock).resolveOrCreateCustomer(isNull());
+            verify(customerProvisioningContractMock).resolveOrCreateCustomerIdNumber(isNull());
             verifyNoMoreInteractions(customerProvisioningContractMock);
         }
 
