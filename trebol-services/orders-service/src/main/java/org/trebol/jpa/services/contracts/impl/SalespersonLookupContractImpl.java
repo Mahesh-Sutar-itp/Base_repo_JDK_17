@@ -57,13 +57,13 @@ public class SalespersonLookupContractImpl
     }
 
     @Override
-    public PersonPojo describeSalesperson(Long salespersonId) {
-        if (salespersonId==null) {
+    public PersonPojo describeSalesperson(String salespersonIdNumber) {
+        if (salespersonIdNumber==null || salespersonIdNumber.isBlank()) {
             return null;
         }
         return RemoteLookupSupport.findOne(
                 identityRestClient, "Identity", "/data/salespeople",
-                Map.of("id", String.valueOf(salespersonId)), PAGE_OF_PEOPLE)
+                Map.of("idNumber", salespersonIdNumber), PAGE_OF_PEOPLE)
             .orElse(null);
     }
 }

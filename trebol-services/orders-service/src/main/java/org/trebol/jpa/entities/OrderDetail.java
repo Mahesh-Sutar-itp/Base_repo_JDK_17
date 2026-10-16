@@ -67,7 +67,7 @@ public class OrderDetail
     @Size(max = 260)
     private String description;
     /**
-     * The product this line is for, as an <b>identifier</b>.
+     * The product this line is for, as its <b>barcode</b> - the business key.
      * <p>
      * <b>Phase 3 cut C1.</b> This was {@code @ManyToOne(optional = false)} with <b>no {@code fetch}
      * attribute, so it defaulted to EAGER</b> - every order line loaded a catalogue entity. The
@@ -81,12 +81,22 @@ public class OrderDetail
      * case that genuinely needs live product data: the receipt, which reads name and barcode through
      * the published catalogue contract (cut C2).
      * <p>
-     * The column already had {@code ConstraintMode.NO_CONSTRAINT} at the ORM level and
-     * {@code ON DELETE SET NULL} in the DDL, so it was <b>already</b> a soft reference in practice.
-     * It is nullable here for that reason: a deleted product nulls it.
+     * <b>The barcode rather than the surrogate id</b>, because the Catalogue's public API exposes
+     * {@code ProductPojo} with no {@code id} field - it is keyed by barcode - so {@code product_id}
+     * could be neither populated nor resolved across the boundary.
+     * <p>
+     * <b>This makes the line completely self-describing</b>, and that is a real improvement rather
+     * than a workaround: barcode, description and unit value are now all local, so the receipt path
+     * needs <b>no remote call at all</b>. Cut C2 therefore removes a coupling instead of replacing
+     * it with a network call on an anonymous public endpoint.
+     * <p>
+     * The legacy {@code product_id} column is retained in the schema, nullable and unmapped, so no
+     * existing data migrates. It already had {@code ConstraintMode.NO_CONSTRAINT} at the ORM level
+     * and {@code ON DELETE SET NULL} in the DDL, so that edge was a soft reference even before this
+     * phase.
      */
-    @Column(name = "product_id")
-    private Long productId;
+    @Column(name = "order_detail_product_barcode", length = 300)
+    private String productBarcode;
     @JoinColumn(name = "order_id", referencedColumnName = "order_id", insertable = false, updatable = false,
         foreignKey = @ForeignKey(ConstraintMode.NO_CONSTRAINT))
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
@@ -102,7 +112,7 @@ public class OrderDetail
         this.units = source.units;
         this.unitValue = source.unitValue;
         this.description = source.description;
-        this.productId = null;
+        this.productBarcode = null;
         this.order = null;
     }
 }

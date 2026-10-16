@@ -31,10 +31,12 @@ import java.util.Optional;
  * which was extraction work rather than gate work. This <em>is</em> that extraction work, so the
  * entity is gone and a snapshot takes its place.
  * <p>
- * <b>Only four fields are needed, and that is the whole reason this cut is tractable.</b> The
- * checkout path needs {@code id} and {@code price} to write an order line; the line's description
- * needs {@code name}; the receipt needs {@code name} and {@code barcode}. Nothing in this service
- * needs a product's images, categories, stock or description.
+ * <b>One method, reached from one place.</b> Only the checkout path needs the Catalogue at all: it
+ * resolves a submitted barcode to get the price and name it copies onto the order line. The
+ * <b>receipt path makes no call</b> - the line stores the barcode itself, which is what makes cut
+ * C2 a removal rather than a replacement.
+ * <p>
+ * Nothing in this service needs a product's images, categories, stock or description.
  *
  * @see ProductSnapshot
  */
@@ -44,17 +46,4 @@ public interface ProductLookupContract {
      * @return a snapshot of the matching product, or empty if no product carries that barcode
      */
     Optional<ProductSnapshot> findProductByBarcode(String barcode);
-
-    /**
-     * Resolves a product by identifier, for the receipt path.
-     * <p>
-     * Separate from {@link #findProductByBarcode} because an order line stores an identifier, not a
-     * barcode - and a product whose barcode has since changed must still render on its historic
-     * receipt.
-     *
-     * @param productId the identifier stored on the order line, which may be {@code null} if the
-     *                  product has since been deleted
-     * @return a snapshot, or empty if the identifier is null or no longer resolves
-     */
-    Optional<ProductSnapshot> findProductById(Long productId);
 }

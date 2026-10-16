@@ -32,7 +32,7 @@ import org.trebol.common.exceptions.BadInputException;
  * order. Both tables belong to the Identity service now, so the entity is gone and an identifier
  * takes its place.
  * <p>
- * <b>{@link #resolveOrCreateCustomerId} is a read <i>or a write</i>, and it is now a REMOTE
+ * <b>{@link #resolveOrCreateCustomerIdNumber} is a read <i>or a write</i>, and it is now a REMOTE
  * write inside the checkout transaction.</b> That is the open consequence {@code ADR-001} recorded
  * when this grouping was approved, and extraction is what makes it real rather than theoretical:
  * <ul>
@@ -54,17 +54,18 @@ public interface CustomerProvisioningContract {
      * Finds the customer matching this person, creating one if none exists.
      *
      * @param customer the customer details submitted with the order
-     * @return the customer's identifier, for {@code Order.customerId}
+     * @return the customer's id number, for {@code Order.customerIdNumber} - the business key,
+     *         because Identity's {@code PersonPojo} exposes no surrogate id
      * @throws BadInputException if the submitted details are not sufficient to identify or create a
      *                           customer - the message is raised by Identity and relayed verbatim
      */
-    Long resolveOrCreateCustomerId(PersonPojo customer) throws BadInputException;
+    String resolveOrCreateCustomerIdNumber(PersonPojo customer) throws BadInputException;
 
     /**
      * Reads back a customer's person details, for rendering an order.
      *
-     * @param customerId the identifier stored on the order
+     * @param customerIdNumber the id number stored on the order
      * @return the person details, or {@code null} if the identifier does not resolve
      */
-    PersonPojo describeCustomer(Long customerId);
+    PersonPojo describeCustomer(String customerIdNumber);
 }

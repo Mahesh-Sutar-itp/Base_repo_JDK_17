@@ -27,7 +27,6 @@ import org.trebol.api.models.ProductPojo;
 import org.trebol.api.models.ReceiptDetailPojo;
 import org.trebol.api.models.ReceiptPojo;
 import org.trebol.api.services.ReceiptService;
-import org.trebol.jpa.services.contracts.ProductLookupContract;
 import org.trebol.jpa.entities.Order;
 import org.trebol.jpa.entities.OrderDetail;
 import org.trebol.jpa.repositories.OrdersRepository;
@@ -41,17 +40,14 @@ import java.util.Optional;
 public class ReceiptServiceImpl
     implements ReceiptService {
     private final OrdersRepository ordersRepository;
-    private final ProductLookupContract productLookupContract;
     private final ConversionService conversionService;
 
     @Autowired
     public ReceiptServiceImpl(
         OrdersRepository ordersRepository,
-        ConversionService conversionService,
-        ProductLookupContract productLookupContract
+        ConversionService conversionService
     ) {
         this.ordersRepository = ordersRepository;
-        this.productLookupContract = productLookupContract;
         this.conversionService = conversionService;
     }
 
@@ -72,7 +68,7 @@ public class ReceiptServiceImpl
                 ReceiptDetailPojo targetDetail = conversionService.convert(d, ReceiptDetailPojo.class);
                 if (targetDetail!=null) {
                     // ====================================================================
-                    // Phase 3 cut C2 - the coupling Gate A did not catch.
+                    // Phase 3 cut C2 - the coupling Gate A did not catch, REMOVED not replaced.
                     //
                     // This read `Product pd = d.getProduct();` and then pd.getName() and
                     // pd.getBarcode() - a direct dereference of a CATALOGUE ENTITY from inside an
@@ -81,20 +77,17 @@ public class ReceiptServiceImpl
                     // ENTITY passed cleanly. The same blind spot hid coupling hotspot HS-02, which
                     // was the service-level variant; this was the entity-level one.
                     //
-                    // Only two fields were ever used, which is what made the cut tractable: the
-                    // published contract returns a four-field snapshot, and this needs two of them.
+                    // The order line now stores the barcode itself, so there is NO REMOTE CALL on
+                    // the receipt path. That is better than the contract call first drafted here:
+                    // this endpoint is anonymous and public, and making it depend on the Catalogue's
+                    // availability would have been a worse coupling than the one being removed.
                     //
-                    // A missing product yields a null product on the line rather than failing the
-                    // receipt. BR-ORDER-047 says the receipt exposes only name and barcode per
-                    // line, and a historic receipt must still render after a product is deleted -
-                    // FK_ORDER_DETAIL_PROD_ID was ON DELETE SET NULL precisely so that can happen.
+                    // The product name is not stored, and does not need to be: the line's generated
+                    // description already embeds it ("3x Widget", BR-ORDER-010).
                     // ====================================================================
-                    ProductPojo targetDetailProduct = productLookupContract.findProductById(d.getProductId())
-                        .map(snapshot -> ProductPojo.builder()
-                            .name(snapshot.name())
-                            .barcode(snapshot.barcode())
-                            .build())
-                        .orElse(null);
+                    ProductPojo targetDetailProduct = d.getProductBarcode()==null ? null:ProductPojo.builder()
+                        .barcode(d.getProductBarcode())
+                        .build();
                     targetDetail.setProduct(targetDetailProduct);
                     targetDetail.setUnitValue(d.getUnitValue());
                     targetDetails.add(targetDetail);

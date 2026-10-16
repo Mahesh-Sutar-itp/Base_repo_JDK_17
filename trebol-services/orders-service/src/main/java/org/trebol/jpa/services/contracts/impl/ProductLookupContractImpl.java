@@ -64,23 +64,13 @@ public class ProductLookupContractImpl
         return this.lookup(Map.of("barcode", barcode));
     }
 
-    @Override
-    public Optional<ProductSnapshot> findProductById(Long productId) {
-        if (productId==null) {
-            // An order line whose product has since been deleted - FK_ORDER_DETAIL_PROD_ID was
-            // ON DELETE SET NULL. Normal, not an error.
-            return Optional.empty();
-        }
-        return this.lookup(Map.of("id", String.valueOf(productId)));
-    }
 
     private Optional<ProductSnapshot> lookup(Map<String, String> filters) {
         return RemoteLookupSupport
             .findOne(catalogueRestClient, "Catalogue", "/data/products", filters, PAGE_OF_PRODUCTS)
             .map(product -> new ProductSnapshot(
-                product.getId(),
                 product.getBarcode(),
                 product.getName(),
-                product.getPrice()));
+                product.getPrice()==null ? 0:product.getPrice()));
     }
 }

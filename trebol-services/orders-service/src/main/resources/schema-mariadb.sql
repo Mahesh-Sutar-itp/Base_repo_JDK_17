@@ -10,9 +10,19 @@
 --   FK_ORDER_SPERSON          orders(salesperson_id)    -> salespeople(salesperson_id) [Identity]
 --   FK_ORDER_DETAIL_PROD_ID   order_details(product_id) -> products(product_id)        [Catalogue]
 --
--- The COLUMNS are unchanged in name, type and nullability, so no data migrates - only the
--- constraints go. Referential integrity across those three edges becomes an application concern,
--- which is the cost the approved target accepts.
+-- THREE COLUMNS ARE ADDED, and that is an intentional deviation from the plan's assumption that
+-- "only the constraints go". Neither sibling service exposes a surrogate id in its public API -
+-- the Catalogue's ProductPojo is keyed by barcode and Identity's PersonPojo by idNumber - so
+-- customer_id, salesperson_id and product_id could be neither populated when creating a row nor
+-- resolved when rendering one. The cut therefore has to be business-key based:
+--
+--   customer_id_number            varchar(20)   NOT NULL
+--   salesperson_id_number         varchar(20)   NULL
+--   order_detail_product_barcode  varchar(300)  NULL
+--
+-- The three legacy surrogate columns are RETAINED, nullable and unmapped by the entities, so NO
+-- EXISTING DATA MIGRATES. Referential integrity across those three edges becomes an application
+-- concern, which is the cost the approved target accepts.
 --
 -- Note FK_ORDER_DETAIL_PROD_ID was already ON DELETE SET NULL and already
 -- ConstraintMode.NO_CONSTRAINT at the ORM level, so that edge was a soft reference in practice
@@ -125,9 +135,16 @@ CREATE TABLE `orders` (
   `billing_address_id` bigint(20) DEFAULT NULL,
   `billing_company_id` bigint(20) DEFAULT NULL,
   `billing_type_id` bigint(20) NOT NULL,
-  `customer_id` bigint(20) NOT NULL,
+  -- Legacy. Retained so no existing data migrates; nullable and UNMAPPED by the entity.
+  `customer_id` bigint(20) DEFAULT NULL,
+  -- Phase 3: the business key Identity's API is actually keyed by. ProductPojo and PersonPojo
+  -- expose no surrogate id, so customer_id could be neither populated nor resolved across the
+  -- boundary. Surrogate keys do not cross a service boundary.
+  `customer_id_number` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
   `payment_type_id` bigint(20) NOT NULL,
+  -- Legacy, as above.
   `salesperson_id` bigint(20) DEFAULT NULL,
+  `salesperson_id_number` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `shipper_id` bigint(20) DEFAULT NULL,
   `shipping_address_id` bigint(20) DEFAULT NULL,
   `order_status_id` bigint(20) NOT NULL,
@@ -149,7 +166,12 @@ CREATE TABLE `order_details` (
   `order_detail_unit_value` int(11) NOT NULL,
   `order_detail_units` int(11) NOT NULL,
   `order_detail_description` varchar(260) COLLATE utf8mb4_unicode_ci NOT NULL,
+  -- Legacy, as above. Already ON DELETE SET NULL and NO_CONSTRAINT before this phase.
   `product_id` bigint(20) NULL,
+  -- Phase 3: the Catalogue's API is keyed by barcode. Storing it here completes the line's
+  -- self-description - barcode, description and unit value are all local - so the receipt path
+  -- makes NO remote call. Cut C2 removes a coupling rather than replacing it.
+  `order_detail_product_barcode` varchar(300) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `order_id` bigint(20) NOT NULL,
   PRIMARY KEY (`order_detail_id`),
   CONSTRAINT `FK_ORDER_DETAIL_PARENT_ID` FOREIGN KEY (`order_id`) REFERENCES `orders` (`order_id`)

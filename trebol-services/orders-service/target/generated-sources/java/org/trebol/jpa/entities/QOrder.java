@@ -30,7 +30,7 @@ public class QOrder extends EntityPathBase<Order> {
 
     public final StringPath callbackNonce = createString("callbackNonce");
 
-    public final NumberPath<Long> customerId = createNumber("customerId", Long.class);
+    public final StringPath customerIdNumber = createString("customerIdNumber");
 
     public final DateTimePath<java.time.Instant> date = createDateTime("date", java.time.Instant.class);
 
@@ -42,7 +42,7 @@ public class QOrder extends EntityPathBase<Order> {
 
     public final QPaymentType paymentType;
 
-    public final NumberPath<Long> salespersonId = createNumber("salespersonId", Long.class);
+    public final StringPath salespersonIdNumber = createString("salespersonIdNumber");
 
     public final QShipper shipper;
 

@@ -109,7 +109,7 @@ public class OrdersConverterServiceImpl
             .token(source.getTransactionToken())
             .build();
 
-        PersonPojo customer = customerProvisioningContract.describeCustomer(source.getCustomerId());
+        PersonPojo customer = customerProvisioningContract.describeCustomer(source.getCustomerIdNumber());
         target.setCustomer(customer);
 
         target.setStatus(source.getStatus().getName());
@@ -126,8 +126,8 @@ public class OrdersConverterServiceImpl
             target.setShipper(source.getShipper().getName());
         }
 
-        if (source.getSalespersonId()!=null) {
-            PersonPojo salesperson = salespersonLookupContract.describeSalesperson(source.getSalespersonId());
+        if (source.getSalespersonIdNumber()!=null) {
+            PersonPojo salesperson = salespersonLookupContract.describeSalesperson(source.getSalespersonIdNumber());
             target.setSalesperson(salesperson);
         }
         return target;
@@ -176,14 +176,13 @@ public class OrdersConverterServiceImpl
      */
     @Override
     public OrderDetailPojo convertDetailToPojo(OrderDetail source) {
-        ProductPojo product = productLookupContract.findProductById(source.getProductId())
-            .map(snapshot -> ProductPojo.builder()
-                .id(snapshot.id())
-                .barcode(snapshot.barcode())
-                .name(snapshot.name())
-                .price(snapshot.price())
-                .build())
-            .orElse(null);
+        // The barcode is stored on the line, so rendering it needs NO remote call at all. The
+        // product's name is not stored - it is embedded in the line's own generated description
+        // ("3x Widget", BR-ORDER-010) - so a rendered line carries the barcode and the description,
+        // which is what BR-ORDER-047 says a receipt exposes.
+        ProductPojo product = source.getProductBarcode()==null ? null:ProductPojo.builder()
+            .barcode(source.getProductBarcode())
+            .build();
         return OrderDetailPojo.builder()
             .unitValue(source.getUnitValue())
             .units(source.getUnits())
@@ -215,7 +214,7 @@ public class OrdersConverterServiceImpl
             String description = detail.getUnits() + "x " + product.name();
             return OrderDetail.builder()
                 .units(detail.getUnits())
-                .productId(product.id())
+                .productBarcode(product.barcode())
                 .unitValue(product.price())
                 .description(description)
                 .build();
@@ -246,10 +245,16 @@ public class OrdersConverterServiceImpl
      * Tries to find a matching customer from the info placed in the order.<br/>
      * If it can't find any match, it will convert the data into a new customer.
      * Either way, the sell will have the customer set.
+     * <p>
+     * <b>Phase 3.</b> The customer is now recorded as their <b>id number</b> rather than by a
+     * {@code @ManyToOne} association cascading {@code PERSIST}. The contract guarantees the customer
+     * exists in the Identity service and hands back the business key - which, on both real paths, it
+     * already resolved rather than created: a guest's customer row is provisioned by Identity at
+     * guest-session time (register item D14) and a registered customer's at registration.
      */
     private void convertCustomerInformationForEntity(OrderPojo model, Order target) throws BadInputException {
         PersonPojo pojoCustomer = model.getCustomer();
-        target.setCustomer(customerProvisioningContract.resolveOrCreateCustomer(pojoCustomer));
+        target.setCustomerIdNumber(customerProvisioningContract.resolveOrCreateCustomerIdNumber(pojoCustomer));
     }
 
     /**

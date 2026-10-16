@@ -21,25 +21,27 @@
 package org.trebol.jpa.services.contracts;
 
 /**
- * The four product fields this service needs, and no others.
+ * The three product fields this service needs, and no others.
  * <p>
  * <b>Phase 3 cut C1/C2.</b> Replaces the {@code Product} entity that
  * {@link ProductLookupContract} used to return. A record rather than a class: it is a value, it is
  * immutable, and it crosses a service boundary - all three of which argue against a mutable
  * JavaBean.
  * <p>
+ * <b>There is no {@code id} field, and that is a finding rather than an omission.</b> The
+ * Catalogue's public API exposes {@code ProductPojo} keyed by {@code barcode}, with no surrogate
+ * id at all - so an order line stores the barcode. Surrogate keys do not cross a service boundary.
+ * <p>
  * <b>Deliberately not {@code ProductPojo}.</b> That model is the Catalogue service's <em>API</em>
  * shape, with its own validation annotations and its own {@code @JsonInclude} policy; coupling this
  * service to it would mean every catalogue API change became an Orders change. A snapshot of the
  * four fields actually used is a narrower and more honest dependency.
  *
- * @param id      the product identifier, stored on the order line
- * @param barcode the barcode, shown on receipts
+  * @param barcode the barcode - the business key, and what the order line stores
  * @param name    the product name, used to generate the line description and shown on receipts
  * @param price   the current price, copied onto the line at creation so history stays price-stable
  */
 public record ProductSnapshot(
-    Long id,
     String barcode,
     String name,
     int price

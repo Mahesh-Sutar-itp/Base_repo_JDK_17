@@ -28,7 +28,7 @@ public class QOrderDetail extends EntityPathBase<OrderDetail> {
 
     public final QOrder order;
 
-    public final NumberPath<Long> productId = createNumber("productId", Long.class);
+    public final StringPath productBarcode = createString("productBarcode");
 
     public final NumberPath<Integer> units = createNumber("units", Integer.class);
 

@@ -100,19 +100,28 @@ public class Order
     @Column(name = "order_callback_nonce")
     private String callbackNonce;
     /**
-     * The customer who placed this order, as an <b>identifier</b>.
+     * The customer who placed this order, as their <b>id number</b> - the business key.
      * <p>
      * <b>Phase 3 cut.</b> This was a {@code @ManyToOne} association to the {@code Customer} entity,
      * cascading {@code PERSIST} - which is how one checkout call created a customer and a person row
      * as a side effect. {@code customers} and {@code people} belong to the Identity service, so the
      * association cannot survive here and {@code FK_ORDER_CUSTOM_ID} is cut.
      * <p>
-     * The column name and type are unchanged, so no data migrates. What changes is that creating a
-     * customer is now an explicit call through {@link org.trebol.jpa.services.contracts.CustomerProvisioningContract}
-     * rather than an implicit cascade - the write is the same write, but it is now visible.
+     * <b>A business key, not the surrogate id</b>, and that is not a stylistic choice. Identity's
+     * public API exposes {@code PersonPojo} with no {@code id} field at all - it is keyed by
+     * {@code idNumber} - so {@code customer_id} could be neither populated when creating an order
+     * nor resolved when rendering one. Surrogate keys do not cross a service boundary, which is
+     * correct of Identity and is what this column follows.
+     * <p>
+     * The legacy {@code customer_id} column is retained in the schema, nullable and unmapped, so
+     * <b>no existing data migrates</b>. Recorded as an intentional deviation in PHASE-3-EXIT.md.
+     * <p>
+     * Creating a customer is now an explicit call through
+     * {@link org.trebol.jpa.services.contracts.CustomerProvisioningContract} rather than an implicit
+     * cascade - the write is the same write, but it is now visible.
      */
-    @Column(name = "customer_id", nullable = false)
-    private Long customerId;
+    @Column(name = "customer_id_number", nullable = false, length = 20)
+    private String customerIdNumber;
     @JoinColumn(name = "payment_type_id", updatable = false, nullable = false)
     @ManyToOne(optional = false, cascade = CascadeType.REFRESH, fetch = FetchType.LAZY)
     private PaymentType paymentType;
@@ -135,15 +144,15 @@ public class Order
     @ManyToOne(cascade = {CascadeType.PERSIST, CascadeType.REFRESH, CascadeType.MERGE}, fetch = FetchType.LAZY)
     private Address shippingAddress;
     /**
-     * The salesperson credited with this order, as an <b>identifier</b>. Nullable.
+     * The salesperson credited with this order, as their <b>id number</b>. Nullable.
      * <p>
-     * <b>Phase 3 cut</b>, for the same reason as {@link #customerId}: {@code salespeople} belongs to
+     * <b>Phase 3 cut</b>, for the same reason as {@link #customerIdNumber}: {@code salespeople} belongs to
      * the Identity service and {@code FK_ORDER_SPERSON} is cut. Read-only from this service's point
      * of view - nothing here ever creates a salesperson, so the former {@code PERSIST} and
      * {@code MERGE} cascades had nothing to do.
      */
-    @Column(name = "salesperson_id")
-    private Long salespersonId;
+    @Column(name = "salesperson_id_number", length = 20)
+    private String salespersonIdNumber;
     @JoinColumn(name = "order_id", nullable = false)
     @OneToMany(cascade = CascadeType.PERSIST, fetch = FetchType.LAZY)
     private Collection<OrderDetail> details;
@@ -171,11 +180,11 @@ public class Order
         this.status = source.status;
         this.billingType = source.billingType;
         this.billingAddress = null;
-        this.customerId = null;
+        this.customerIdNumber = null;
         this.details = null;
         this.billingCompany = null;
         this.shipper = null;
         this.shippingAddress = null;
-        this.salespersonId = null;
+        this.salespersonIdNumber = null;
     }
 }

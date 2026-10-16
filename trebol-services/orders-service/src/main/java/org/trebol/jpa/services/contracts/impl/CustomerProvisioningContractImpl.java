@@ -92,7 +92,7 @@ public class CustomerProvisioningContractImpl
     }
 
     @Override
-    public Long resolveOrCreateCustomerId(PersonPojo customer) throws BadInputException {
+    public String resolveOrCreateCustomerIdNumber(PersonPojo customer) throws BadInputException {
         if (customer==null || customer.getIdNumber()==null || customer.getIdNumber().isBlank()) {
             // The literal Identity's own CustomersCrudServiceImpl.getExisting raises, preserved so
             // the client sees the same message it saw before the extraction.
@@ -101,8 +101,10 @@ public class CustomerProvisioningContractImpl
         Optional<PersonPojo> existing = RemoteLookupSupport.findOne(
             identityRestClient, "Identity", "/data/customers",
             Map.of("idNumber", customer.getIdNumber()), PAGE_OF_PEOPLE);
-        if (existing.isPresent() && existing.get().getId()!=null) {
-            return existing.get().getId();
+        if (existing.isPresent()) {
+            // The id number IS the key, so there is nothing to read back - which is the second
+            // reason business keys suit a service boundary: resolution needs no extra round trip.
+            return customer.getIdNumber();
         }
         return this.createCustomer(customer);
     }
@@ -110,7 +112,7 @@ public class CustomerProvisioningContractImpl
     /**
      * The create branch. Reached only by an entitled administrative caller - see the class javadoc.
      */
-    private Long createCustomer(PersonPojo customer) throws BadInputException {
+    private String createCustomer(PersonPojo customer) throws BadInputException {
         try {
             String authorization = CallerTokenRelay.currentAuthorizationHeader();
             identityRestClient.post()
@@ -129,24 +131,19 @@ public class CustomerProvisioningContractImpl
             logger.warn("Could not provision a customer through the Identity service: {}", exc.getMessage());
             throw new BadInputException(CUSTOMER_COULD_NOT_BE_RESOLVED);
         }
-        // POST /data/customers returns 201 with no body, so the identifier is read back by the same
-        // lookup that just missed. One extra call on a rare path, in exchange for not depending on
-        // a response shape Identity does not promise.
-        return RemoteLookupSupport.findOne(
-                identityRestClient, "Identity", "/data/customers",
-                Map.of("idNumber", customer.getIdNumber()), PAGE_OF_PEOPLE)
-            .map(PersonPojo::getId)
-            .orElseThrow(() -> new BadInputException(CUSTOMER_COULD_NOT_BE_RESOLVED));
+        // POST /data/customers returns 201 with no body, and none is needed: the id number the
+        // caller submitted is the key, so there is nothing to read back.
+        return customer.getIdNumber();
     }
 
     @Override
-    public PersonPojo describeCustomer(Long customerId) {
-        if (customerId==null) {
+    public PersonPojo describeCustomer(String customerIdNumber) {
+        if (customerIdNumber==null || customerIdNumber.isBlank()) {
             return null;
         }
         return RemoteLookupSupport.findOne(
                 identityRestClient, "Identity", "/data/customers",
-                Map.of("id", String.valueOf(customerId)), PAGE_OF_PEOPLE)
+                Map.of("idNumber", customerIdNumber), PAGE_OF_PEOPLE)
             .orElse(null);
     }
 }

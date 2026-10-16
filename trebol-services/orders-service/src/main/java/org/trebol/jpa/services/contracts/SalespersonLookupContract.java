@@ -28,7 +28,7 @@ import org.trebol.api.models.PersonPojo;
  * <b>Phase 3 cut.</b> In the monolith this took the {@code Salesperson} <b>entity</b> -
  * {@code describeSalesperson(Salesperson)} - which only worked because the caller already held one
  * through {@code Order.salesperson}. With {@code salespeople} owned by Identity, the parameter
- * becomes the identifier the order actually stores.
+ * becomes the id number the order actually stores - Identity's API exposes no surrogate id.
  * <p>
  * <b>Read-only</b>, which makes this the simplest of the three remote contracts: nothing in this
  * service ever creates a salesperson, so there is no distributed-write question of the kind
@@ -38,8 +38,8 @@ import org.trebol.api.models.PersonPojo;
  */
 public interface SalespersonLookupContract {
     /**
-     * @param salespersonId the identifier stored on the order, which may be {@code null}
+     * @param salespersonIdNumber the id number stored on the order, which may be {@code null}
      * @return the person details, or {@code null} if the identifier is null or does not resolve
      */
-    PersonPojo describeSalesperson(Long salespersonId);
+    PersonPojo describeSalesperson(String salespersonIdNumber);
 }
