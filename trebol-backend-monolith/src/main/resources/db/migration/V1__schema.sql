@@ -1,15 +1,15 @@
--- Adminer 4.8.1 MySQL 5.5.5-10.5.9-MariaDB-1:10.5.9+maria~focal dump
+-- Flyway V1: initial Trebol schema for MySQL 8.4 (Azure Database for MySQL Flexible Server).
+-- Based on the original schema-mariadb.sql (Adminer dump of MariaDB 10.5), with these changes:
+--   * removed the DROP TABLE IF EXISTS statements: a migration must never drop tables
+--   * removed the session SET statements: foreign key checks stay on (tables are created in
+--     dependency order) and no session setting leaks onto pooled connections
+--   * fixed FK_ORDER_DETAIL_PARENT_ID, which referenced a non-existent table `sales` instead of `orders`
+--   * removed integer display widths (bigint(20), int(11)): deprecated since MySQL 8.0.17, no effect on types
+-- Never edit this file after it has been applied anywhere: add a new V<n>__<description>.sql instead.
 
-SET NAMES utf8;
-SET time_zone = '+00:00';
-SET foreign_key_checks = 0;
-SET sql_mode = 'NO_AUTO_VALUE_ON_ZERO';
 
-SET NAMES utf8mb4;
-
-DROP TABLE IF EXISTS `addresses`;
 CREATE TABLE `addresses` (
-  `address_id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `address_id` bigint NOT NULL AUTO_INCREMENT,
   `address_city` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
   `address_first_line` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
   `address_municipality` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -24,9 +24,8 @@ CREATE TABLE `addresses` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
-DROP TABLE IF EXISTS `app_params`;
 CREATE TABLE `app_params` (
-  `param_id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `param_id` bigint NOT NULL AUTO_INCREMENT,
   `param_category` varchar(25) COLLATE utf8mb4_unicode_ci NOT NULL,
   `param_name` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
   `param_value` varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -35,9 +34,8 @@ CREATE TABLE `app_params` (
 ) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
-DROP TABLE IF EXISTS `app_permissions`;
 CREATE TABLE `app_permissions` (
-  `permission_id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `permission_id` bigint NOT NULL AUTO_INCREMENT,
   `permission_code` varchar(25) COLLATE utf8mb4_unicode_ci NOT NULL,
   `permission_description` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   PRIMARY KEY (`permission_id`),
@@ -45,9 +43,8 @@ CREATE TABLE `app_permissions` (
 ) ENGINE=InnoDB AUTO_INCREMENT=54 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
-DROP TABLE IF EXISTS `app_user_roles`;
 CREATE TABLE `app_user_roles` (
-  `user_role_id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `user_role_id` bigint NOT NULL AUTO_INCREMENT,
   `user_role_name` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
   PRIMARY KEY (`user_role_id`),
   UNIQUE KEY `UK_UROLE_NAME` (`user_role_name`),
@@ -55,9 +52,8 @@ CREATE TABLE `app_user_roles` (
 ) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
-DROP TABLE IF EXISTS `billing_companies`;
 CREATE TABLE `billing_companies` (
-  `billing_company_id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `billing_company_id` bigint NOT NULL AUTO_INCREMENT,
   `billing_company_id_number` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
   `billing_company_name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
   PRIMARY KEY (`billing_company_id`),
@@ -66,18 +62,16 @@ CREATE TABLE `billing_companies` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
-DROP TABLE IF EXISTS `billing_types`;
 CREATE TABLE `billing_types` (
-  `billing_type_id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `billing_type_id` bigint NOT NULL AUTO_INCREMENT,
   `billing_type_name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
   PRIMARY KEY (`billing_type_id`),
   UNIQUE KEY `UK_BILL_TYP_NAME` (`billing_type_name`)
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
-DROP TABLE IF EXISTS `images`;
 CREATE TABLE `images` (
-  `image_id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `image_id` bigint NOT NULL AUTO_INCREMENT,
   `image_code` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
   `image_filename` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
   `image_url` varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -88,18 +82,16 @@ CREATE TABLE `images` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
-DROP TABLE IF EXISTS `payment_types`;
 CREATE TABLE `payment_types` (
-  `payment_type_id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `payment_type_id` bigint NOT NULL AUTO_INCREMENT,
   `payment_type_name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
   PRIMARY KEY (`payment_type_id`),
   UNIQUE KEY `UK_PAYMT_NAME` (`payment_type_name`)
 ) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
-DROP TABLE IF EXISTS `people`;
 CREATE TABLE `people` (
-  `person_id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `person_id` bigint NOT NULL AUTO_INCREMENT,
   `person_email` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
   `person_first_name` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
   `person_id_number` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -115,9 +107,8 @@ CREATE TABLE `people` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
-DROP TABLE IF EXISTS `product_lists`;
 CREATE TABLE `product_lists` (
-  `product_list_id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `product_list_id` bigint NOT NULL AUTO_INCREMENT,
   `product_list_code` varchar(25) COLLATE utf8mb4_unicode_ci NOT NULL,
   `product_list_disabled` bit(1) NOT NULL,
   `product_list_name` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -127,12 +118,11 @@ CREATE TABLE `product_lists` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
-DROP TABLE IF EXISTS `product_categories`;
 CREATE TABLE `product_categories` (
-  `product_category_id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `product_category_id` bigint NOT NULL AUTO_INCREMENT,
   `product_category_code` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
   `product_category_name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `parent_product_category_id` bigint(20) DEFAULT NULL,
+  `parent_product_category_id` bigint DEFAULT NULL,
   PRIMARY KEY (`product_category_id`),
   UNIQUE KEY `UK_PROD_CAT_CODE` (`product_category_code`),
   UNIQUE KEY `UK_PROD_CAT_IF_CHILD` (`parent_product_category_id`,`product_category_name`),
@@ -140,10 +130,9 @@ CREATE TABLE `product_categories` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
-DROP TABLE IF EXISTS `order_statuses`;
 CREATE TABLE `order_statuses` (
-  `order_status_id` bigint(20) NOT NULL AUTO_INCREMENT,
-  `order_status_code` int(11) NOT NULL,
+  `order_status_id` bigint NOT NULL AUTO_INCREMENT,
+  `order_status_code` int NOT NULL,
   `order_status_name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
   PRIMARY KEY (`order_status_id`),
   UNIQUE KEY `UK_ORDER_STATUS_CODE` (`order_status_code`),
@@ -151,26 +140,20 @@ CREATE TABLE `order_statuses` (
 ) ENGINE=InnoDB AUTO_INCREMENT=13 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
-DROP TABLE IF EXISTS `shippers`;
 CREATE TABLE `shippers` (
-  `shipper_id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `shipper_id` bigint NOT NULL AUTO_INCREMENT,
   `shipper_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   PRIMARY KEY (`shipper_id`),
   UNIQUE KEY `UK_SHIPPER_NAME` (`shipper_name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
-
-
-
-
-DROP TABLE IF EXISTS `app_users`;
 CREATE TABLE `app_users` (
-  `user_id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `user_id` bigint NOT NULL AUTO_INCREMENT,
   `user_name` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
   `user_password` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `person_id` bigint(20) DEFAULT NULL,
-  `user_role_id` bigint(20) NOT NULL,
+  `person_id` bigint DEFAULT NULL,
+  `user_role_id` bigint NOT NULL,
   PRIMARY KEY (`user_id`),
   UNIQUE KEY `UK_USER_NAME` (`user_name`),
   KEY `IDX_USER_NAME` (`user_name`),
@@ -179,37 +162,34 @@ CREATE TABLE `app_users` (
 ) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
-DROP TABLE IF EXISTS `app_user_role_permissions`;
 CREATE TABLE `app_user_role_permissions` (
-  `user_role_permission_id` bigint(20) NOT NULL AUTO_INCREMENT,
-  `permission_id` bigint(20) NOT NULL,
-  `user_role_id` bigint(20) NOT NULL,
+  `user_role_permission_id` bigint NOT NULL AUTO_INCREMENT,
+  `permission_id` bigint NOT NULL,
+  `user_role_id` bigint NOT NULL,
   PRIMARY KEY (`user_role_permission_id`),
   CONSTRAINT `FK_UROLEPERMS_PERM_ID` FOREIGN KEY (`permission_id`) REFERENCES `app_permissions` (`permission_id`),
   CONSTRAINT `FK_UROLEPERMS_UROLE_ID` FOREIGN KEY (`user_role_id`) REFERENCES `app_user_roles` (`user_role_id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=99 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
-DROP TABLE IF EXISTS `customers`;
 CREATE TABLE `customers` (
-  `customer_id` bigint(20) NOT NULL AUTO_INCREMENT,
-  `person_id` bigint(20) NOT NULL,
+  `customer_id` bigint NOT NULL AUTO_INCREMENT,
+  `person_id` bigint NOT NULL,
   PRIMARY KEY (`customer_id`),
   UNIQUE KEY `UK_CUSTOM_PERSON_ID` (`person_id`),
   CONSTRAINT `FK_CUSTOM_PERSON_ID` FOREIGN KEY (`person_id`) REFERENCES `people` (`person_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
-DROP TABLE IF EXISTS `products`;
 CREATE TABLE `products` (
-  `product_id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `product_id` bigint NOT NULL AUTO_INCREMENT,
   `product_code` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
   `product_description` varchar(4000) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `product_name` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `product_price` int(11) NOT NULL,
-  `product_stock_critical` int(11) NOT NULL,
-  `product_stock_current` int(11) NOT NULL,
-  `product_category_id` bigint(20) DEFAULT NULL,
+  `product_price` int NOT NULL,
+  `product_stock_critical` int NOT NULL,
+  `product_stock_current` int NOT NULL,
+  `product_category_id` bigint DEFAULT NULL,
   PRIMARY KEY (`product_id`),
   UNIQUE KEY `UK_PRODUCT_CODE` (`product_code`),
   UNIQUE KEY `UK_PRODUCT_NAME` (`product_name`),
@@ -218,61 +198,52 @@ CREATE TABLE `products` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
-DROP TABLE IF EXISTS `salespeople`;
 CREATE TABLE `salespeople` (
-  `salesperson_id` bigint(20) NOT NULL AUTO_INCREMENT,
-  `person_id` bigint(20) NOT NULL,
+  `salesperson_id` bigint NOT NULL AUTO_INCREMENT,
+  `person_id` bigint NOT NULL,
   PRIMARY KEY (`salesperson_id`),
   CONSTRAINT `FK_SPERSON_PERSON_ID` FOREIGN KEY (`person_id`) REFERENCES `people` (`person_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
-
-
-
-
-
-DROP TABLE IF EXISTS `product_images`;
 CREATE TABLE `product_images` (
-  `product_image_id` bigint(20) NOT NULL AUTO_INCREMENT,
-  `image_id` bigint(20) NOT NULL,
-  `product_id` bigint(20) NOT NULL,
+  `product_image_id` bigint NOT NULL AUTO_INCREMENT,
+  `image_id` bigint NOT NULL,
+  `product_id` bigint NOT NULL,
   PRIMARY KEY (`product_image_id`),
   CONSTRAINT `FK_PIMGS_IMAGE_ID` FOREIGN KEY (`image_id`) REFERENCES `images` (`image_id`),
   CONSTRAINT `FK_PIMGS_PROD_ID` FOREIGN KEY (`product_id`) REFERENCES `products` (`product_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
-DROP TABLE IF EXISTS `product_list_items`;
 CREATE TABLE `product_list_items` (
-  `product_list_item_id` bigint(20) NOT NULL AUTO_INCREMENT,
-  `product_list_id` bigint(20) NOT NULL,
-  `product_id` bigint(20) NOT NULL,
+  `product_list_item_id` bigint NOT NULL AUTO_INCREMENT,
+  `product_list_id` bigint NOT NULL,
+  `product_id` bigint NOT NULL,
   PRIMARY KEY (`product_list_item_id`),
   CONSTRAINT `FK_PLIST_ITEM_PARENT_ID` FOREIGN KEY (`product_list_id`) REFERENCES `product_lists` (`product_list_id`),
   CONSTRAINT `FK_PLIST_ITEM_PROD_ID` FOREIGN KEY (`product_id`) REFERENCES `products` (`product_id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
-DROP TABLE IF EXISTS `orders`;
 CREATE TABLE `orders` (
-  `order_id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `order_id` bigint NOT NULL AUTO_INCREMENT,
   `order_date` datetime(6) NOT NULL,
-  `order_net_value` int(11) NOT NULL,
-  `order_taxes_value` int(11) NOT NULL,
-  `order_total_items` int(11) NOT NULL,
-  `order_total_value` int(11) NOT NULL,
+  `order_net_value` int NOT NULL,
+  `order_taxes_value` int NOT NULL,
+  `order_total_items` int NOT NULL,
+  `order_total_value` int NOT NULL,
   `order_transaction_token` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `order_transport_value` int(11) NOT NULL,
-  `billing_address_id` bigint(20) DEFAULT NULL,
-  `billing_company_id` bigint(20) DEFAULT NULL,
-  `billing_type_id` bigint(20) NOT NULL,
-  `customer_id` bigint(20) NOT NULL,
-  `payment_type_id` bigint(20) NOT NULL,
-  `salesperson_id` bigint(20) DEFAULT NULL,
-  `shipper_id` bigint(20) DEFAULT NULL,
-  `shipping_address_id` bigint(20) DEFAULT NULL,
-  `order_status_id` bigint(20) NOT NULL,
+  `order_transport_value` int NOT NULL,
+  `billing_address_id` bigint DEFAULT NULL,
+  `billing_company_id` bigint DEFAULT NULL,
+  `billing_type_id` bigint NOT NULL,
+  `customer_id` bigint NOT NULL,
+  `payment_type_id` bigint NOT NULL,
+  `salesperson_id` bigint DEFAULT NULL,
+  `shipper_id` bigint DEFAULT NULL,
+  `shipping_address_id` bigint DEFAULT NULL,
+  `order_status_id` bigint NOT NULL,
   PRIMARY KEY (`order_id`),
   KEY `IDX_ORDER_DATE` (`order_date`),
   KEY `IDX_ORDER_TOKEN` (`order_transaction_token`),
@@ -288,17 +259,16 @@ CREATE TABLE `orders` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
-DROP TABLE IF EXISTS `order_details`;
 CREATE TABLE `order_details` (
-  `order_detail_id` bigint(20) NOT NULL AUTO_INCREMENT,
-  `order_detail_unit_value` int(11) NOT NULL,
-  `order_detail_units` int(11) NOT NULL,
+  `order_detail_id` bigint NOT NULL AUTO_INCREMENT,
+  `order_detail_unit_value` int NOT NULL,
+  `order_detail_units` int NOT NULL,
   `order_detail_description` varchar(260) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `product_id` bigint(20) NULL,
-  `order_id` bigint(20) NOT NULL,
+  `product_id` bigint NULL,
+  `order_id` bigint NOT NULL,
   PRIMARY KEY (`order_detail_id`),
   CONSTRAINT `FK_ORDER_DETAIL_PROD_ID` FOREIGN KEY (`product_id`) REFERENCES `products` (`product_id`) ON DELETE SET NULL,
-  CONSTRAINT `FK_ORDER_DETAIL_PARENT_ID` FOREIGN KEY (`order_id`) REFERENCES `sales` (`order_id`)
+  CONSTRAINT `FK_ORDER_DETAIL_PARENT_ID` FOREIGN KEY (`order_id`) REFERENCES `orders` (`order_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
