@@ -24,6 +24,8 @@ nbactions.xml
 src/main/resources/*.properties
 !src/main/resources/application.properties
 !src/main/resources/application-mailgun.empty.properties
+# Cloud profile: holds only ${ENV_VAR} references, never secret values
+!src/main/resources/application-azure.properties
 
 # System Files
 .DS_Store
