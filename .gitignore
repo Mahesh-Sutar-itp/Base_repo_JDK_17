@@ -1,1 +1,3 @@
 *.log
+# Private local notes, never committed
+*.local.md

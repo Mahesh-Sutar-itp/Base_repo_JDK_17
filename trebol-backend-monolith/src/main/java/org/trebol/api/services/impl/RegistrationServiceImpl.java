@@ -26,6 +26,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.trebol.api.models.PersonPojo;
 import org.trebol.api.models.RegistrationPojo;
 import org.trebol.api.services.RegistrationService;
@@ -73,6 +74,11 @@ public class RegistrationServiceImpl
         this.peopleConverterService = peopleConverterService;
     }
 
+    /**
+     * Person, user and customer are saved in one transaction: either all three rows are created or none.
+     * rollbackFor covers checked exceptions too (Spring only rolls back on unchecked ones by default).
+     */
+    @Transactional(rollbackFor = Exception.class)
     @Override
     public void register(RegistrationPojo registration)
         throws BadInputException, EntityExistsException {

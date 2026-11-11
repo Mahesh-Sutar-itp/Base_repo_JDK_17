@@ -7,16 +7,17 @@ HDR=$(mktemp)
 N=0; PASS=0; FAIL=0
 SUFFIX=$RANDOM   # keeps test data unique across reruns
 
-# call "<description>" <expected_status> <METHOD> <path> [json_body] [auth_header] [body_must_contain]
+# call "<description>" <expected_status> <METHOD> <path> [json_body] [auth_header] [body_must_contain] [body_must_not_contain]
 call() {
-  local desc=$1 expect=$2 method=$3 path=$4 body=$5 auth=$6 contains=$7
+  local desc=$1 expect=$2 method=$3 path=$4 body=$5 auth=$6 contains=$7 absent=$8
   N=$((N+1))
   local args=(-s -X "$method" -o "$TMP" -D "$HDR" -w "%{http_code}" "$BASE$path")
   [ -n "$body" ] && args+=(-H "Content-Type: application/json" -d "$body")
   [ -n "$auth" ] && args+=(-H "Authorization: $auth")
   local code; code=$(curl "${args[@]}")
   local mark="PASS"
-  if [ "$code" = "$expect" ] && { [ -z "$contains" ] || grep -qF -- "$contains" "$TMP"; }; then PASS=$((PASS+1)); else mark="FAIL"; FAIL=$((FAIL+1)); fi
+  if [ "$code" = "$expect" ] && { [ -z "$contains" ] || grep -qF -- "$contains" "$TMP"; } \
+     && { [ -z "$absent" ] || ! grep -qF -- "$absent" "$TMP"; }; then PASS=$((PASS+1)); else mark="FAIL"; FAIL=$((FAIL+1)); fi
   printf "%2d. [%s] %-6s %-55s -> %s (expected %s)\n" "$N" "$mark" "$method" "$path" "$code" "$expect"
   printf "    %s\n" "$desc"
   local out; out=$(tr -d '\r\n' < "$TMP" | cut -c1-220)
@@ -74,6 +75,23 @@ call "Verify updates applied (price 999, category kept)" 200 GET "/data/products
 call "Invalid product (missing name/price) is rejected" 400 POST /data/products "{\"barcode\":\"X$BC\"}" "$ADMIN"
 call "Delete product" 204 DELETE "/data/products?barcode=$BC" "" "$ADMIN"
 call "Verify product is gone (empty list)" 200 GET "/data/products?barcode=$BC"
+
+echo "=== PRODUCT LISTS (contents read lazy relations; writes run in one transaction) ==="
+PA="PLA$SUFFIX"; PB="PLB$SUFFIX"; LIST="list$SUFFIX"
+PROD_A="{\"name\":\"Mouse\",\"barcode\":\"$PA\",\"price\":10,\"category\":{\"code\":\"$CAT\"}}"
+PROD_B="{\"name\":\"Keyboard\",\"barcode\":\"$PB\",\"price\":20,\"category\":{\"code\":\"$CAT\"}}"
+call "Create product A" 201 POST /data/products "$PROD_A" "$ADMIN"
+call "Create product B" 201 POST /data/products "$PROD_B" "$ADMIN"
+call "Create product list" 201 POST /data/product_lists "{\"code\":\"$LIST\",\"name\":\"Smoke test list\"}" "$ADMIN"
+call "Add product A to the list" 201 POST "/data/product_list_contents?listCode=$LIST" "$PROD_A" "$ADMIN"
+call "Read list contents (public; product A with its category)" 200 GET "/data/product_list_contents?listCode=$LIST" "" "" "\"category\":{\"code\":\"$CAT\""
+call "Replace list contents with product B (PUT)" 204 PUT "/data/product_list_contents?listCode=$LIST" "[$PROD_B]" "$ADMIN"
+call "Verify only product B is listed" 200 GET "/data/product_list_contents?listCode=$LIST" "" "" "\"barcode\":\"$PB\"" "\"barcode\":\"$PA\""
+call "Remove product B from the list" 204 DELETE "/data/product_list_contents?listCode=$LIST&productCode=$PB" "" "$ADMIN"
+call "Verify the list is empty" 200 GET "/data/product_list_contents?listCode=$LIST" "" "" "\"items\":[]"
+call "Delete the product list" 204 DELETE "/data/product_lists?code=$LIST" "" "$ADMIN"
+call "Delete product A" 204 DELETE "/data/products?barcode=$PA" "" "$ADMIN"
+call "Delete product B" 204 DELETE "/data/products?barcode=$PB" "" "$ADMIN"
 
 echo "=== SHIPPERS ==="
 SH="Shipper$SUFFIX"

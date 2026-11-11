@@ -23,6 +23,7 @@ package org.trebol.api.services.impl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.convert.ConversionService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.trebol.api.models.ProductPojo;
 import org.trebol.api.models.ReceiptDetailPojo;
 import org.trebol.api.models.ReceiptPojo;
@@ -52,6 +53,8 @@ public class ReceiptServiceImpl
         this.conversionService = conversionService;
     }
 
+    /** Read-only transaction: the order's details, products and status are lazy relations read below. */
+    @Transactional(readOnly = true)
     @Override
     public ReceiptPojo fetchReceiptByTransactionToken(String token)
         throws EntityNotFoundException {

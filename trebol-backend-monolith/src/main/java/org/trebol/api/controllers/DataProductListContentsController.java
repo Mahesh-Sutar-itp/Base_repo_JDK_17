@@ -31,6 +31,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -68,9 +69,14 @@ import java.util.Optional;
 import static org.springframework.http.HttpStatus.CREATED;
 import static org.springframework.http.HttpStatus.NO_CONTENT;
 
+/**
+ * This controller uses repositories directly, so each request runs in one transaction: lazy relations stay
+ * readable (query-by-example walks list, product and category) and a full replace (PUT) is all-or-nothing.
+ */
 @RestController
 @RequestMapping("/data/product_list_contents")
 @Tag(name = "Product Lists management")
+@Transactional(rollbackFor = Exception.class)
 public class DataProductListContentsController {
     private static final String ITEM_NOT_FOUND = "Requested item(s) not found";
     private final PaginationService paginationService;
@@ -102,6 +108,7 @@ public class DataProductListContentsController {
 
     @GetMapping
     @Operation(summary = "View contents of product lists.")
+    @Transactional(readOnly = true) // overrides the class-level setting: this one only reads
     public DataPagePojo<ProductPojo> readContents(@RequestParam Map<String, String> requestParams)
         throws BadInputException, EntityNotFoundException {
         Optional<ProductList> match = this.fetchProductListByCode(requestParams);
