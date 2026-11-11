@@ -62,6 +62,8 @@ public class ProfileServiceImpl
         this.peopleRepository = peopleRepository;
     }
 
+    /** Read-only transaction: user.person is a lazy relation, read after the user query returns. */
+    @Transactional(readOnly = true)
     @Override
     public PersonPojo getProfileFromUserName(String userName)
         throws UserNotFoundException, PersonNotFoundException {
