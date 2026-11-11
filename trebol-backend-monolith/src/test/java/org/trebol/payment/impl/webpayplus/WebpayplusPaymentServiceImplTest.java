@@ -2,6 +2,7 @@ package org.trebol.payment.impl.webpayplus;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -34,6 +35,9 @@ class WebpayplusPaymentServiceImplTest {
 
     @Nested
     class TestMode {
+        // Tagged "external": these call Transbank's public integration API over the internet,
+        // which can be blocked by its firewall. Excluded from the default build (see pom.xml).
+        @Tag("external")
         @Test
         void fetches_payment_page_for_started_transactions() throws PaymentServiceException {
             OrderPojo input = ordersHelper.orderPojoAfterCreation();
@@ -44,6 +48,7 @@ class WebpayplusPaymentServiceImplTest {
             assertFalse(result.getUrl().isBlank());
         }
 
+        @Tag("external")
         @Test
         void fetches_payment_result() {
             assertDoesNotThrow(() -> instance.requestPaymentResult(ANY));

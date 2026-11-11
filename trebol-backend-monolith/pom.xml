@@ -50,6 +50,9 @@
     <java.endorsed-api.dir>${project.build.directory}/endorsed</java.endorsed-api.dir>
     <querydsl.classes.dir>${project.build.directory}/generated-sources/querydsl/</querydsl.classes.dir>
     <jacoco.codeCoverage.minRatio>0.20</jacoco.codeCoverage.minRatio>
+    <!-- JUnit tags skipped by default; tests tagged "external" need third-party services on the internet.
+         Run them on demand with: -Dtrebol.tests.excludedGroups= -->
+    <trebol.tests.excludedGroups>external</trebol.tests.excludedGroups>
 
     <trebol.coverage-exclusions>
       **/trebol/api/models/**.*,
@@ -243,6 +246,15 @@
       <plugin>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-maven-plugin</artifactId>
+      </plugin>
+
+      <!-- Unit tests: skip tests that depend on external services -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <configuration>
+          <excludedGroups>${trebol.tests.excludedGroups}</excludedGroups>
+        </configuration>
       </plugin>
 
       <!-- Support code coverage report generation -->
