@@ -4,6 +4,7 @@
 //   az deployment group what-if --subscription $sub --resource-group rg-trebol-poc --parameters infra/main.bicepparam
 //   az deployment group create  --subscription $sub --resource-group rg-trebol-poc --parameters infra/main.bicepparam
 // Stage 1: cost budget + Log Analytics workspace. Stage 2: virtual network, subnets, private DNS zone for MySQL.
+// Stage 3: managed identities, container registry, Key Vault. Role assignments: infra/roles.bicep (admin only).
 targetScope = 'resourceGroup'
 
 @description('Azure region. Restricted to the region approved for this project.')
@@ -49,6 +50,16 @@ param mysqlSubnetPrefix string
 @description('Private DNS zone for MySQL (must end with .mysql.database.azure.com).')
 param mysqlPrivateDnsZoneName string
 
+@description('Managed identity names (pipeline and app).')
+param pipelineIdentityName string
+param appIdentityName string
+
+@description('Container registry name (letters and digits, unique across Azure).')
+param registryName string
+
+@description('Key Vault name (unique across Azure).')
+param keyVaultName string
+
 module monitoring 'modules/monitoring.bicep' = {
   name: 'monitoring'
   params: {
@@ -85,9 +96,42 @@ module network 'modules/network.bicep' = {
   }
 }
 
+module identities 'modules/identities.bicep' = {
+  name: 'identities'
+  params: {
+    pipelineIdentityName: pipelineIdentityName
+    appIdentityName: appIdentityName
+    location: location
+    tags: tags
+  }
+}
+
+module registry 'modules/registry.bicep' = {
+  name: 'registry'
+  params: {
+    name: registryName
+    location: location
+    tags: tags
+  }
+}
+
+module keyVault 'modules/keyvault.bicep' = {
+  name: 'keyvault'
+  params: {
+    name: keyVaultName
+    location: location
+    tags: tags
+  }
+}
+
 output logAnalyticsWorkspaceId string = monitoring.outputs.id
 output budgetId string = budget.outputs.id
 output vnetId string = network.outputs.vnetId
 output acaSubnetId string = network.outputs.acaSubnetId
 output mysqlSubnetId string = network.outputs.mysqlSubnetId
 output mysqlPrivateDnsZoneId string = network.outputs.mysqlPrivateDnsZoneId
+output pipelineIdentityPrincipalId string = identities.outputs.pipelinePrincipalId
+output appIdentityPrincipalId string = identities.outputs.appPrincipalId
+output registryLoginServer string = registry.outputs.loginServer
+output keyVaultName string = keyVault.outputs.name
+output keyVaultUri string = keyVault.outputs.uri

@@ -23,8 +23,9 @@ param logAnalyticsDailyCapGb = '0.1'
 // (50% = 2,000, 80% = 3,200, 100% = 4,000 INR) fire slightly early rather than late.
 param budgetName = 'budget-trebol-poc'
 param budgetAmount = 4000
-param budgetStartDate = '2026-11-01'
-param budgetEndDate = '2027-10-31'
+// Full ISO format, as Azure stores it, so later what-if previews show no difference
+param budgetStartDate = '2026-11-01T00:00:00Z'
+param budgetEndDate = '2027-10-31T00:00:00Z'
 param budgetAlertEmails = [
   readEnvironmentVariable('TREBOL_BUDGET_EMAIL')
 ]
@@ -38,3 +39,11 @@ param acaSubnetPrefix = '10.20.0.0/23'
 param mysqlSubnetName = 'snet-mysql'
 param mysqlSubnetPrefix = '10.20.2.0/24'
 param mysqlPrivateDnsZoneName = 'trebol-poc.private.mysql.database.azure.com'
+
+// Stage 3: identities (created on 2 Nov, now managed here), registry and Key Vault.
+// Registry and vault names must be unique across Azure: fixed random suffix 'ttuu', chosen once, so the names stay
+// the same if the resource group is moved to another subscription.
+param pipelineIdentityName = 'id-trebol-github'
+param appIdentityName = 'id-trebol-app'
+param registryName = 'acrtrebolpocttuu'
+param keyVaultName = 'kv-trebol-poc-ttuu'
