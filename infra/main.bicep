@@ -3,7 +3,7 @@
 // (PowerShell, with $sub holding the subscription id):
 //   az deployment group what-if --subscription $sub --resource-group rg-trebol-poc --parameters infra/main.bicepparam
 //   az deployment group create  --subscription $sub --resource-group rg-trebol-poc --parameters infra/main.bicepparam
-// Stage 1: cost budget + Log Analytics workspace.
+// Stage 1: cost budget + Log Analytics workspace. Stage 2: virtual network, subnets, private DNS zone for MySQL.
 targetScope = 'resourceGroup'
 
 @description('Azure region. Restricted to the region approved for this project.')
@@ -34,6 +34,21 @@ param budgetEndDate string
 @description('E-mail addresses for the budget alerts.')
 param budgetAlertEmails array
 
+@description('Virtual network name and address space.')
+param vnetName string
+param vnetAddressPrefix string
+
+@description('Container Apps subnet name and address range.')
+param acaSubnetName string
+param acaSubnetPrefix string
+
+@description('MySQL subnet name and address range.')
+param mysqlSubnetName string
+param mysqlSubnetPrefix string
+
+@description('Private DNS zone for MySQL (must end with .mysql.database.azure.com).')
+param mysqlPrivateDnsZoneName string
+
 module monitoring 'modules/monitoring.bicep' = {
   name: 'monitoring'
   params: {
@@ -55,5 +70,24 @@ module budget 'modules/budget.bicep' = {
   }
 }
 
+module network 'modules/network.bicep' = {
+  name: 'network'
+  params: {
+    name: vnetName
+    location: location
+    tags: tags
+    addressPrefix: vnetAddressPrefix
+    acaSubnetName: acaSubnetName
+    acaSubnetPrefix: acaSubnetPrefix
+    mysqlSubnetName: mysqlSubnetName
+    mysqlSubnetPrefix: mysqlSubnetPrefix
+    mysqlPrivateDnsZoneName: mysqlPrivateDnsZoneName
+  }
+}
+
 output logAnalyticsWorkspaceId string = monitoring.outputs.id
 output budgetId string = budget.outputs.id
+output vnetId string = network.outputs.vnetId
+output acaSubnetId string = network.outputs.acaSubnetId
+output mysqlSubnetId string = network.outputs.mysqlSubnetId
+output mysqlPrivateDnsZoneId string = network.outputs.mysqlPrivateDnsZoneId

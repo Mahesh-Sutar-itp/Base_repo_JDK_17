@@ -28,3 +28,13 @@ param budgetEndDate = '2027-10-31'
 param budgetAlertEmails = [
   readEnvironmentVariable('TREBOL_BUDGET_EMAIL')
 ]
+
+// Stage 2: private network. 10.20.0.0/16 leaves room for later subnets.
+param vnetName = 'vnet-trebol-poc'
+param vnetAddressPrefix = '10.20.0.0/16'
+// /23 = 512 addresses: room for 25 replicas plus old and new revisions side by side; cannot be resized later
+param acaSubnetName = 'snet-aca'
+param acaSubnetPrefix = '10.20.0.0/23'
+param mysqlSubnetName = 'snet-mysql'
+param mysqlSubnetPrefix = '10.20.2.0/24'
+param mysqlPrivateDnsZoneName = 'trebol-poc.private.mysql.database.azure.com'
