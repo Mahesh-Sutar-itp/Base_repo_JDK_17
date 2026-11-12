@@ -1,0 +1,5 @@
+# Allow-list: building the image needs only the Maven project file and the sources.
+# Everything else (target/, .git, IDE settings, docs, images) stays out of the build context.
+*
+!pom.xml
+!src

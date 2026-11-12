@@ -3,7 +3,9 @@
 This document is the analysis deliverable of the POC (Requirement 1). It describes the application as found,
 how to build and run it, its dependencies and configuration, the changes made to prepare it for containers and
 Azure, and the assumptions and limitations. Everything below was verified on 11 Nov 2026 against commit
-`5c8c93f`. A reviewer should be able to build and run the application from this page alone.
+`5c8c93f`; the versions were updated on 12 Nov 2026 for the Spring Boot 3.5.16 upgrade (commit `b393abe`, see
+[02-container.md](02-container.md)). A reviewer should be able to build and run the application from this page
+alone.
 
 ## 1. What the application is
 
@@ -23,14 +25,16 @@ security filter and therefore does not appear in the OpenAPI document.
 | Area | Technology | Version |
 |---|---|---|
 | Language / runtime | Java | 17 (tested with Temurin 17.0.21) |
-| Framework | Spring Boot (Web MVC on Tomcat, Data JPA, Security, Validation, Actuator) | 3.2.9 |
+| Framework | Spring Boot (Web MVC on Tomcat, Data JPA, Security, Validation, Actuator) | 3.5.16 (Spring Framework 6.2.19, Spring Security 6.5.11) |
+| Web server | Embedded Tomcat | 10.1.61 (overridden for security fixes) |
 | Persistence | Hibernate (via Spring Data JPA), HikariCP connection pool | managed by Spring Boot |
 | Query building | QueryDSL (`Q*` classes generated at build time) | from Spring Boot BOM, `jakarta` classifier |
-| Databases | H2 (in-memory, default) / MySQL Connector/J | 2.2.220 / 8.3.0 |
-| Schema migrations | Flyway (`flyway-core`, `flyway-mysql`), MySQL only | 9.22.3 |
+| Databases | H2 (in-memory, default) / MySQL Connector/J | 2.3.232 / 9.7.0 |
+| Schema migrations | Flyway (`flyway-core`, `flyway-mysql`), MySQL only | 11.7.2 |
 | Security | Spring Security, JJWT (JSON Web Tokens), BCrypt | JJWT 0.11.5 |
 | Payments | Transbank SDK Java (Webpay Plus), Unirest HTTP client | 3.0.2 / 3.13.8 |
-| API docs | springdoc-openapi (Swagger UI) | 2.6.0 |
+| JSON | Jackson | 2.21.8 (overridden for security fixes) |
+| API docs | springdoc-openapi (Swagger UI) | 2.8.17 |
 | Boilerplate | Lombok (annotation processor) | from Spring Boot BOM |
 | Build / quality | Maven, JUnit 5, Mockito, JaCoCo (coverage gate) | JaCoCo 0.8.8 |
 
@@ -271,12 +275,13 @@ All changes are small, separate commits; the default H2 setup and all tests stay
    candidates for the performance phase (fetch joins, page-size cap, short-lived cache).
 5. **Connection budget:** replicas × 15 connections must stay below the database's connection limit; this drives
    the database tier during the load test.
-6. **Startup takes about 15 to 30 seconds**, so the startup probe must allow it and enough replicas must be running
-   before load arrives.
+6. **Startup takes about 15 to 30 seconds on a laptop and about 42 seconds with 1 vCPU** (container test), so the
+   startup probe must allow it and enough replicas must be running before load arrives.
 7. **Schema changes must run against a real MySQL** before they are trusted: the broken foreign key was invisible
    in the original dump because it disabled foreign key checks.
-8. **Dependency age:** Spring Boot 3.2.x is past open-source support, and Flyway 9.22.3 logs that MySQL 8.4 is
-   untested (it works). Upgrades will be driven by the container image vulnerability scan.
+8. **Dependency age:** the container image scan drove an upgrade from Spring Boot 3.2.9 to 3.5.16, the last 3.x
+   line (see [02-container.md](02-container.md)). Two findings that are fixed only in Spring Framework 7 are
+   accepted until the move to Spring Boot 4. Flyway 11.7.2 still logs that MySQL 8.4 is untested (it works).
 
 ## 14. Assumptions
 
