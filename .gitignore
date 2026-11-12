@@ -1,3 +1,5 @@
 *.log
 # Private local notes, never committed
 *.local.md
+# Local docker compose values (copy .env.example to .env)
+.env
