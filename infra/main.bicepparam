@@ -1,7 +1,9 @@
-// Parameters for infra/main.bicep. Private values (e-mail addresses) are NOT in this public file: they are read
-// from environment variables of the shell that runs the deployment. In PowerShell, before any az deployment command:
-//   $env:TREBOL_OWNER_TAG    = 'value of the owner tag'
-//   $env:TREBOL_BUDGET_EMAIL = 'address that receives the budget alerts'
+// Parameters for infra/main.bicep. Private values (e-mail addresses, subscription id) are NOT in this public file:
+// they are read from environment variables of the shell that runs the deployment. In PowerShell, before any
+// az deployment command:
+//   $env:TREBOL_OWNER_TAG       = 'value of the owner tag'
+//   $env:TREBOL_BUDGET_EMAIL    = 'address that receives the budget alerts'
+//   $env:TREBOL_SUBSCRIPTION_ID = 'subscription id (used to locate the Key Vault secret)'
 using './main.bicep'
 
 param location = 'centralindia'
@@ -47,3 +49,12 @@ param pipelineIdentityName = 'id-trebol-github'
 param appIdentityName = 'id-trebol-app'
 param registryName = 'acrtrebolpocttuu'
 param keyVaultName = 'kv-trebol-poc-ttuu'
+
+// Stage 4: MySQL Flexible Server, Burstable B1ms (module defaults), private access only.
+// The administrator password is read by Azure Resource Manager directly from Key Vault during the deployment
+// (the vault is enabled for template deployment): it never appears in a shell, a file or the deployment history.
+param mysqlServerName = 'mysql-trebol-poc-ttuu'
+param mysqlVersion = '8.4'
+param mysqlAdminLogin = 'trebol_admin'
+param mysqlDatabaseName = 'trebol'
+param mysqlAdminPassword = az.getSecret(readEnvironmentVariable('TREBOL_SUBSCRIPTION_ID'), 'rg-trebol-poc', 'kv-trebol-poc-ttuu', 'mysql-admin-password')
