@@ -1,0 +1,23 @@
+# Accepted vulnerability findings for the image scan:
+#   trivy image --ignorefile .trivyignore.yaml trebol-api:local
+# Every entry names the exact package version it applies to, explains why it is accepted and expires on a
+# fixed date, after which the scan reports it again and the entry must be reviewed.
+vulnerabilities:
+  - id: CVE-2026-47884
+    purls:
+      - pkg:maven/org.springframework/spring-webmvc@6.2.19
+    statement: >-
+      Not exploitable in this application. The vulnerability needs Spring MVC view rendering with XsltView and a
+      "/**" mapping that renders a view without an explicit view name; this API only returns JSON from
+      @RestController methods and defines no views. Spring Framework 6.x has no public fix (fixed in 7.0.9);
+      the planned move to Spring Boot 4 removes this entry.
+    expired_at: 2027-01-31
+  - id: CVE-2026-47890
+    purls:
+      - pkg:maven/org.springframework/spring-webmvc@6.2.19
+    statement: >-
+      Not exploitable in this application. The vulnerability needs Server-Sent Events (SSE) combined with view
+      fragments; this API uses neither (no SseEmitter, ResponseBodyEmitter or text/event-stream responses and no
+      views). It affects Spring Framework 6.2.x and has no public 6.x fix (fixed in 7.0.9); the planned move to
+      Spring Boot 4 removes this entry.
+    expired_at: 2027-01-31
