@@ -24,7 +24,7 @@ RUN --mount=type=cache,target=/root/.m2 mvn -B -ntp ${MAVEN_EXTRA_ARGS} -DskipTe
 FROM ${RUNTIME_IMAGE} AS extract
 WORKDIR /extract
 COPY --from=build /workspace/target/*.war app.war
-RUN java -Djarmode=layertools -jar app.war extract --destination layers
+RUN java -Djarmode=tools -jar app.war extract --layers --launcher --destination layers
 
 ########## Stage 3: runtime ##########
 FROM ${RUNTIME_IMAGE}
