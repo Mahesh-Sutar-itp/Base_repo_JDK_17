@@ -18,10 +18,11 @@ param logAnalyticsName = 'log-trebol-poc'
 // Raise it temporarily (with approval) for the evaluation window, when the dashboard must show the load test.
 param logAnalyticsDailyCapGb = '0.1'
 
-// 50 for the whole project (1 Nov 2026 - 31 Oct 2027), in the billing account's currency
-// (to be confirmed as USD before the first deployment)
+// Project limit: 50 USD in total (1 Nov 2026 - 31 Oct 2027). Budget amounts are in the billing currency, and this
+// subscription is billed in INR: 4,000 INR stays below 50 USD at any realistic exchange rate, so the alerts
+// (50% = 2,000, 80% = 3,200, 100% = 4,000 INR) fire slightly early rather than late.
 param budgetName = 'budget-trebol-poc'
-param budgetAmount = 50
+param budgetAmount = 4000
 param budgetStartDate = '2026-11-01'
 param budgetEndDate = '2027-10-31'
 param budgetAlertEmails = [
