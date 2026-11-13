@@ -13,7 +13,7 @@ param location string
 @description('Tags for policy compliance and cost reporting.')
 param tags object
 
-@description('GitHub repository allowed to log in as the pipeline identity, as owner/name.')
+@description('GitHub repository allowed to log in, exactly as in the subject of GitHub\'s OIDC token: owner@ownerId/name@repoId.')
 param githubRepository string
 
 resource pipelineIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
@@ -25,6 +25,8 @@ resource pipelineIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023
 // GitHub Actions logs in with OIDC: GitHub signs a short-lived token describing the workflow run, and Entra ID
 // exchanges it for an Azure token only if issuer, audience and subject match one of these credentials.
 // No password or client secret exists. Azure accepts only one write at a time per identity, hence dependsOn.
+// GitHub's subject contains the numeric ids of the owner and the repository (owner@id/name@id), so a deleted and
+// re-created account or repository with the same name cannot inherit this trust.
 resource githubMain 'Microsoft.ManagedIdentity/userAssignedIdentities/federatedIdentityCredentials@2023-01-31' = {
   parent: pipelineIdentity
   name: 'github-main'

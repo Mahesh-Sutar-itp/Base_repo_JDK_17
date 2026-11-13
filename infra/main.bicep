@@ -65,7 +65,7 @@ param mysqlPrivateDnsZoneName string
 param pipelineIdentityName string
 param appIdentityName string
 
-@description('GitHub repository (owner/name) whose workflows may log in as the pipeline identity.')
+@description('GitHub repository whose workflows may log in as the pipeline identity, as in GitHub\'s OIDC subject: owner@ownerId/name@repoId.')
 param githubRepository string
 
 @description('Container registry name (letters and digits, unique across Azure).')

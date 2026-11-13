@@ -4,7 +4,8 @@
 //   $env:TREBOL_OWNER_TAG       = 'value of the owner tag'
 //   $env:TREBOL_BUDGET_EMAIL    = 'address that receives the budget alerts'
 //   $env:TREBOL_SUBSCRIPTION_ID = 'subscription id (used to locate the Key Vault secret)'
-//   $env:TREBOL_GITHUB_REPO     = 'owner/name of the GitHub repository allowed to deploy'
+//   $env:TREBOL_GITHUB_REPO     = 'owner@ownerId/name@repoId of the GitHub repository allowed to deploy'
+//     (the form GitHub uses in its OIDC token subject; the ids come from https://api.github.com/repos/OWNER/NAME)
 using './main.bicep'
 
 param location = 'centralindia'
