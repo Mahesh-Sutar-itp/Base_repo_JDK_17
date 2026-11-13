@@ -102,5 +102,12 @@ call "Create shipper" 201 POST /data/shippers "{\"name\":\"$SH\"}" "$ADMIN"
 call "Find shipper by name" 200 GET "/data/shippers?name=$SH" "" "$ADMIN"
 call "Delete shipper" 204 DELETE "/data/shippers?name=$SH" "" "$ADMIN"
 
+echo "=== CLEANUP (the script leaves no test data behind) ==="
+call "Delete the test category" 204 DELETE "/data/product_categories?code=$CAT" "" "$ADMIN"
+call "Delete the test account" 204 DELETE "/data/users?name=$USER" "" "$ADMIN"
+call "The test account can no longer log in" 401 POST /public/login "{\"name\":\"$USER\",\"password\":\"secret123\"}"
+
 rm -f "$TMP" "$HDR"
 echo "=== SUMMARY: $N checks, $PASS passed, $FAIL failed ==="
+# Non-zero exit code when any check failed, so a pipeline step fails
+[ "$FAIL" -eq 0 ]
