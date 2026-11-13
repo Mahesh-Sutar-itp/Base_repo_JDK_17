@@ -7,6 +7,9 @@
 using './main.bicep'
 
 param location = 'centralindia'
+// The network, MySQL and Container Apps run in South India: MySQL Flexible Server is not available to this
+// subscription in Central India (nor in East US, East US 2, Central US; checked 13 Nov 2026).
+param workloadLocation = 'southindia'
 
 param tags = {
   project: 'trebol-poc'
@@ -33,7 +36,9 @@ param budgetAlertEmails = [
 ]
 
 // Stage 2: private network. 10.20.0.0/16 leaves room for later subnets.
-param vnetName = 'vnet-trebol-poc'
+// '-si' = South India. The first network (vnet-trebol-poc, Central India, 12 Nov) is no longer used: a network
+// cannot change region, so it was replaced; it is left for the engineer to remove.
+param vnetName = 'vnet-trebol-poc-si'
 param vnetAddressPrefix = '10.20.0.0/16'
 // /23 = 512 addresses: room for 25 replicas plus old and new revisions side by side; cannot be resized later
 param acaSubnetName = 'snet-aca'
@@ -53,7 +58,9 @@ param keyVaultName = 'kv-trebol-poc-ttuu'
 // Stage 4: MySQL Flexible Server, Burstable B1ms (module defaults), private access only.
 // The administrator password is read by Azure Resource Manager directly from Key Vault during the deployment
 // (the vault is enabled for template deployment): it never appears in a shell, a file or the deployment history.
-param mysqlServerName = 'mysql-trebol-poc-ttuu'
+// '-si' = South India: Azure Resource Manager keeps the first name (failed create in Central India, 13 Nov) tied to
+// Central India, so the South India server needs its own name.
+param mysqlServerName = 'mysql-trebol-poc-si-ttuu'
 param mysqlVersion = '8.4'
 param mysqlAdminLogin = 'trebol_admin'
 param mysqlDatabaseName = 'trebol'

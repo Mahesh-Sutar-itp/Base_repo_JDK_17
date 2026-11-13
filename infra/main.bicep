@@ -6,13 +6,22 @@
 // Stage 1: cost budget + Log Analytics workspace. Stage 2: virtual network, subnets, private DNS zone for MySQL.
 // Stage 3: managed identities, container registry, Key Vault. Role assignments: infra/roles.bicep (admin only).
 // Stage 4: MySQL Flexible Server (private access) and the application database.
+// Two regions: Central India for the registry, Key Vault, Log Analytics and identities; South India for the network,
+// MySQL and (later) Container Apps, which must share the region of the network. MySQL Flexible Server is not available
+// to this subscription in Central India (deployment failed with ProvisionNotSupportedForRegion, 13 Nov 2026).
 targetScope = 'resourceGroup'
 
-@description('Azure region. Restricted to the region approved for this project.')
+@description('Region of the shared services (registry, Key Vault, Log Analytics, identities).')
 @allowed([
   'centralindia'
 ])
 param location string
+
+@description('Region of the network and of everything inside it (MySQL, Container Apps).')
+@allowed([
+  'southindia'
+])
+param workloadLocation string
 
 @description('Tags on every taggable resource. Policy requires "Practice".')
 param tags object
@@ -96,7 +105,7 @@ module network 'modules/network.bicep' = {
   name: 'network'
   params: {
     name: vnetName
-    location: location
+    location: workloadLocation
     tags: tags
     addressPrefix: vnetAddressPrefix
     acaSubnetName: acaSubnetName
@@ -144,7 +153,7 @@ module mysql 'modules/mysql.bicep' = {
   ]
   params: {
     name: mysqlServerName
-    location: location
+    location: workloadLocation
     tags: tags
     version: mysqlVersion
     administratorLogin: mysqlAdminLogin
