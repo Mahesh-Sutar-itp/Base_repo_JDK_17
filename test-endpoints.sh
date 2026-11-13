@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 # Smoke-tests Trebol backend endpoints one by one.
 # Usage: bash test-endpoints.sh [base_url]
+# The admin password comes from ADMIN_PASSWORD (default: the seeded local password "admin"). In the cloud the seeded
+# passwords are changed, so set ADMIN_PASSWORD from Key Vault first; it is never printed.
 BASE=${1:-http://localhost:8080}
+ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin}
 TMP=$(mktemp)
 HDR=$(mktemp)
 N=0; PASS=0; FAIL=0
@@ -29,7 +32,7 @@ token_from_headers() { tr -d '\r' < "$HDR" | awk 'tolower($1)=="authorization:"{
 
 echo "=== PUBLIC ==="
 call "Store info" 200 GET /public/about
-call "Login as admin/admin" 200 POST /public/login '{"name":"admin","password":"admin"}'
+call "Login as admin" 200 POST /public/login "{\"name\":\"admin\",\"password\":\"$ADMIN_PASSWORD\"}"
 ADMIN=$(token_from_headers); echo "    admin token: ${ADMIN:0:45}..."; echo
 call "Login with wrong password is rejected" 401 POST /public/login '{"name":"admin","password":"nope"}'
 
