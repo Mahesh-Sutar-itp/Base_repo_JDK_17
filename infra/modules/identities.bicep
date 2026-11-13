@@ -13,10 +13,45 @@ param location string
 @description('Tags for policy compliance and cost reporting.')
 param tags object
 
+@description('GitHub repository allowed to log in as the pipeline identity, as owner/name.')
+param githubRepository string
+
 resource pipelineIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
   name: pipelineIdentityName
   location: location
   tags: tags
+}
+
+// GitHub Actions logs in with OIDC: GitHub signs a short-lived token describing the workflow run, and Entra ID
+// exchanges it for an Azure token only if issuer, audience and subject match one of these credentials.
+// No password or client secret exists. Azure accepts only one write at a time per identity, hence dependsOn.
+resource githubMain 'Microsoft.ManagedIdentity/userAssignedIdentities/federatedIdentityCredentials@2023-01-31' = {
+  parent: pipelineIdentity
+  name: 'github-main'
+  properties: {
+    issuer: 'https://token.actions.githubusercontent.com'
+    // Runs on the main branch: pushes (deployments), scheduled and manual runs
+    subject: 'repo:${githubRepository}:ref:refs/heads/main'
+    audiences: [
+      'api://AzureADTokenExchange'
+    ]
+  }
+}
+
+resource githubPullRequest 'Microsoft.ManagedIdentity/userAssignedIdentities/federatedIdentityCredentials@2023-01-31' = {
+  parent: pipelineIdentity
+  name: 'github-pull-request'
+  dependsOn: [
+    githubMain
+  ]
+  properties: {
+    issuer: 'https://token.actions.githubusercontent.com'
+    // Pull request runs (the workflow only logs in for pull requests from branches of this repository)
+    subject: 'repo:${githubRepository}:pull_request'
+    audiences: [
+      'api://AzureADTokenExchange'
+    ]
+  }
 }
 
 resource appIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
