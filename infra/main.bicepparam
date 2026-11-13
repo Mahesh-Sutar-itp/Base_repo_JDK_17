@@ -65,3 +65,20 @@ param mysqlVersion = '8.4'
 param mysqlAdminLogin = 'trebol_admin'
 param mysqlDatabaseName = 'trebol'
 param mysqlAdminPassword = az.getSecret(readEnvironmentVariable('TREBOL_SUBSCRIPTION_ID'), 'rg-trebol-poc', 'kv-trebol-poc-ttuu', 'mysql-admin-password')
+
+// Stage 5: Container Apps (South India, inside vnet-trebol-poc-si). Azure creates and manages the infrastructure
+// resource group (load balancer and public IP for the public HTTPS endpoint).
+param containerAppsEnvName = 'cae-trebol-poc'
+param containerAppsInfraResourceGroupName = 'rg-trebol-poc-aca-infra'
+param containerAppName = 'trebol-api'
+// Image tag = git commit of the build. The pipeline (Phase 4) will pass a new tag on every deployment.
+param containerImage = 'acrtrebolpocttuu.azurecr.io/trebol-api:a7ffb87'
+// Development envelope: 1 vCPU / 2 GiB, at most 3 replicas. Minimum 1 while setting up; 2 (high availability) in Phase 5.
+param appCpu = '1.0'
+param appMemory = '2Gi'
+param appMinReplicas = 1
+param appMaxReplicas = 3
+// For now the application uses the server administrator; a restricted application user comes later (hardening).
+param appDbUser = 'trebol_admin'
+param dbPasswordSecretName = 'mysql-admin-password'
+param jwtSecretName = 'jwt-secret-key'
