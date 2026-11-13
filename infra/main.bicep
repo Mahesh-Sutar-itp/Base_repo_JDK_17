@@ -65,6 +65,9 @@ param mysqlPrivateDnsZoneName string
 param pipelineIdentityName string
 param appIdentityName string
 
+@description('GitHub repository whose workflows may log in as the pipeline identity, as in GitHub\'s OIDC subject: owner@ownerId/name@repoId.')
+param githubRepository string
+
 @description('Container registry name (letters and digits, unique across Azure).')
 param registryName string
 
@@ -145,6 +148,7 @@ module identities 'modules/identities.bicep' = {
     appIdentityName: appIdentityName
     location: location
     tags: tags
+    githubRepository: githubRepository
   }
 }
 

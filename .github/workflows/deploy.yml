@@ -1,0 +1,138 @@
+# Every push to main (a merged pull request) goes to production without manual steps:
+#   CI (build, tests, SonarCloud, image, scan, push) -> new revision at 0% traffic -> smoke test on the revision's own
+#   URL -> canary: 10% of the traffic for 2 minutes -> 100% and the old revision deactivated.
+# Any failure after the new revision exists rolls back: 100% to the old revision, the new one deactivated.
+name: deploy
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  RESOURCE_GROUP: rg-trebol-poc
+  APP_NAME: trebol-api
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+      id-token: write
+    with:
+      push-image: true
+    secrets: inherit
+
+  deploy:
+    name: Deploy (0% revision, smoke test, canary, promote)
+    needs: ci
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
+    # Never two changes to the app at the same time (shared with the working-hours schedule)
+    concurrency:
+      group: azure-trebol-api
+      cancel-in-progress: false
+    env:
+      IMAGE: ${{ needs.ci.outputs.image }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Log in to Azure
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Create the new revision with 0% of the traffic
+        id: rev
+        run: |
+          az config set extension.use_dynamic_install=yes_without_prompt --only-show-errors
+          source .github/scripts/aca-revision.sh
+          old=$(aca_current_revision)
+          suffix="r${GITHUB_RUN_NUMBER}-${GITHUB_RUN_ATTEMPT}-${GITHUB_SHA::7}"
+          new="${APP_NAME}--${suffix}"
+          echo "old=$old" >> "$GITHUB_OUTPUT"
+          echo "new=$new" >> "$GITHUB_OUTPUT"
+          # Pin all traffic to the current revision by name, so the new revision starts with 0%
+          aca_set_traffic "$old=100"
+          aca_create_revision "$IMAGE" "$suffix"
+          aca_wait_revision "$new" 600 healthy
+
+      # The public repository's logs are public: host names are masked
+      - name: Smoke test the new revision (no user traffic yet)
+        env:
+          ADMIN_PASSWORD: ${{ secrets.TREBOL_ADMIN_PASSWORD }}
+          NEW: ${{ steps.rev.outputs.new }}
+        run: |
+          source .github/scripts/aca-revision.sh
+          fqdn=$(aca_revision_field "$NEW" properties.fqdn)
+          echo "::add-mask::$fqdn"
+          bash test-endpoints.sh "https://$fqdn" | tee smoke.txt
+          tail -n 1 smoke.txt >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Canary (10% of the traffic for 2 minutes)
+        env:
+          OLD: ${{ steps.rev.outputs.old }}
+          NEW: ${{ steps.rev.outputs.new }}
+        run: |
+          source .github/scripts/aca-revision.sh
+          fqdn=$(aca_revision_field "$NEW" properties.fqdn)
+          echo "::add-mask::$fqdn"
+          aca_set_traffic "$OLD=90" "$NEW=10"
+          for i in 1 2 3 4 5 6 7 8; do
+            sleep 15
+            code=$(curl -s -o /dev/null -w '%{http_code}' "https://$fqdn/actuator/health/readiness")
+            health=$(aca_revision_field "$NEW" properties.healthState)
+            echo "check $i/8: readiness $code, revision health $health"
+            if [ "$code" != "200" ] || [ "$health" != "Healthy" ]; then echo "canary failed" >&2; exit 1; fi
+          done
+
+      - name: Promote (100% to the new revision, old revision deactivated)
+        env:
+          OLD: ${{ steps.rev.outputs.old }}
+          NEW: ${{ steps.rev.outputs.new }}
+        run: |
+          source .github/scripts/aca-revision.sh
+          aca_set_traffic "$NEW=100"
+          aca_deactivate "$OLD"
+
+      - name: Roll back
+        if: failure() && steps.rev.outputs.new != ''
+        env:
+          OLD: ${{ steps.rev.outputs.old }}
+          NEW: ${{ steps.rev.outputs.new }}
+        run: |
+          source .github/scripts/aca-revision.sh
+          aca_set_traffic "$OLD=100" || true
+          aca_deactivate "$NEW" || true
+          echo "**Rolled back**: all traffic stays on \`$OLD\`; \`$NEW\` deactivated." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Summary
+        if: always()
+        env:
+          OLD: ${{ steps.rev.outputs.old }}
+          NEW: ${{ steps.rev.outputs.new }}
+          OUTCOME: ${{ job.status }}
+        run: |
+          {
+            echo "### Deployment: $OUTCOME"
+            echo "| Item | Value |"
+            echo "|---|---|"
+            echo "| Image | \`$IMAGE\` |"
+            echo "| Previous revision | \`$OLD\` |"
+            echo "| New revision | \`$NEW\` |"
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -60,8 +60,9 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = {
     environmentId: environmentId
     workloadProfileName: 'Consumption'
     configuration: {
-      // Single: each deployment replaces the running revision. Multiple (canary releases) comes with the pipeline
-      activeRevisionsMode: 'Single'
+      // Multiple: old and new revisions run side by side, so the pipeline can test a new revision at 0% traffic,
+      // shift traffic gradually and roll back. The pipeline owns the image and the traffic split from then on.
+      activeRevisionsMode: 'Multiple'
       ingress: {
         external: true
         targetPort: 8080
@@ -130,19 +131,8 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = {
               secretRef: 'jwt-secret-key'
             }
           ]
+          // Same order as Azure stores them (Liveness, Readiness, Startup), so previews show no false differences
           probes: [
-            {
-              // Startup takes about 42 s on 1 vCPU: allow up to 30 + 10 x 10 = 130 s before giving up
-              type: 'Startup'
-              httpGet: {
-                path: '/actuator/health/liveness'
-                port: 8080
-              }
-              initialDelaySeconds: 30
-              periodSeconds: 10
-              timeoutSeconds: 3
-              failureThreshold: 10
-            }
             {
               // No database check here: a database outage must not restart the containers
               type: 'Liveness'
@@ -164,6 +154,18 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = {
               periodSeconds: 5
               timeoutSeconds: 3
               failureThreshold: 3
+            }
+            {
+              // Startup takes 13-45 s depending on the CPU: allow up to 30 + 10 x 10 = 130 s before giving up
+              type: 'Startup'
+              httpGet: {
+                path: '/actuator/health/liveness'
+                port: 8080
+              }
+              initialDelaySeconds: 30
+              periodSeconds: 10
+              timeoutSeconds: 3
+              failureThreshold: 10
             }
           ]
         }

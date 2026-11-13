@@ -1,0 +1,121 @@
+# Reusable CI: build and test the API, analyse it with SonarCloud, build the container image, scan it with Trivy and
+# (optionally) push it to Azure Container Registry. Called by pr.yml (every pull request) and deploy.yml (main).
+name: ci
+
+on:
+  workflow_call:
+    inputs:
+      tag-prefix:
+        description: Text in front of the short commit id in the image tag (for example "pr-12-")
+        type: string
+        default: ''
+      push-image:
+        description: Push the image to the registry (needs the Azure login)
+        type: boolean
+        default: false
+    outputs:
+      image:
+        description: Full image reference
+        value: ${{ jobs.image.outputs.image }}
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  REGISTRY: acrtrebolpocttuu
+  IMAGE_NAME: trebol-api
+  # Same scanner and version as locally, pinned by digest (no third-party action)
+  TRIVY_IMAGE: aquasec/trivy:0.76.2@sha256:8f6bb947dbc528902e11f2f5be52f7b519f6a39d5d148f41166f2040499768fb
+
+jobs:
+  build:
+    name: Build, test and analyse
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Full history: SonarCloud uses it to tell new code from old code
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      # verify = compile, 372 unit tests, JaCoCo coverage gate (20%); then SonarCloud waits for the quality gate and
+      # fails the job if the gate fails. Organization and project keys follow SonarCloud's naming (owner, owner_repo).
+      - name: Build, unit tests, coverage gate and SonarCloud quality gate
+        working-directory: trebol-backend-monolith
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_ORG: ${{ github.repository_owner }}
+          SONAR_PROJECT: ${{ github.repository_owner }}_${{ github.event.repository.name }}
+        run: >-
+          mvn -B -ntp verify org.sonarsource.scanner.maven:sonar-maven-plugin:5.8.0.7211:sonar
+          -Dsonar.organization="$SONAR_ORG" -Dsonar.projectKey="$SONAR_PROJECT" -Dsonar.qualitygate.wait=true
+
+  image:
+    name: Image build, scan and push
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
+    outputs:
+      image: ${{ steps.name.outputs.image }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Tag = short commit id: every image can be traced back to the exact code it was built from
+      - name: Image name
+        id: name
+        env:
+          PREFIX: ${{ inputs.tag-prefix }}
+        run: echo "image=${REGISTRY}.azurecr.io/${IMAGE_NAME}:${PREFIX}${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - name: Build the image
+        env:
+          IMAGE: ${{ steps.name.outputs.image }}
+        run: docker build --tag "$IMAGE" trebol-backend-monolith
+
+      # First run: report of critical and high findings (information). Second run: the gate, which fails on any
+      # critical finding that is not accepted in .trivyignore.yaml.
+      - name: Scan the image (fails on critical vulnerabilities)
+        env:
+          IMAGE: ${{ steps.name.outputs.image }}
+        run: |
+          scan() {
+            docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v trivy-cache:/root/.cache/ \
+              -v "$PWD:/repo:ro" "$TRIVY_IMAGE" image --scanners vuln --ignorefile /repo/.trivyignore.yaml \
+              --no-progress "$@" "$IMAGE"
+          }
+          scan --severity CRITICAL,HIGH
+          scan --severity CRITICAL --exit-code 1 --skip-db-update
+
+      # OIDC: GitHub's signed token is exchanged for an Azure token of id-trebol-github; no password is stored
+      - name: Log in to Azure
+        if: inputs.push-image
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Push the image to the registry
+        if: inputs.push-image
+        env:
+          IMAGE: ${{ steps.name.outputs.image }}
+        run: |
+          az acr login --name "$REGISTRY"
+          docker push "$IMAGE"
+          echo "Image: \`$IMAGE\`" >> "$GITHUB_STEP_SUMMARY"

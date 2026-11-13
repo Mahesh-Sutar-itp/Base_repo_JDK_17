@@ -1,0 +1,28 @@
+# Every pull request into main: build, unit tests, coverage gate, SonarCloud quality gate, image build, vulnerability
+# scan and push of the image (tag pr-NUMBER-COMMIT). Branch protection on main requires this workflow to pass.
+name: pr
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+# A new push to the same pull request cancels the run that is still going
+concurrency:
+  group: pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+      id-token: write
+    with:
+      tag-prefix: pr-${{ github.event.pull_request.number }}-
+      # Only pull requests from branches of this repository may log in to Azure (forks get no Azure access)
+      push-image: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+    secrets: inherit
