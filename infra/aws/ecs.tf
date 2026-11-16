@@ -182,16 +182,23 @@ resource "aws_ecs_service" "app" {
   deployment_minimum_healthy_percent = 100
   deployment_maximum_percent         = 200
 
-  # Circuit breaker is off for now: on lab-up the proxy needs ~5-10 min before it
+  # Circuit breaker is off here on purpose: on lab-up the proxy needs ~5-10 min before it
   # accepts connections, and ECS should keep retrying tasks until it does instead of
-  # declaring the first deployment failed. Turn on with rollback in the CI/CD phase.
+  # declaring the first deployment failed. The deploy workflow (deploy.yml) turns it on,
+  # with rollback, for every rollout it starts.
 
   propagate_tags = "SERVICE"
   tags           = { Name = "${var.project}-backend-service" }
 
-  # Auto scaling (monitoring.tf) changes the task count at run time; don't reset it
   lifecycle {
-    ignore_changes = [desired_count]
+    ignore_changes = [
+      # Auto scaling (monitoring.tf) changes the task count at run time; don't reset it
+      desired_count,
+      # The deploy workflow registers new task definition revisions and points the service at them.
+      # Without this, any `terraform apply` while the lab is on would roll the image back to
+      # var.app_image_tag. The first start after a lab-up still uses app_image_tag.
+      task_definition,
+    ]
   }
 
   depends_on = [aws_lb_listener.http, aws_db_proxy_target.main]

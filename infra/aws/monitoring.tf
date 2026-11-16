@@ -184,6 +184,52 @@ resource "aws_cloudwatch_metric_alarm" "unhealthy_hosts" {
   tags = { Name = "${var.project}-unhealthy-tasks" }
 }
 
+# Total-outage alarms. The alarms above stay silent when there is NO data, which is exactly what
+# happens when every task is gone (no targets = no per-target metrics). These two cover that case.
+# Missing data counts as a problem here, and 10 minutes must pass first so the normal lab-up
+# start-up (database proxy ~5-10 min, then the app ~1-2 min) does not send a false alarm.
+resource "aws_cloudwatch_metric_alarm" "no_healthy_tasks" {
+  count = local.monitor_count
+
+  alarm_name          = "${var.project}-no-healthy-tasks"
+  alarm_description   = "No task has passed the ALB readiness check for 10 minutes: the API is down"
+  namespace           = "AWS/ApplicationELB"
+  metric_name         = "HealthyHostCount"
+  dimensions          = { LoadBalancer = local.alb_dimension, TargetGroup = local.tg_dimension }
+  statistic           = "Maximum"
+  period              = 60
+  evaluation_periods  = 10
+  threshold           = 1
+  comparison_operator = "LessThanThreshold"
+  treat_missing_data  = "breaching"
+  alarm_actions       = [aws_sns_topic.alarms.arn]
+  ok_actions          = [aws_sns_topic.alarms.arn]
+
+  tags = { Name = "${var.project}-no-healthy-tasks" }
+}
+
+# 5xx answers made by the load balancer itself (502/503/504: no target, target closed or timed out).
+# The 5xx alarm above counts only errors the app returned.
+resource "aws_cloudwatch_metric_alarm" "alb_own_5xx" {
+  count = local.monitor_count
+
+  alarm_name          = "${var.project}-alb-5xx-errors"
+  alarm_description   = "The load balancer itself returned more than 10 server errors (5xx) in 5 minutes"
+  namespace           = "AWS/ApplicationELB"
+  metric_name         = "HTTPCode_ELB_5XX_Count"
+  dimensions          = { LoadBalancer = local.alb_dimension }
+  statistic           = "Sum"
+  period              = 300
+  evaluation_periods  = 1
+  threshold           = 10
+  comparison_operator = "GreaterThanThreshold"
+  treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.alarms.arn]
+  ok_actions          = [aws_sns_topic.alarms.arn]
+
+  tags = { Name = "${var.project}-alb-5xx-errors" }
+}
+
 resource "aws_cloudwatch_metric_alarm" "ecs_cpu" {
   count = local.monitor_count
 
