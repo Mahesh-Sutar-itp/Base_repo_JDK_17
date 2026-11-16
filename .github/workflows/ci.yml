@@ -15,6 +15,7 @@ on:
 # Least privilege: this workflow only reads the repository
 permissions:
   contents: read
+  pull-requests: read # lets SonarCloud read the pull request it analyses
 
 # A newer push to the same branch makes the older, still-running build pointless
 concurrency:
@@ -31,12 +32,18 @@ jobs:
       run:
         working-directory: trebol-backend-monolith
 
+    env:
+      # Empty on pull requests from forks (GitHub hides secrets there), which skips the Sonar step
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
     steps:
       - name: Check out the code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # SonarCloud needs the full history to find new code and blame
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "17"
@@ -45,9 +52,22 @@ jobs:
       - name: Build, test and check coverage
         run: mvn -B -ntp verify
 
+      # Step 5.3: code quality and security analysis on SonarCloud (free for public repos).
+      # Runs only once the SonarCloud account is connected: it needs the SONAR_TOKEN secret and the
+      # SONAR_ORGANIZATION and SONAR_PROJECT_KEY repository variables (setup steps in docs/ci-cd.md). Until then
+      # this step is skipped and CI still passes.
+      # pom.xml points at the upstream project's organization, so both values are overridden here.
+      - name: SonarCloud analysis
+        if: ${{ env.SONAR_TOKEN != '' && vars.SONAR_ORGANIZATION != '' && vars.SONAR_PROJECT_KEY != '' }}
+        run: >
+          mvn -B -ntp org.sonarsource.scanner.maven:sonar-maven-plugin:sonar
+          -Dsonar.organization=${{ vars.SONAR_ORGANIZATION }}
+          -Dsonar.projectKey=${{ vars.SONAR_PROJECT_KEY }}
+          -Dsonar.qualitygate.wait=true
+
       - name: Upload test and coverage reports
         if: always() # also when tests fail, that is when the reports matter most
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: reports
           path: |
