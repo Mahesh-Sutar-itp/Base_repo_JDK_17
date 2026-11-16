@@ -69,7 +69,10 @@ The Container App runs in multiple-revision mode: each release is a new, immutab
 traffic is moved between revisions explicitly. The deploy job (one at a time, see section 7):
 
 1. **Pin** all traffic to the revision serving now, by name, so the new revision starts with 0%.
-2. **Create** the new revision with the new image (`az containerapp update --image ... --revision-suffix rRUN-ATTEMPT-COMMIT`)
+2. **Create** the new revision by deploying the app's Bicep template (`infra/app.bicep`) with the new image, the
+   revision name suffix `rRUN-ATTEMPT-COMMIT`, the serving revision's minimum replicas (set by the schedule) and the
+   traffic still pinned to the serving revision. Every change to the app's definition (settings, probes, scale rules)
+   therefore goes through a pull request, the smoke test and the canary, like a code change.
    and wait (bounded, up to 10 minutes) until it is provisioned and its readiness probe passes.
 3. **Smoke test** the new revision on its own URL with the 48 checks of `test-endpoints.sh` (login, registration,
    permissions, product CRUD, product lists, cleanup). Users still reach only the old revision.
@@ -159,7 +162,8 @@ eleven cases (on time, late, past midnight, weekend, next working day).
 | Release again without a code change | Actions, `deploy`, "Run workflow" on `main` |
 | Roll back by hand | Reactivate the previous revision, then move the traffic: `az containerapp revision activate ...` and `az containerapp ingress traffic set ... --revision-weight PREVIOUS=100` |
 | Work outside the window | Actions, `schedule`, "Run workflow", action `start` (later `stop`) |
-| Change infrastructure with Bicep after releases | Pass the image that is running (`--parameters containerImage=...`), because the template's traffic setting (`latestRevision`) and image would otherwise replace what the pipeline set |
+| Change the app's settings, probes or scale rules | Edit `infra/modules/containerapp.bicep` or `infra/app.bicepparam` in a pull request; the release after the merge applies it |
+| Change infrastructure | `infra/main.bicep` (engineer, what-if first); it does not touch the app, so it cannot undo a release |
 
 ## 10. Known limitations and planned work
 
@@ -168,7 +172,6 @@ eleven cases (on time, late, past midnight, weekend, next working day).
 | Pipeline identity in pull request runs | The same identity as releases (Contributor on the resource group), only for branches of this repository | A separate identity that may only push images (needs the subscription administrator) |
 | Admin password for the smoke test | Copy of the Key Vault secret in GitHub secrets | Key Vault Secrets User for the pipeline identity (needs the subscription administrator), then read it from Key Vault |
 | Canary signal | Readiness and health of the new revision during 2 minutes at 10% (little real traffic outside tests) | Error rate and latency from Application Insights as promotion criteria (monitoring phase) |
-| Bicep and pipeline both describe the app | The pipeline owns image and traffic; Bicep must be given the running image | Read the running image in the template, or let the pipeline run the Bicep deployment |
 | Required checks not strict | A pull request does not have to be up to date with `main` before merging | The release re-runs all gates on the merge commit anyway; enable "strict" if merges become frequent |
 | SonarCloud first-analysis behaviour | The first analysis of a branch judges existing code | Nothing to do: later analyses judge new code only |
 | Scheduler timing | GitHub scheduled runs can start hours late; backup triggers and the clock check limit the effect | An Azure Container Apps scheduled job (runs inside Azure, on time) if the delays continue |

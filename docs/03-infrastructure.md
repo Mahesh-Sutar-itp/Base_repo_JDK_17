@@ -15,7 +15,7 @@ templates; until it exists, the deployments were run by the engineer, one review
 | Live on a public HTTPS URL | External ingress with an Azure-managed certificate; plain HTTP is redirected (301) | Smoke test 45/45 over HTTPS (section 9) |
 | Secrets in a vault | Database password, JWT signing key and admin password live only in Key Vault. The app reads them through Key Vault references with its managed identity; the deployment passes the MySQL password to Azure Resource Manager as a Key Vault reference | No secret in the repository, the image, the templates or any command line |
 | Least-privilege identities | Two user-assigned managed identities: the pipeline (Contributor on the resource group, cannot assign roles) and the app (image pull and secret read only). Role assignments are made by the subscription administrator | Section 5 |
-| Deploy via pipeline | Templates and parameters are ready for it; the GitHub Actions pipeline (OIDC login, no stored Azure secret) is the next phase | In progress |
+| Deploy via pipeline | The release pipeline deploys the app's template (`infra/app.bicep`) with every new image; GitHub Actions logs in with OIDC (no stored Azure secret) | [04-cicd.md](04-cicd.md) |
 | Infrastructure as code (bonus) | Every resource is defined in Bicep; deployments are incremental and previewed with what-if first | `infra/` |
 
 ## 2. Architecture
@@ -205,7 +205,10 @@ run: the MySQL password in Key Vault (the parameter file reads it at deployment 
    `az acr login --subscription $sub --name acrtrebolpocttuu`, then
    `docker push acrtrebolpocttuu.azurecr.io/trebol-api:TAG`.
 5. Deploy `infra/main.bicepparam` as above (about 6 minutes each for MySQL and for the Container Apps environment).
-6. Change the seeded passwords (section 5) and run the smoke test against the `appUrl` output:
+   Then deploy the app once by hand: set `$env:TREBOL_APP_IMAGE` to the pushed image and run
+   `az deployment group create --subscription $sub --resource-group rg-trebol-poc --name app-initial --mode Incremental --parameters infra/app.bicepparam`.
+   From then on the release pipeline deploys `infra/app.bicep` with every new image (see 04-cicd.md).
+6. Change the seeded passwords (section 5) and run the smoke test against the app URL (the `fqdn` output of `app.bicep`):
    `ADMIN_PASSWORD=... bash test-endpoints.sh https://APP-URL`.
 
 Step 2 currently means deploying the module templates on their own; a parameter to deploy only the shared services
@@ -305,7 +308,8 @@ replicas) is planned separately within the 50 USD project total.
 
 | File | Purpose |
 |---|---|
-| `infra/main.bicep` | Entry point: parameters, modules, outputs (`appUrl`, `mysqlServerFqdn`, ...) |
+| `infra/main.bicep` | Infrastructure entry point: parameters, modules, outputs (`mysqlServerFqdn`, ...); deployed by the engineer |
+| `infra/app.bicep`, `infra/app.bicepparam` | The API container app; deployed by the release pipeline (image, revision name, minimum replicas and traffic from environment variables) |
 | `infra/main.bicepparam` | Values for this project; private values from environment variables; MySQL password as a Key Vault reference |
 | `infra/modules/monitoring.bicep` | Log Analytics workspace |
 | `infra/modules/budget.bicep` | Cost budget and alerts |
@@ -315,6 +319,6 @@ replicas) is planned separately within the 50 USD project total.
 | `infra/modules/keyvault.bicep` | Key Vault |
 | `infra/modules/mysql.bicep` | MySQL Flexible Server and the application database |
 | `infra/modules/containerapps-env.bicep` | Container Apps environment |
-| `infra/modules/containerapp.bicep` | The API container app |
+| `infra/modules/containerapp.bicep` | The API container app's definition, used by `app.bicep` |
 | `infra/roles.bicep` | The four role assignments, run by the subscription administrator only |
 | `test-endpoints.sh` | Smoke test (45 checks); `ADMIN_PASSWORD` for the cloud |
