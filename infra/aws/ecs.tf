@@ -150,6 +150,13 @@ resource "aws_ecs_task_definition" "app" {
   ])
 
   tags = { Name = "${var.project}-backend-task" }
+
+  # deploy.yml registers newer revisions with a different image. Terraform must not replace this one
+  # (that would register a stale revision and deregister the running one). The cost: a change to the
+  # container settings above (image tag, environment, secrets) only reaches the lab at the next lab-up.
+  lifecycle {
+    ignore_changes = [container_definitions]
+  }
 }
 
 ############################
@@ -198,6 +205,8 @@ resource "aws_ecs_service" "app" {
       # Without this, any `terraform apply` while the lab is on would roll the image back to
       # var.app_image_tag. The first start after a lab-up still uses app_image_tag.
       task_definition,
+      # Turned on by deploy.yml at each rollout; Terraform's config deliberately has none (see above)
+      deployment_circuit_breaker,
     ]
   }
 
