@@ -32,6 +32,23 @@ variable "github_repo" {
   }
 }
 
+variable "github_owner_id" {
+  description = "Numeric GitHub ID of the repository owner (public: api.github.com/users/<owner>)."
+  type        = string
+  default     = "300505377"
+}
+
+variable "github_repo_id" {
+  description = "Numeric GitHub ID of the repository (public: api.github.com/repos/<owner>/<name>)."
+  type        = string
+  default     = "1445925961"
+}
+
+locals {
+  github_owner = split("/", var.github_repo)[0]
+  github_name  = split("/", var.github_repo)[1]
+}
+
 variable "github_branch" {
   description = "The only branch whose workflows may assume the CI/CD role."
   type        = string
@@ -59,11 +76,17 @@ data "aws_iam_policy_document" "github_trust" {
       values   = ["sts.amazonaws.com"]
     }
 
-    # ...and come from this exact repo and branch (exact match, no wildcards)
+    # ...and come from this exact repo and branch (exact match, no wildcards).
+    # GitHub now puts the numeric owner and repository IDs into the token subject
+    # (repo:owner@ID/name@ID:ref:...), so that is the format that actually arrives. The old
+    # name-only format is kept too, in case a repository still sends it. The IDs are public.
     condition {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:${var.github_repo}:ref:refs/heads/${var.github_branch}"]
+      values = [
+        "repo:${local.github_owner}@${var.github_owner_id}/${local.github_name}@${var.github_repo_id}:ref:refs/heads/${var.github_branch}",
+        "repo:${var.github_repo}:ref:refs/heads/${var.github_branch}",
+      ]
     }
   }
 }
