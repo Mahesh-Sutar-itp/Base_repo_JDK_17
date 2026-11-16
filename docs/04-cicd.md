@@ -91,13 +91,22 @@ rolls back. Run the schedule's "start" first in that case.
 | Time (IST) | Cron (UTC) | Action |
 |---|---|---|
 | 13:45 Monday-Friday | `15 8 * * 1-5` | Start MySQL (waits until it runs), then move the app to a revision with 1 minimum replica |
+| 14:15 Monday-Friday | `45 8 * * 1-5` | Backup of the start (changes nothing if the start already ran) |
 | 22:00 Monday-Friday | `30 16 * * 1-5` | Move the app to a revision with 0 minimum replicas, then stop MySQL |
+| 00:00 Tuesday-Saturday | `30 18 * * 1-5` | Backup of the stop |
 | Any time | manual run (`start` or `stop`) | Work outside the window, the evaluation |
 
 The minimum replica count belongs to a revision, so the schedule creates a new revision with the same image and the
 new minimum, moves the traffic to it and deactivates the old one, exactly like a release. Deactivating a revision
 that still has traffic is avoided: it would leave a stale traffic weight. Each step is skipped when nothing has to
-change, so a repeated run does no harm. GitHub can start scheduled runs some minutes late; weekends stay off.
+change, so a repeated run does no harm. Weekends stay off.
+
+GitHub can start scheduled runs late: the first automatic stop (due Friday 22:00 IST) started 5.5 hours late, and
+Monday's first start had not run 25 minutes after its time. Hence the backup triggers and a clock check in every
+scheduled run (India time): a **start** acts only on weekdays between 13:00 and 21:30, so a late start cannot switch
+everything on at night; a **stop** acts only outside the working window (weekdays 13:00-22:00), so a late stop cannot
+interrupt work. Skipped runs say why in their summary. Manual runs always act. The decision logic was tested with
+eleven cases (on time, late, past midnight, weekend, next working day).
 
 ## 6. Security of the pipeline
 
@@ -162,3 +171,4 @@ change, so a repeated run does no harm. GitHub can start scheduled runs some min
 | Bicep and pipeline both describe the app | The pipeline owns image and traffic; Bicep must be given the running image | Read the running image in the template, or let the pipeline run the Bicep deployment |
 | Required checks not strict | A pull request does not have to be up to date with `main` before merging | The release re-runs all gates on the merge commit anyway; enable "strict" if merges become frequent |
 | SonarCloud first-analysis behaviour | The first analysis of a branch judges existing code | Nothing to do: later analyses judge new code only |
+| Scheduler timing | GitHub scheduled runs can start hours late; backup triggers and the clock check limit the effect | An Azure Container Apps scheduled job (runs inside Azure, on time) if the delays continue |

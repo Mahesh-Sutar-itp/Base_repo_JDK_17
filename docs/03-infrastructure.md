@@ -234,7 +234,7 @@ List prices in USD for the regions used (13 Nov 2026). Stoppable resources run o
 | Resource | Billed by | Price | Development estimate |
 |---|---|---|---|
 | Container App (1 replica, 1 vCPU / 2 GiB) | Second of use | Active: 0.000024 per vCPU-second + 0.000003 per GiB-second (about 0.11 per hour); idle: about 0.03 per hour | 0.26-0.86 per working day |
-| Container Apps environment | - | No charge with the Consumption profile only | 0 |
+| Container Apps environment | - | No charge for the environment itself with the Consumption profile only | 0 |
 | MySQL B1ms compute | Running hour | 0.0245 per hour | About 0.20 per working day |
 | MySQL storage, 20 GB | Month, also when stopped | 0.131 per GB-month | About 2.60 per month |
 | Container registry, Basic | Day | About 0.167 per day | About 5 per month |
@@ -242,11 +242,18 @@ List prices in USD for the regions used (13 Nov 2026). Stoppable resources run o
 | Key Vault | Operations | Fractions of a cent per 10,000 operations | Below 0.10 per month |
 | Log Analytics | GB ingested | Capped at 0.1 GB per day | Within the monthly free allowance in practice |
 | Virtual network | - | Free | 0 |
-| Load balancer and public IP of the environment | Managed by Azure | Being confirmed in Cost Management | - |
+| Load balancer (Standard) and public IP of the environment | Hour, in the Azure-managed group | Measured: about 50 + 10 INR per day (about 0.70 USD) | **About 21 per month, also when the app runs no replicas** |
 | Data transfer South India - Central India | GB | Image pulls (about 140 MB each), secret reads, logs | Well below 1 per month |
 
-**Cost controls.** The budget alerts (50%, 80%, 100% actual, 100% forecast); the working-hours schedule (manual for
-now, automated by a scheduled workflow later); the development limits (1 vCPU / 2 GiB, at most 3 replicas); the
+**Measured cost (Cost Management, 1-16 Nov 2026).** 222 INR in total (about 2.6 USD): 88 INR in `rg-trebol-poc`
+(registry 42, MySQL compute 24 and storage 16, DNS zone 4, logs 1.5, Key Vault 0.1) and 134 INR in the Azure-managed
+group (load balancer 112, public IP 22). Container Apps compute cost nothing so far: it stayed within the monthly free
+allowance. With everything stopped, the fixed cost is about 82 INR (about 1 USD) per day, three quarters of it the
+environment's load balancer and public IP. A network-integrated environment always has them; only deleting the
+environment stops that cost, so the environment is removed right after the evaluation.
+
+**Cost controls.** The budget alerts (50%, 80%, 100% actual, 100% forecast; the budget covers `rg-trebol-poc` only,
+so the managed group's cost is tracked in Cost Management); the working-hours schedule (`schedule.yml`); the development limits (1 vCPU / 2 GiB, at most 3 replicas); the
 Log Analytics daily cap; the `project` tag for cost reports. The full-scale evaluation (larger database tier, more
 replicas) is planned separately within the 50 USD project total.
 
