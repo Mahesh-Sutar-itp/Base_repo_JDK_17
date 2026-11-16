@@ -108,15 +108,13 @@ data "aws_iam_policy_document" "github_actions" {
     resources = ["*"]
   }
 
+  # Push only (the workflow never pulls from ECR) + DescribeImages for the "already in ECR?" check
   statement {
-    sid = "EcrPushPullOurRepoOnly"
+    sid = "EcrPushOurRepoOnly"
     actions = [
       "ecr:BatchCheckLayerAvailability",
-      "ecr:BatchGetImage",
       "ecr:CompleteLayerUpload",
       "ecr:DescribeImages",
-      "ecr:DescribeImageScanFindings",
-      "ecr:GetDownloadUrlForLayer",
       "ecr:InitiateLayerUpload",
       "ecr:PutImage",
       "ecr:UploadLayerPart",
@@ -128,7 +126,6 @@ data "aws_iam_policy_document" "github_actions" {
   statement {
     sid = "EcsTaskDefinitions"
     actions = [
-      "ecs:DeregisterTaskDefinition",
       "ecs:DescribeTaskDefinition",
       "ecs:RegisterTaskDefinition",
     ]
@@ -148,18 +145,6 @@ data "aws_iam_policy_document" "github_actions" {
     resources = [
       "arn:aws:ecs:${var.region}:${data.aws_caller_identity.current.account_id}:service/${aws_ecs_cluster.main.name}/${var.project}-backend",
     ]
-  }
-
-  statement {
-    sid       = "EcsWatchTasksOfOurCluster"
-    actions   = ["ecs:DescribeTasks", "ecs:ListTasks"]
-    resources = ["*"]
-
-    condition {
-      test     = "ArnEquals"
-      variable = "ecs:cluster"
-      values   = [aws_ecs_cluster.main.arn]
-    }
   }
 
   # The public URL published at lab-up (see cloudfront.tf): tells the deploy workflow whether the lab

@@ -37,24 +37,14 @@ variable "az_count" {
 
 variable "lab_on" {
   description = <<-EOT
-    Switch for everything that is billed by the hour (NAT gateway, and in later steps the database,
-    RDS Proxy, load balancer, ECS service, CloudFront and WAF).
-    false (default) = lab off: only free or near-free resources exist (VPC, subnets, ECR, secrets).
+    Switch for everything that is billed by the hour: NAT gateway, database, RDS Proxy, load balancer,
+    ECS service, CloudFront, WAF, alarms and dashboard.
+    false (default) = lab off: only free or near-free resources exist (VPC, subnets, ECR, secrets, IAM).
     true            = lab on: the full stack runs. Start with lab-up.cmd, stop with lab-down.cmd.
     The default is false so a plain `terraform apply` can never leave costly resources running by accident.
   EOT
   type        = bool
   default     = false
-}
-
-variable "single_nat_gateway" {
-  description = <<-EOT
-    true  = one NAT gateway shared by both zones (about $33/month; if its zone fails, tasks in the
-            other zone lose outbound internet until it recovers, but keep serving traffic).
-    false = one NAT gateway per zone (double the cost, no shared dependency).
-  EOT
-  type        = bool
-  default     = true
 }
 
 variable "ecr_keep_images" {

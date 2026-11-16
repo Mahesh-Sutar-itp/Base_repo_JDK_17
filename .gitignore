@@ -5,3 +5,6 @@ Claude outputs/
 
 # Personal Claude Code context (contains environment details)
 CLAUDE.local.md
+
+# Local k6 load-test scripts (not part of the repo)
+loadtest/

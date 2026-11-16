@@ -19,6 +19,8 @@ locals {
   # locals are evaluated even while the lab is off
   ecs_service_name = one(aws_ecs_service.app[*].name)
   db_identifier    = one(aws_db_instance.main[*].identifier)
+  db_proxy_name    = one(aws_db_proxy.main[*].name)
+  cdn_id           = one(aws_cloudfront_distribution.main[*].id)
 }
 
 ############################
@@ -321,9 +323,59 @@ locals {
           ]
         }
       },
+      # Load-test view of the front door. CloudFront and WAF (CloudFront scope) metrics live in
+      # us-east-1, which is our region. Rule "ALL" = the whole web ACL; the rate-limit rule is
+      # plotted on its own to show when /public/login starts answering 429.
+      {
+        type = "metric", x = 0, y = 12, width = 12, height = 6
+        properties = {
+          title  = "CloudFront: requests and error rate"
+          region = var.region
+          view   = "timeSeries"
+          period = 60
+          metrics = [
+            ["AWS/CloudFront", "Requests", "DistributionId", local.cdn_id, "Region", "Global", { stat = "Sum", label = "Requests" }],
+            [".", "5xxErrorRate", ".", ".", ".", ".", { stat = "Average", label = "5xx %", yAxis = "right", color = "#d62728" }],
+            [".", "4xxErrorRate", ".", ".", ".", ".", { stat = "Average", label = "4xx %", yAxis = "right" }],
+          ]
+        }
+      },
+      {
+        type = "metric", x = 12, y = 12, width = 12, height = 6
+        properties = {
+          title  = "WAF: allowed and blocked requests"
+          region = var.region
+          view   = "timeSeries"
+          stat   = "Sum"
+          period = 60
+          metrics = [
+            ["AWS/WAFV2", "AllowedRequests", "WebACL", "${var.project}-web-acl", "Rule", "ALL", "Region", "Global", { label = "Allowed" }],
+            [".", "BlockedRequests", ".", ".", ".", ".", ".", ".", { label = "Blocked (all rules)", color = "#d62728" }],
+            [".", ".", ".", ".", ".", "login-rate-limit", ".", ".", { label = "Blocked by login rate limit" }],
+          ]
+        }
+      },
+      # Load balancer view: requests per task is what the request-based auto scaling follows,
+      # and ELB 5xx / rejected connections appear when the ALB itself cannot keep up.
+      {
+        type = "metric", x = 0, y = 18, width = 12, height = 6
+        properties = {
+          title  = "Load balancer: requests per task, connections, ELB errors"
+          region = var.region
+          view   = "timeSeries"
+          stat   = "Sum"
+          period = 60
+          metrics = [
+            ["AWS/ApplicationELB", "RequestCountPerTarget", "TargetGroup", local.tg_dimension, { label = "Requests per task (scaling target: ${var.autoscaling_requests_per_target})" }],
+            [".", "ActiveConnectionCount", "LoadBalancer", local.alb_dimension, { label = "Active connections", yAxis = "right", stat = "Average" }],
+            [".", "HTTPCode_ELB_5XX_Count", ".", ".", { label = "ELB 5xx", color = "#d62728" }],
+            [".", "RejectedConnectionCount", ".", ".", { label = "Rejected connections", color = "#9467bd" }],
+          ]
+        }
+      },
     ]
 
-    # Database widget only when there is a database (range(0) = empty list)
+    # Database widgets only when there is a database (range(0) = empty list)
     db_widgets = [for _ in range(local.db_count) : {
       type = "metric", x = 12, y = 6, width = 12, height = 6
       properties = {
@@ -338,6 +390,23 @@ locals {
         ]
       }
     }]
+
+    # RDS Proxy: client connections (tasks -> proxy) vs database connections (proxy -> RDS) shows
+    # how well the proxy pools. Placed next to the load balancer widget.
+    proxy_widgets = [for _ in range(local.db_count) : {
+      type = "metric", x = 12, y = 18, width = 12, height = 6
+      properties = {
+        title  = "RDS Proxy: connections and queries"
+        region = var.region
+        view   = "timeSeries"
+        period = 60
+        metrics = [
+          ["AWS/RDS", "ClientConnections", "ProxyName", local.db_proxy_name, { stat = "Maximum", label = "Client connections (from tasks)" }],
+          [".", "DatabaseConnections", ".", ".", { stat = "Maximum", label = "Database connections (to RDS)" }],
+          [".", "QueryRequests", ".", ".", { stat = "Sum", label = "Queries per minute", yAxis = "right" }],
+        ]
+      }
+    }]
   }
 }
 
@@ -345,5 +414,5 @@ resource "aws_cloudwatch_dashboard" "main" {
   count = local.monitor_count
 
   dashboard_name = "${var.project}-overview"
-  dashboard_body = jsonencode({ widgets = concat(local.dashboard.widgets, local.dashboard.db_widgets) })
+  dashboard_body = jsonencode({ widgets = concat(local.dashboard.widgets, local.dashboard.db_widgets, local.dashboard.proxy_widgets) })
 }

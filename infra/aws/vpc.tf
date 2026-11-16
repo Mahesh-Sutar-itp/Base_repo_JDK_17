@@ -61,8 +61,10 @@ resource "aws_subnet" "db" {
 # NAT gateway (outbound internet for ECS tasks: pulling images, calling AWS APIs)
 ############################
 locals {
-  # No NAT gateway at all while the lab is off: it is billed every hour it exists, even with no traffic
-  nat_count = var.lab_on ? (var.single_nat_gateway ? 1 : var.az_count) : 0
+  # One NAT gateway shared by both zones (service plan: "1 gateway"), and none at all while the lab
+  # is off: it is billed every hour it exists, even with no traffic. If its zone fails, tasks in the
+  # other zone lose outbound internet but keep serving traffic - acceptable for the POC.
+  nat_count = var.lab_on ? 1 : 0
 }
 
 resource "aws_eip" "nat" {
@@ -98,7 +100,7 @@ resource "aws_route_table_association" "public" {
   route_table_id = aws_route_table.public.id
 }
 
-# One app route table per zone, each pointing at its zone's NAT (or the single shared NAT)
+# One app route table per zone, both pointing at the shared NAT gateway
 resource "aws_route_table" "app" {
   count  = var.az_count
   vpc_id = aws_vpc.main.id
@@ -113,7 +115,7 @@ resource "aws_route" "app_nat" {
   count                  = local.nat_count > 0 ? var.az_count : 0
   route_table_id         = aws_route_table.app[count.index].id
   destination_cidr_block = "0.0.0.0/0"
-  nat_gateway_id         = aws_nat_gateway.main[var.single_nat_gateway ? 0 : count.index].id
+  nat_gateway_id         = aws_nat_gateway.main[0].id
 }
 
 resource "aws_route_table_association" "app" {
