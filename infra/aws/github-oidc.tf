@@ -18,6 +18,7 @@
 #   - push images to our one ECR repository
 #   - register a new task definition and update our one ECS service (deploy)
 #   - pass the task execution role to ECS (required to register a task definition)
+#   - read one SSM parameter (the public URL, for the smoke test)
 # It cannot touch the database, secrets, networking, IAM or Terraform state.
 
 variable "github_repo" {
@@ -111,6 +112,13 @@ data "aws_iam_policy_document" "github_actions" {
     resources = ["*"]
   }
 
+  # New revisions carry the same Owner/Project/Name tags as the first one (organization tag rule)
+  statement {
+    sid       = "EcsTagOurTaskDefinitionRevisions"
+    actions   = ["ecs:TagResource"]
+    resources = ["arn:aws:ecs:${var.region}:${data.aws_caller_identity.current.account_id}:task-definition/${var.project}-backend:*"]
+  }
+
   statement {
     sid     = "EcsDeployOurServiceOnly"
     actions = ["ecs:DescribeServices", "ecs:UpdateService"]
@@ -129,6 +137,14 @@ data "aws_iam_policy_document" "github_actions" {
       variable = "ecs:cluster"
       values   = [aws_ecs_cluster.main.arn]
     }
+  }
+
+  # The public URL published at lab-up (see cloudfront.tf): tells the deploy workflow whether the lab
+  # is on and where to send the smoke test. Read-only, that one parameter.
+  statement {
+    sid       = "ReadAppUrlParameter"
+    actions   = ["ssm:GetParameter"]
+    resources = ["arn:aws:ssm:${var.region}:${data.aws_caller_identity.current.account_id}:parameter/${var.project}/app-url"]
   }
 
   # A new task definition names the task execution role, so the deployer must be allowed to pass it,
