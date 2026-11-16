@@ -53,8 +53,9 @@ jobs:
        github.event.workflow_run.event == 'push' &&
        github.event.workflow_run.head_repository.full_name == github.repository)
 
+    # Only the tag crosses to the deploy job. The full image address contains the AWS account number,
+    # which must not end up in a public run page; the deploy job builds the address itself.
     outputs:
-      image: ${{ steps.ref.outputs.image }}
       tag: ${{ steps.meta.outputs.tag }}
 
     steps:
@@ -82,7 +83,11 @@ jobs:
         with:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
-          # mask-aws-account-id defaults to true: the account number stays out of these public logs
+
+      # This repository is public, so its run pages are too. Hide the AWS account number everywhere in
+      # this job's logs and annotations (the credentials action's own masking did not cover it).
+      - name: Mask the AWS account number in the logs
+        run: echo "::add-mask::$(aws sts get-caller-identity --query Account --output text)"
 
       - name: Log in to ECR
         id: ecr
@@ -128,14 +133,13 @@ jobs:
 
       - name: Push image to ECR
         if: steps.exists.outputs.found == 'false'
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+          TAG: ${{ steps.meta.outputs.tag }}
         run: |
-          IMAGE="${{ steps.ecr.outputs.registry }}/${ECR_REPOSITORY}:${{ steps.meta.outputs.tag }}"
+          IMAGE="${REGISTRY}/${ECR_REPOSITORY}:${TAG}"
           docker tag trebol-backend:scan "$IMAGE"
           docker push "$IMAGE"
-
-      - name: Publish image reference
-        id: ref
-        run: echo "image=${{ steps.ecr.outputs.registry }}/${ECR_REPOSITORY}:${{ steps.meta.outputs.tag }}" >> "$GITHUB_OUTPUT"
 
   deploy:
     name: Deploy to ECS (if the lab is on)
@@ -154,6 +158,10 @@ jobs:
         with:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
+
+      # Public repository: keep the AWS account number out of this job's logs and annotations
+      - name: Mask the AWS account number in the logs
+        run: echo "::add-mask::$(aws sts get-caller-identity --query Account --output text)"
 
       - name: Is the lab on?
         id: lab
@@ -175,9 +183,13 @@ jobs:
         id: rollout
         if: steps.lab.outputs.on == 'true'
         env:
-          IMAGE: ${{ needs.image.outputs.image }}
+          TAG: ${{ needs.image.outputs.tag }}
         run: |
           set -euo pipefail
+
+          # Image address built here (not passed from the image job) so the account number stays masked
+          ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
+          IMAGE="${ACCOUNT}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}:${TAG}"
 
           # What is running now (kept so we can roll back to it)
           PREVIOUS=$(aws ecs describe-services --cluster "$ECS_CLUSTER" --services "$ECS_SERVICE" \
@@ -214,7 +226,7 @@ jobs:
             echo "::error::Deployment did not complete (state: $STATE). ECS rolled back to the previous version."
             exit 1
           fi
-          echo "::notice::Deployed $IMAGE"
+          echo "::notice::Deployed image tag $TAG"
 
       - name: Smoke test through CloudFront
         id: smoke
@@ -224,10 +236,12 @@ jobs:
       # The new version started fine but the API checks failed: go back to the previous version
       - name: Roll back after a failed smoke test
         if: failure() && steps.smoke.outcome == 'failure'
+        env:
+          PREVIOUS: ${{ steps.rollout.outputs.previous }}
         run: |
-          echo "::error::Smoke test failed, rolling back to ${{ steps.rollout.outputs.previous }}"
+          echo "::error::Smoke test failed, rolling back to the previous task definition"
           aws ecs update-service --cluster "$ECS_CLUSTER" --service "$ECS_SERVICE" \
-            --task-definition "${{ steps.rollout.outputs.previous }}" > /dev/null
+            --task-definition "$PREVIOUS" > /dev/null
           aws ecs wait services-stable --cluster "$ECS_CLUSTER" --services "$ECS_SERVICE"
 
       - name: Summary
