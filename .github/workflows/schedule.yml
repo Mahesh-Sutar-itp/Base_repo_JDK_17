@@ -1,13 +1,21 @@
 # Working-hours schedule (cost rule): everything that can be stopped runs only on weekdays 14:00-22:00 IST.
 #   13:45 IST (08:15 UTC) start: MySQL started, then the app gets a revision with 1 minimum replica.
 #   22:00 IST (16:30 UTC) stop:  the app gets a revision with 0 minimum replicas, then MySQL is stopped.
-# Weekends stay off. A manual run (start or stop) covers work outside the window; GitHub may start cron runs late.
+# Weekends stay off. A manual run (start or stop) covers work outside the window.
+#
+# GitHub can start scheduled runs hours late (the first stop started 5.5 hours late), so:
+#   - each action has a backup trigger 30 minutes (start) or 2 hours (stop) later; a repeated run changes nothing;
+#   - a scheduled run checks the clock: a start acts only on weekdays 13:00-21:30 IST (a late start must not switch
+#     everything on at night), a stop acts only outside the working window (a late stop must not interrupt work).
+#     Manual runs always act.
 name: schedule
 
 on:
   schedule:
-    - cron: '15 8 * * 1-5'
-    - cron: '30 16 * * 1-5'
+    - cron: '15 8 * * 1-5'   # start, 13:45 IST
+    - cron: '45 8 * * 1-5'   # start backup, 14:15 IST
+    - cron: '30 16 * * 1-5'  # stop, 22:00 IST
+    - cron: '30 18 * * 1-5'  # stop backup, 00:00 IST
   workflow_dispatch:
     inputs:
       action:
@@ -53,13 +61,31 @@ jobs:
           INPUT_ACTION: ${{ inputs.action }}
           CRON: ${{ github.event.schedule }}
         run: |
-          if [ "$EVENT" = "workflow_dispatch" ]; then action="$INPUT_ACTION"
-          elif [ "$CRON" = "15 8 * * 1-5" ]; then action=start
-          else action=stop; fi
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            action="$INPUT_ACTION"
+          else
+            case "$CRON" in
+              "15 8 * * 1-5"|"45 8 * * 1-5") action=start ;;
+              *) action=stop ;;
+            esac
+            # Clock check in India time: day 1-7 (Monday = 1) and HHMM
+            day=$(TZ=Asia/Kolkata date +%u)
+            hhmm=$((10#$(TZ=Asia/Kolkata date +%H%M)))
+            in_window=false
+            if [ "$day" -le 5 ] && [ "$hhmm" -ge 1300 ] && [ "$hhmm" -lt 2200 ]; then in_window=true; fi
+            if [ "$action" = "start" ] && { [ "$in_window" = false ] || [ "$hhmm" -ge 2130 ]; }; then
+              echo "Scheduled start skipped: it ran late, at $(TZ=Asia/Kolkata date '+%a %H:%M') IST" >> "$GITHUB_STEP_SUMMARY"
+              action=skip
+            elif [ "$action" = "stop" ] && [ "$in_window" = true ]; then
+              echo "Scheduled stop skipped: it ran late, inside the working window ($(TZ=Asia/Kolkata date '+%a %H:%M') IST)" >> "$GITHUB_STEP_SUMMARY"
+              action=skip
+            fi
+          fi
           echo "action=$action" >> "$GITHUB_OUTPUT"
           echo "### Schedule: $action" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Log in to Azure
+        if: steps.what.outputs.action != 'skip'
         uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
