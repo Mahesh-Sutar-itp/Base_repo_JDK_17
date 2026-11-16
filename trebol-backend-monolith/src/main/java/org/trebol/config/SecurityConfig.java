@@ -77,7 +77,11 @@ public class SecurityConfig {
         return httpSecurity
             .authenticationManager(this.authenticationManager())
             .headers(configure -> configure.frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin))
-            .csrf(AbstractHttpConfigurer::disable)
+            // CSRF protection is for browser sessions that send cookies automatically. This API is
+            // stateless (no session, no cookies, no form login): every request carries its own JWT in
+            // the Authorization header, which a malicious site cannot make a browser add. So disabling
+            // CSRF is safe here (reviewed for SonarCloud rule java:S4502).
+            .csrf(AbstractHttpConfigurer::disable) // NOSONAR
             .sessionManagement(configure -> configure.sessionCreationPolicy(STATELESS))
             .addFilter(this.loginFilterForUrl("/public/login"))
             .addFilterAfter(this.guestFilterForUrl("/public/guest"),
