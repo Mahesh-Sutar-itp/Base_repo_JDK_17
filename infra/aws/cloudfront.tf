@@ -110,3 +110,17 @@ resource "aws_vpc_security_group_ingress_rule" "alb_from_cloudfront" {
   referenced_security_group_id = data.aws_security_group.cloudfront_vpc_origin[0].id
   tags                         = { Name = "${var.project}-alb-from-cloudfront" }
 }
+
+# Publishes the public URL so the deploy workflow can smoke-test it (it changes every lab session).
+# A standard SSM parameter is free. Exists only while the lab is on; the workflow reads it to find out
+# whether there is anything to deploy to and where to send the smoke test.
+resource "aws_ssm_parameter" "app_url" {
+  count = local.cdn_count
+
+  name        = "/${var.project}/app-url"
+  description = "Public HTTPS address of the API (set at lab-up, removed at lab-down)"
+  type        = "String"
+  value       = "https://${aws_cloudfront_distribution.main[0].domain_name}"
+
+  tags = { Name = "${var.project}-app-url" }
+}

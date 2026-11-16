@@ -1,0 +1,240 @@
+# Steps 5.4 and 5.5: after CI passes on main, build the Docker image, scan it, push it to ECR,
+# and deploy it to ECS if the lab is on.
+#
+#   image job   build on Linux -> Trivy scan (CRITICAL/HIGH fail the build) -> push to ECR
+#               Tag = first 7 characters of the git commit (ECR tags are immutable).
+#   deploy job  only when the lab is on (the app URL parameter exists): register a new task
+#               definition, update the ECS service with the circuit breaker + rollback, wait,
+#               smoke-test through CloudFront, roll back to the previous version if that fails.
+#               When the lab is off it just reports that the image is ready.
+#
+# AWS access is by OIDC only: no access keys are stored in GitHub. Setup: docs/ci-cd.md
+
+name: Deploy
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch: # manual run from the Actions tab, uses the latest commit of main
+
+# id-token: lets the job ask GitHub for the OIDC token that AWS exchanges for temporary credentials
+permissions:
+  contents: read
+  id-token: write
+
+# One deployment at a time, and never cancel one half way
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY: trebol-poc/backend
+  ECS_CLUSTER: trebol-poc
+  ECS_SERVICE: trebol-poc-backend
+  TASK_FAMILY: trebol-poc-backend
+  APP_URL_PARAMETER: /trebol-poc/app-url
+  # The commit to build: the one CI just tested (workflow_run) or the latest main (manual run)
+  COMMIT_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+jobs:
+  image:
+    name: Build, scan and push image
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    # Only for CI runs that passed on a push to this repository's main. This also keeps pull
+    # requests from forks (which can be named "main" too) away from the AWS role.
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_repository.full_name == github.repository)
+
+    outputs:
+      image: ${{ steps.ref.outputs.image }}
+      tag: ${{ steps.meta.outputs.tag }}
+
+    steps:
+      - name: Check the one-time setup is done
+        env:
+          ROLE: ${{ vars.AWS_ROLE_ARN }}
+        run: |
+          if [ -z "$ROLE" ]; then
+            echo "::error::Repository variable AWS_ROLE_ARN is not set. See docs/ci-cd.md (Settings > Secrets and variables > Actions > Variables)."
+            exit 1
+          fi
+
+      - name: Check out the tested commit
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.COMMIT_SHA }}
+
+      - name: Work out the image tag
+        id: meta
+        run: |
+          echo "tag=${COMMIT_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - name: Get AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          # mask-aws-account-id defaults to true: the account number stays out of these public logs
+
+      - name: Log in to ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Is this commit already in ECR?
+        id: exists
+        run: |
+          if aws ecr describe-images --repository-name "$ECR_REPOSITORY" \
+               --image-ids imageTag="${{ steps.meta.outputs.tag }}" >/dev/null 2>&1; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::Image ${{ steps.meta.outputs.tag }} is already in ECR (tags are immutable), skipping build and push"
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Docker Buildx
+        if: steps.exists.outputs.found == 'false'
+        uses: docker/setup-buildx-action@v4
+
+      # Built into the local Docker (not pushed yet): scan first, push only if the scan passes
+      - name: Build image
+        if: steps.exists.outputs.found == 'false'
+        uses: docker/build-push-action@v7
+        with:
+          context: trebol-backend-monolith
+          load: true
+          push: false
+          tags: trebol-backend:scan
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Trivy scan (CRITICAL and HIGH fail the build)
+        if: steps.exists.outputs.found == 'false'
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0 (pinned to the commit: third-party action)
+        with:
+          image-ref: trebol-backend:scan
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true # only findings that have a fix available
+          exit-code: "1"
+          # Accepted findings, each with a reason and an expiry date
+          trivyignores: trebol-backend-monolith/.trivyignore
+
+      - name: Push image to ECR
+        if: steps.exists.outputs.found == 'false'
+        run: |
+          IMAGE="${{ steps.ecr.outputs.registry }}/${ECR_REPOSITORY}:${{ steps.meta.outputs.tag }}"
+          docker tag trebol-backend:scan "$IMAGE"
+          docker push "$IMAGE"
+
+      - name: Publish image reference
+        id: ref
+        run: echo "image=${{ steps.ecr.outputs.registry }}/${ECR_REPOSITORY}:${{ steps.meta.outputs.tag }}" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    name: Deploy to ECS (if the lab is on)
+    needs: image
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out the tested commit (for the smoke test script)
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.COMMIT_SHA }}
+
+      - name: Get AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Is the lab on?
+        id: lab
+        run: |
+          # The parameter exists only between lab-up and lab-down
+          if URL=$(aws ssm get-parameter --name "$APP_URL_PARAMETER" --query Parameter.Value --output text 2>/dev/null); then
+            echo "on=true" >> "$GITHUB_OUTPUT"
+            echo "url=$URL" >> "$GITHUB_OUTPUT"
+          else
+            echo "on=false" >> "$GITHUB_OUTPUT"
+            {
+              echo "### Image pushed, nothing deployed"
+              echo "The lab is off, so there is no ECS service to update."
+              echo "Image tag: \`${{ needs.image.outputs.tag }}\`. The next lab-up can use it: \`-var app_image_tag=${{ needs.image.outputs.tag }}\`"
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Register new task definition and update the service
+        id: rollout
+        if: steps.lab.outputs.on == 'true'
+        env:
+          IMAGE: ${{ needs.image.outputs.image }}
+        run: |
+          set -euo pipefail
+
+          # What is running now (kept so we can roll back to it)
+          PREVIOUS=$(aws ecs describe-services --cluster "$ECS_CLUSTER" --services "$ECS_SERVICE" \
+            --query 'services[0].taskDefinition' --output text)
+          echo "previous=$PREVIOUS" >> "$GITHUB_OUTPUT"
+
+          # New revision = current one with only the image changed (tags are kept: organization tag rule)
+          aws ecs describe-task-definition --task-definition "$PREVIOUS" --include TAGS > current.json
+          TAGS=$(jq -c '.tags // []' current.json)
+          jq --arg img "$IMAGE" --argjson tags "$TAGS" '
+              .taskDefinition
+              | .containerDefinitions |= map(if .name == "app" then .image = $img else . end)
+              | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities,
+                    .registeredAt, .registeredBy)
+              | . + {tags: $tags}
+            ' current.json > new.json
+          NEW=$(aws ecs register-task-definition --cli-input-json file://new.json \
+            --query 'taskDefinition.taskDefinitionArn' --output text)
+          echo "new=$NEW" >> "$GITHUB_OUTPUT"
+
+          # Circuit breaker with rollback: if new tasks keep failing to start or to turn healthy,
+          # ECS stops the rollout and returns to the previous version by itself
+          aws ecs update-service --cluster "$ECS_CLUSTER" --service "$ECS_SERVICE" --task-definition "$NEW" \
+            --deployment-configuration "deploymentCircuitBreaker={enable=true,rollback=true},maximumPercent=200,minimumHealthyPercent=100" \
+            > /dev/null
+
+          # Waits up to 10 minutes for the service to settle
+          aws ecs wait services-stable --cluster "$ECS_CLUSTER" --services "$ECS_SERVICE"
+
+          # "Stable" also happens after a rollback, so check that the NEW version is the one running
+          read -r ACTIVE STATE < <(aws ecs describe-services --cluster "$ECS_CLUSTER" --services "$ECS_SERVICE" \
+            --query "services[0].deployments[?status=='PRIMARY'] | [0].[taskDefinition, rolloutState]" --output text)
+          if [ "$ACTIVE" != "$NEW" ] || [ "$STATE" != "COMPLETED" ]; then
+            echo "::error::Deployment did not complete (state: $STATE). ECS rolled back to the previous version."
+            exit 1
+          fi
+          echo "::notice::Deployed $IMAGE"
+
+      - name: Smoke test through CloudFront
+        id: smoke
+        if: steps.lab.outputs.on == 'true'
+        run: bash test-endpoints.sh "${{ steps.lab.outputs.url }}"
+
+      # The new version started fine but the API checks failed: go back to the previous version
+      - name: Roll back after a failed smoke test
+        if: failure() && steps.smoke.outcome == 'failure'
+        run: |
+          echo "::error::Smoke test failed, rolling back to ${{ steps.rollout.outputs.previous }}"
+          aws ecs update-service --cluster "$ECS_CLUSTER" --service "$ECS_SERVICE" \
+            --task-definition "${{ steps.rollout.outputs.previous }}" > /dev/null
+          aws ecs wait services-stable --cluster "$ECS_CLUSTER" --services "$ECS_SERVICE"
+
+      - name: Summary
+        if: success() && steps.lab.outputs.on == 'true'
+        run: |
+          {
+            echo "### Deployed"
+            echo "Image tag: \`${{ needs.image.outputs.tag }}\`"
+            echo "Smoke test: all checks passed"
+          } >> "$GITHUB_STEP_SUMMARY"
