@@ -167,3 +167,37 @@ variable "waf_loadtest_ips" {
   type        = list(string)
   default     = []
 }
+
+variable "autoscaling_max_tasks" {
+  description = "Upper limit for ECS auto scaling (the minimum is app_desired_count). Each task costs about $0.025/h."
+  type        = number
+  default     = 6
+}
+
+variable "autoscaling_cpu_target" {
+  description = "Average CPU % across tasks that auto scaling tries to hold."
+  type        = number
+  default     = 60
+}
+
+variable "autoscaling_requests_per_target" {
+  description = "Requests per minute per task that auto scaling tries to hold (ALB RequestCountPerTarget)."
+  type        = number
+  default     = 1000
+}
+
+variable "latency_alarm_seconds" {
+  description = "Alarm when the p95 response time of the app (seen by the ALB) stays above this many seconds."
+  type        = number
+  default     = 0.5
+}
+
+variable "alarm_email" {
+  description = <<-EOT
+    Email address that receives alarm notifications (SNS). AWS sends a confirmation email that must be
+    clicked once. Set it in alarm.auto.tfvars (git-ignored); null = topic only, no subscription.
+  EOT
+  type        = string
+  default     = null
+  sensitive   = true
+}

@@ -69,3 +69,13 @@ output "app_url" {
   description = "Public HTTPS address of the API (changes every lab session)"
   value       = var.lab_on ? "https://${aws_cloudfront_distribution.main[0].domain_name}" : "lab off - no public URL"
 }
+
+output "alarm_topic_arn" {
+  description = "SNS topic that receives CloudWatch alarm notifications"
+  value       = aws_sns_topic.alarms.arn
+}
+
+output "dashboard_url" {
+  description = "CloudWatch dashboard (lab on only)"
+  value       = var.lab_on ? "https://${var.region}.console.aws.amazon.com/cloudwatch/home?region=${var.region}#dashboards/dashboard/${aws_cloudwatch_dashboard.main[0].dashboard_name}" : "lab off - no dashboard"
+}

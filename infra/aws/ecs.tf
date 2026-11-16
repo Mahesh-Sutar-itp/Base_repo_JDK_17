@@ -189,5 +189,10 @@ resource "aws_ecs_service" "app" {
   propagate_tags = "SERVICE"
   tags           = { Name = "${var.project}-backend-service" }
 
+  # Auto scaling (monitoring.tf) changes the task count at run time; don't reset it
+  lifecycle {
+    ignore_changes = [desired_count]
+  }
+
   depends_on = [aws_lb_listener.http, aws_db_proxy_target.main]
 }
