@@ -1,6 +1,7 @@
 # Every push to main (a merged pull request) goes to production without manual steps:
-#   CI (build, tests, SonarCloud, image, scan, push) -> new revision at 0% traffic -> smoke test on the revision's own
-#   URL -> canary: 10% of the traffic for 2 minutes -> 100% and the old revision deactivated.
+#   CI (build, tests, SonarCloud, image, scan, push) -> new revision at 0% traffic (infra/app.bicep with the new
+#   image) -> smoke test on the revision's own URL -> canary: 10% of the traffic for 2 minutes -> 100% and the old
+#   revision deactivated.
 # Any failure after the new revision exists rolls back: 100% to the old revision, the new one deactivated.
 name: deploy
 
@@ -73,9 +74,17 @@ jobs:
           new="${APP_NAME}--${suffix}"
           echo "old=$old" >> "$GITHUB_OUTPUT"
           echo "new=$new" >> "$GITHUB_OUTPUT"
+          # Keep the serving revision's minimum replicas (the working-hours schedule sets it)
+          min=$(aca_revision_field "$old" properties.template.scale.minReplicas)
+          if [ -z "$min" ] || [ "$min" = "None" ]; then min=0; fi
           # Pin all traffic to the current revision by name, so the new revision starts with 0%
           aca_set_traffic "$old=100"
-          aca_create_revision "$IMAGE" "$suffix"
+          # Apply the app's Bicep definition (infra/app.bicep) with the new image; it keeps the traffic pinned
+          TREBOL_APP_IMAGE="$IMAGE" TREBOL_APP_REVISION_SUFFIX="$suffix" TREBOL_APP_MIN_REPLICAS="$min" \
+          TREBOL_APP_TRAFFIC="[{\"revisionName\":\"$old\",\"weight\":100}]" \
+            az deployment group create --resource-group "$RESOURCE_GROUP" --name "release-$suffix" \
+              --mode Incremental --parameters infra/app.bicepparam --output none
+          echo "created: $new (min replicas $min)"
           aca_wait_revision "$new" 600 healthy
 
       # The public repository's logs are public: host names are masked

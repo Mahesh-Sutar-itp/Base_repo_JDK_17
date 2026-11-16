@@ -46,6 +46,17 @@ param maxReplicas int
 @description('Concurrent HTTP requests per replica before another replica is added.')
 param concurrentRequestsPerReplica int = 100
 
+@description('Name suffix of the revision this deployment creates (empty: Azure chooses one if the template changed).')
+param revisionSuffix string = ''
+
+@description('Traffic split. The release pipeline pins all traffic to the serving revision, so a new revision starts at 0%.')
+param traffic array = [
+  {
+    latestRevision: true
+    weight: 100
+  }
+]
+
 resource app 'Microsoft.App/containerApps@2024-03-01' = {
   name: name
   location: location
@@ -69,12 +80,7 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = {
         transport: 'auto'
         // HTTP requests are redirected to HTTPS
         allowInsecure: false
-        traffic: [
-          {
-            latestRevision: true
-            weight: 100
-          }
-        ]
+        traffic: traffic
       }
       registries: [
         {
@@ -98,6 +104,7 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = {
       ]
     }
     template: {
+      revisionSuffix: empty(revisionSuffix) ? null : revisionSuffix
       // Longer than the application's graceful shutdown (30 s), so in-flight requests can finish
       terminationGracePeriodSeconds: 40
       containers: [
