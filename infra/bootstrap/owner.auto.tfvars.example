@@ -1,0 +1,2 @@
+# Copy to owner.auto.tfvars (git-ignored) and put your email address.
+owner = "firstname.lastname@intuitive.ai"

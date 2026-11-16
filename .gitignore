@@ -1,1 +1,7 @@
 *.log
+
+# Local copies of files delivered by Claude (not part of the repo)
+Claude outputs/
+
+# Personal Claude Code context (contains environment details)
+CLAUDE.local.md

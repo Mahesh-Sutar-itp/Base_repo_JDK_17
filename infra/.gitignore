@@ -1,0 +1,22 @@
+# Terraform working files and state (state lives in S3; bootstrap state stays local)
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+*.tfplan
+tfplan
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+# Keep .terraform.lock.hcl committed (pins provider versions)
+
+# Files moved aside during clean-up (safe to delete)
+_to_delete/
+
+# Personal values (e.g. Owner email) stay out of the public repo
+*.auto.tfvars
+!*.auto.tfvars.example

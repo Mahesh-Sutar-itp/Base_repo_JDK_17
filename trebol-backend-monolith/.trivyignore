@@ -1,0 +1,11 @@
+# Accepted Trivy findings for the Trebol POC. Each entry needs a reason and an expiry date
+# (exp:YYYY-MM-DD); after that date Trivy reports it again, forcing a re-review.
+
+# CRITICAL - spring-webmvc: RCE via improper path limitation in XsltView.
+# Only fixed in Spring Framework 7 (Spring Boot 4). Not exploitable here: the app is a JSON REST API
+# and never uses XsltView or any XSLT view resolver. Fix properly by upgrading to Spring Boot 4.
+CVE-2026-47884 exp:2027-01-31
+
+# HIGH - querydsl 5.x: HQL injection through orderBy. No fixed 5.x release exists.
+# Mitigated: sort fields come from fixed per-controller maps (getOrderSpecMap), never raw user input.
+CVE-2024-49203 exp:2027-01-31

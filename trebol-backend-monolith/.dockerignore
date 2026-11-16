@@ -1,0 +1,12 @@
+# Keep the build context small and free of local build output and secrets
+# Exclude build output, except the WAR used by APP_SOURCE=prebuilt
+target/*
+!target/*.war
+.git/
+.idea/
+.vscode/
+*.iml
+*.log
+*.md
+.env
+docker-compose.yml

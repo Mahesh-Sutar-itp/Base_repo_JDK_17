@@ -1,0 +1,48 @@
+# Local production-like stack: the app (prod profile) + MariaDB.
+#   docker compose up --build
+# Then: http://localhost:8080/actuator/health  and  bash ../test-endpoints.sh
+# The passwords below are for local use only. On AWS they come from Secrets Manager.
+
+services:
+  db:
+    image: mariadb:10.11
+    environment:
+      MARIADB_DATABASE: trebol
+      MARIADB_USER: trebol
+      MARIADB_PASSWORD: ${DB_PASSWORD:-trebolpw}
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootpw}
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    ports:
+      - "3306:3306"
+    volumes:
+      - trebol-db:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  app:
+    build:
+      context: .
+      args:
+        APP_SOURCE: ${APP_SOURCE:-source}   # set APP_SOURCE=prebuilt to use target/*.war from `mvn package`
+    image: trebol-backend:local
+    depends_on:
+      db:
+        condition: service_healthy   # wait until MariaDB accepts connections; Flyway then creates the schema
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_NAME: trebol
+      DB_USERNAME: trebol
+      DB_PASSWORD: ${DB_PASSWORD:-trebolpw}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-local-dev-secret-key-at-least-64-characters-long-0123456789abcdef}
+      SWAGGER_ENABLED: "true"        # handy locally; off by default in prod
+    ports:
+      - "8080:8080"
+    stop_grace_period: 30s           # matches ECS stopTimeout; lets graceful shutdown finish
+
+volumes:
+  trebol-db:
