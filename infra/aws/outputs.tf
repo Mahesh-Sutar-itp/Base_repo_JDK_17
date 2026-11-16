@@ -64,3 +64,8 @@ output "alb_dns_name" {
 output "ecs_cluster" {
   value = aws_ecs_cluster.main.name
 }
+
+output "app_url" {
+  description = "Public HTTPS address of the API (changes every lab session)"
+  value       = var.lab_on ? "https://${aws_cloudfront_distribution.main[0].domain_name}" : "lab off - no public URL"
+}

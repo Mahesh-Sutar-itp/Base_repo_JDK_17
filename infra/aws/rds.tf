@@ -146,7 +146,7 @@ resource "aws_db_proxy_default_target_group" "main" {
   db_proxy_name = aws_db_proxy.main[0].name
 
   connection_pool_config {
-    max_connections_percent      = 90  # leave headroom for admin connections
+    max_connections_percent      = 90 # leave headroom for admin connections
     max_idle_connections_percent = 50
     connection_borrow_timeout    = 120 # seconds a request waits for a free connection
   }

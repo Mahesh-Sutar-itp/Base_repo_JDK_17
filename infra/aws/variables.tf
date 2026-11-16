@@ -155,3 +155,15 @@ variable "log_retention_days" {
   type        = number
   default     = 7
 }
+
+variable "waf_login_rate_limit" {
+  description = "Max requests to /public/login per IP in 5 minutes before WAF answers 429 (minimum 10)."
+  type        = number
+  default     = 100
+}
+
+variable "waf_loadtest_ips" {
+  description = "Load-test generator IPs in CIDR form (e.g. [\"203.0.113.10/32\"]), excluded from the login rate limit."
+  type        = list(string)
+  default     = []
+}
