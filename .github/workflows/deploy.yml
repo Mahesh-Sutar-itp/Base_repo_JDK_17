@@ -219,9 +219,15 @@ jobs:
           # Waits up to 10 minutes for the service to settle
           aws ecs wait services-stable --cluster "$ECS_CLUSTER" --services "$ECS_SERVICE"
 
-          # "Stable" also happens after a rollback, so check that the NEW version is the one running
-          read -r ACTIVE STATE < <(aws ecs describe-services --cluster "$ECS_CLUSTER" --services "$ECS_SERVICE" \
-            --query "services[0].deployments[?status=='PRIMARY'] | [0].[taskDefinition, rolloutState]" --output text)
+          # "Stable" also happens after a rollback, so check that the NEW version is the one running.
+          # ECS can report "stable" a few seconds before it marks the rollout COMPLETED, so wait for a
+          # final state (up to 5 minutes) instead of reading it once.
+          for _ in $(seq 1 30); do
+            read -r ACTIVE STATE < <(aws ecs describe-services --cluster "$ECS_CLUSTER" --services "$ECS_SERVICE" \
+              --query "services[0].deployments[?status=='PRIMARY'] | [0].[taskDefinition, rolloutState]" --output text)
+            if [ "$STATE" = "COMPLETED" ] || [ "$STATE" = "FAILED" ]; then break; fi
+            sleep 10
+          done
           if [ "$ACTIVE" != "$NEW" ] || [ "$STATE" != "COMPLETED" ]; then
             echo "::error::Deployment did not complete (state: $STATE). ECS rolled back to the previous version."
             exit 1
