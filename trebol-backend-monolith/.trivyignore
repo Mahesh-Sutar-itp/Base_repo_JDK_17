@@ -9,3 +9,10 @@ CVE-2026-47884 exp:2027-01-31
 # HIGH - querydsl 5.x: HQL injection through orderBy. No fixed 5.x release exists.
 # Mitigated: sort fields come from fixed per-controller maps (getOrderSpecMap), never raw user input.
 CVE-2024-49203 exp:2027-01-31
+
+# CRITICAL - spring-webmvc 6.2.19: CRLF stream corruption in Server-Sent Events (SSE) with view fragments.
+# Only fixed in Spring Framework 7.0.9 / 6.2.20, and no open-source 6.2.20 exists on Maven Central yet.
+# Not exploitable here: the app is a JSON REST API and uses no SSE (SseEmitter / text/event-stream),
+# no WebFlux and no view or template engine (checked in pom.xml and src, 2026-11-16).
+# Fix properly by upgrading to Spring Boot 4.
+CVE-2026-47890 exp:2027-01-31
