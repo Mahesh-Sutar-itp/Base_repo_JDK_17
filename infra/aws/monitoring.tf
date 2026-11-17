@@ -143,9 +143,15 @@ resource "aws_appautoscaling_policy" "cpu_fast_out" {
     cooldown                = 120 # new tasks need time to start before the next step
     metric_aggregation_type = "Average"
 
+    # Bounds are relative to the alarm threshold (70% by default)
     step_adjustment {
-      metric_interval_lower_bound = 0 # anything above the alarm threshold
+      metric_interval_lower_bound = 0 # 70-85% CPU
+      metric_interval_upper_bound = 15
       scaling_adjustment          = var.autoscaling_fast_step_tasks
+    }
+    step_adjustment {
+      metric_interval_lower_bound = 15 # 85% CPU or more: a surge, add more at once
+      scaling_adjustment          = var.autoscaling_fast_step_tasks_high
     }
   }
 }
@@ -154,7 +160,7 @@ resource "aws_cloudwatch_metric_alarm" "cpu_fast_out" {
   count = local.monitor_count
 
   alarm_name          = "${var.project}-cpu-fast-scale-out"
-  alarm_description   = "Average task CPU above ${var.autoscaling_fast_cpu_threshold}% for 1 minute: add ${var.autoscaling_fast_step_tasks} tasks now"
+  alarm_description   = "Average task CPU above ${var.autoscaling_fast_cpu_threshold}% for 1 minute: add ${var.autoscaling_fast_step_tasks} tasks now (${var.autoscaling_fast_step_tasks_high} above ${var.autoscaling_fast_cpu_threshold + 15}%)"
   namespace           = "AWS/ECS"
   metric_name         = "CPUUtilization"
   dimensions          = { ClusterName = aws_ecs_cluster.main.name, ServiceName = aws_ecs_service.app[0].name }
@@ -451,6 +457,8 @@ locals {
           ["AWS/RDS", "ClientConnections", "ProxyName", local.db_proxy_name, { stat = "Maximum", label = "Client connections (from tasks)" }],
           [".", "DatabaseConnections", ".", ".", { stat = "Maximum", label = "Database connections (to RDS)" }],
           [".", "QueryRequests", ".", ".", { stat = "Sum", label = "Queries per minute", yAxis = "right" }],
+          # Pinned = a client connection the proxy cannot share; high values defeat connection pooling
+          [".", "DatabaseConnectionsCurrentlySessionPinned", ".", ".", { stat = "Maximum", label = "Pinned (not shareable)" }],
         ]
       }
     }]
