@@ -1,11 +1,12 @@
 # CI/CD pipeline (Phase 5)
 
-Two workflows in `.github/workflows/`:
+Three workflows in `.github/workflows/`:
 
 | Workflow | When | What it does | AWS access |
 |---|---|---|---|
 | `ci.yml` | every pull request, every push to `main` | build, run the tests, JaCoCo coverage, SonarCloud analysis (once connected) | none |
 | `deploy.yml` | after `ci.yml` passes on `main` (or run it by hand) | build the Docker image, Trivy scan, push to ECR, deploy to ECS if the lab is on, smoke test, roll back on failure | OIDC role, `main` branch only |
+| `lab-schedule.yml` | Mon-Fri 13:40 IST (up), every day 23:00 IST (down), or by hand | `terraform apply -var lab_on=true/false`, the same as `lab-up.cmd` / `lab-down.cmd` | separate OIDC role, GitHub environment `lab` only |
 
 ```
 pull request  ->  ci.yml (build + test + Sonar)                      no AWS, safe for forks
@@ -52,6 +53,34 @@ No AWS access keys are ever stored in GitHub. The role can only be assumed by wo
 Until all three exist the Sonar step is skipped and CI still passes. Once they exist, a failed quality gate
 fails the build.
 
+### 3. Lab schedule (needed by `lab-schedule.yml`)
+
+The schedule runs Terraform, so it needs far more rights than the deploy role. It gets its own role
+(`infra/aws/lab-scheduler.tf`) that only jobs in the GitHub environment `lab` can assume. The role can create
+and delete the lab resources and read/write the Terraform state file. It cannot change IAM, other S3 data
+or secrets.
+
+1. From the laptop, create only the role and its policy (free, always on). `-target` keeps this safe whether
+   the lab is on or off (a plain plan uses `lab_on=false` and would remove a running lab). Expect `2 to add`:
+   ```
+   cd infra\aws
+   terraform plan -target=aws_iam_role_policy.lab_scheduler -out=tfplan
+   terraform apply tfplan
+   terraform output lab_scheduler_role_arn
+   ```
+2. In GitHub: **Settings > Environments > New environment**, name `lab`.
+   - **Deployment branches and tags**: *Selected branches and tags*, add `main`.
+   - Do **not** add required reviewers (a scheduled run would wait for approval).
+   - **Environment secrets**: `OWNER_EMAIL` (same value as `owner.auto.tfvars`) and `ALARM_EMAIL` (same as
+     `alarm.auto.tfvars`). Both are required: without `ALARM_EMAIL` Terraform would delete the alarm email
+     subscription.
+   - **Environment variables**: `LAB_ROLE_ARN` = the output of step 1.
+3. Optional, repository variable (Settings > Secrets and variables > Actions > Variables):
+   `LAB_SCHEDULE_PAUSED` = `true` stops the timetable; delete it or set `false` to resume.
+
+GitHub sends an email when a scheduled run fails (to whoever last changed the schedule). GitHub also
+disables schedules in public repositories after 60 days without commits; re-enable from the Actions tab.
+
 ## Day to day
 
 - **Open a pull request**: `ci.yml` runs. Merge only when it is green.
@@ -60,6 +89,14 @@ fails the build.
   `terraform apply -var="lab_on=true" -var="app_image_tag=<tag>"`.
 - **Lab on**: the same run also deploys the new image to ECS and smoke-tests it through CloudFront.
 - **Run by hand**: Actions tab > Deploy > Run workflow.
+- **Lab schedule**: up Mon-Fri at 13:40 IST (ready around 14:00), down every day at 23:00 IST. GitHub can start
+  scheduled runs 5-30 minutes late. Up uses the image of the latest `main` commit (or the newest image in ECR)
+  at the normal size; for a load test run `lab-up-loadtest.cmd` from the laptop instead, and set
+  `LAB_SCHEDULE_PAUSED=true` if it must run past 23:00. Up/down by hand: Actions > Lab schedule > Run workflow.
+  The public URL is not printed (public repo): `terraform output app_url`.
+- **Schedule applies `main`**: a scheduled up builds the lab from whatever is on `main`. Changes to IAM
+  (roles, policies) must be applied from the laptop first; the schedule role is not allowed to make them,
+  so the run fails with AccessDenied until you do.
 
 ## How the safety nets work
 
@@ -78,4 +115,8 @@ fails the build.
 
 - A deploy only happens while the lab is on. At the next `lab-up` the task definition is rebuilt from Terraform,
   so pass `-var app_image_tag=<tag>` to start from the latest image (default is the one in `variables.tf`).
-- Nothing turns the lab off by itself yet. Always finish a session with `lab-down.cmd`.
+- `lab-schedule.yml` turns the lab off every night at 23:00 IST. A lab started by hand after that stays on
+  until the next 23:00 run, so still finish late sessions with `lab-down.cmd`.
+- Cost of the timetable at the normal size: about 9 h x 5 days x $0.19/h = about $8.50 a week (about $38 a
+  month), more on load-test days. That is close to the $50 monthly budget alert; pause the schedule on days
+  the lab is not needed.
