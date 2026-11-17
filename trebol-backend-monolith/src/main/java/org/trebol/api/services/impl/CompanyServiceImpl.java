@@ -43,7 +43,7 @@ public class CompanyServiceImpl
 
     // Store information changes only through the database seed; cached briefly (see CacheConfig)
     @Override
-    @Cacheable(cacheNames = CacheConfig.ABOUT)
+    @Cacheable(cacheNames = CacheConfig.ABOUT, sync = true)
     public CompanyDetailsPojo readDetails() {
         Iterable<Param> it = paramsRepository.findParamsByCategory("company");
         CompanyDetailsPojo target = new CompanyDetailsPojo();

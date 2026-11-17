@@ -126,6 +126,7 @@ resource "aws_db_proxy" "main" {
   # TLS in the app's JDBC URL.
   require_tls         = false
   idle_client_timeout = 1800
+  debug_logging       = var.rds_proxy_debug_logging # explains pinning; diagnostic runs only
 
   auth {
     auth_scheme = "SECRETS"
@@ -148,7 +149,10 @@ resource "aws_db_proxy_default_target_group" "main" {
   connection_pool_config {
     max_connections_percent      = 90 # leave headroom for admin connections
     max_idle_connections_percent = 50
-    connection_borrow_timeout    = 120 # seconds a request waits for a free connection
+    # Seconds a query waits at the proxy for a free DB connection (AWS default 120). Kept short so
+    # overload shows up as fast errors: Hikari can already wait up to 20 s for a pool slot, and
+    # CloudFront gives up at 30 s, so a longer wait here only turns into a gateway timeout.
+    connection_borrow_timeout = 10
   }
 }
 

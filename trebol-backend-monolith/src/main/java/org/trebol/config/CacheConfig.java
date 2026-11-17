@@ -33,7 +33,10 @@ import org.springframework.context.annotation.Configuration;
  * application-prod.properties.<br/>
  * Trade-off: a change made through one task clears that task's cache at once, but other tasks can
  * serve the old list until their entry expires (the configured time to live, 30 s by default).
- * Lookups of one specific record are never cached.
+ * Lookups of one specific record are never cached.<br/>
+ * Request coalescing: every {@code @Cacheable} here uses {@code sync = true}. When the same uncached
+ * request arrives many times at once (for example right after an entry expires under load), only the
+ * first runs the database query; the others wait for its result instead of each querying the database.
  */
 @Configuration
 @EnableCaching
