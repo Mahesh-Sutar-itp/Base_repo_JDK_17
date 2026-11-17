@@ -89,8 +89,12 @@ locals {
     # Also set in application-prod.properties; repeated here so images built before that change
     # (e.g. 0d72b16) get it too. Holds DB connections only during transactions (see load test 1).
     { name = "SPRING_JPA_OPEN_IN_VIEW", value = "false" },
+    # Actuator on its own port (also the prod default); the ALB health check targets it
+    { name = "MANAGEMENT_SERVER_PORT", value = tostring(local.management_port) },
     ] : [
     { name = "SPRING_PROFILES_ACTIVE", value = "default" },
+    # The default profile keeps Actuator on 8080; move it so the ALB health check (8081) still works
+    { name = "MANAGEMENT_SERVER_PORT", value = tostring(local.management_port) },
   ]
 
   # Injected by ECS from Secrets Manager at start; never stored in the task definition
@@ -124,14 +128,17 @@ resource "aws_ecs_task_definition" "app" {
       image     = local.app_image
       essential = true
 
-      portMappings = [{ containerPort = local.app_port, protocol = "tcp" }]
+      portMappings = [
+        { containerPort = local.app_port, protocol = "tcp" },        # API (user traffic)
+        { containerPort = local.management_port, protocol = "tcp" }, # Actuator (health checks)
+      ]
 
       environment = local.app_environment
       secrets     = local.app_secrets
 
-      # Liveness only (is the JVM up?). The ALB checks readiness (includes the database).
+      # Liveness only (is the JVM up?), on the Actuator port. The ALB checks the same URL.
       healthCheck = {
-        command     = ["CMD-SHELL", "wget -qO- http://localhost:${local.app_port}/actuator/health/liveness || exit 1"]
+        command     = ["CMD-SHELL", "wget -qO- http://localhost:${local.management_port}/actuator/health/liveness || exit 1"]
         interval    = 30
         timeout     = 5
         retries     = 3

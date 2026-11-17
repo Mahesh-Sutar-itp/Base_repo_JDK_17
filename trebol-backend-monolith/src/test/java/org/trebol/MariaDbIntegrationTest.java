@@ -2,8 +2,11 @@ package org.trebol;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.actuate.health.HealthEndpointGroups;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.boot.test.web.server.LocalManagementPort;
+import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -42,6 +45,10 @@ class MariaDbIntegrationTest {
 
     @Autowired TestRestTemplate http;
     @Autowired JdbcTemplate jdbc;
+    @Autowired HealthEndpointGroups healthGroups;
+    @LocalServerPort int serverPort;
+    // prod sets management.server.port=8081; in tests Spring Boot gives it a random port too
+    @LocalManagementPort int managementPort;
 
     @Test
     void flyway_applies_schema_and_seed_data() {
@@ -61,12 +68,28 @@ class MariaDbIntegrationTest {
     }
 
     @Test
-    void health_liveness_and_readiness_are_up() {
+    void health_liveness_and_readiness_are_up_on_the_management_port() {
+        assertThat(managementPort).isNotEqualTo(serverPort);
         for (String path : new String[]{"/actuator/health", "/actuator/health/liveness", "/actuator/health/readiness"}) {
-            ResponseEntity<String> response = http.getForEntity(path, String.class);
+            ResponseEntity<String> response =
+                http.getForEntity("http://localhost:" + managementPort + path, String.class);
             assertThat(response.getStatusCode()).as(path).isEqualTo(HttpStatus.OK);
             assertThat(response.getBody()).as(path).contains("\"status\":\"UP\"");
         }
+    }
+
+    @Test
+    void actuator_is_not_served_on_the_api_port() {
+        ResponseEntity<String> response = http.getForEntity("/actuator/health/liveness", String.class);
+        assertThat(response.getStatusCode()).isNotEqualTo(HttpStatus.OK);
+    }
+
+    @Test
+    void liveness_does_not_depend_on_the_database_but_readiness_does() {
+        // The ALB health check uses liveness: a busy database must never fail it
+        assertThat(healthGroups.get("liveness").isMember("db")).isFalse();
+        assertThat(healthGroups.get("liveness").isMember("livenessState")).isTrue();
+        assertThat(healthGroups.get("readiness").isMember("db")).isTrue();
     }
 
     @Test
