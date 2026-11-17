@@ -97,6 +97,17 @@
       <artifactId>spring-boot-starter-actuator</artifactId>
     </dependency>
 
+    <!-- In-memory read cache per task (product list, store info, billing types). Turned on in the
+         prod profile only (spring.cache.type=caffeine); versions managed by Spring Boot -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-cache</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.github.ben-manes.caffeine</groupId>
+      <artifactId>caffeine</artifactId>
+    </dependency>
+
     <!-- Persistence -->
     <dependency>
       <groupId>org.springframework.boot</groupId>

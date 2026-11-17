@@ -20,6 +20,14 @@
 
 package org.trebol.api;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataAccessResourceFailureException;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.TransientDataAccessException;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.CannotCreateTransactionException;
 import org.springframework.validation.FieldError;
 import org.springframework.validation.ObjectError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -34,7 +42,9 @@ import jakarta.persistence.EntityNotFoundException;
 import java.util.List;
 
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
+import static org.springframework.http.HttpStatus.CONFLICT;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
+import static org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE;
 
 /**
  * Catches some known exceptions, commonly declared at the controller level.<br/>
@@ -46,12 +56,18 @@ import static org.springframework.http.HttpStatus.NOT_FOUND;
  * <li>{@link jakarta.persistence.EntityExistsException} -> 400 BAD REQUEST</li>
  * <li>{@link org.trebol.common.exceptions.BadInputException} -> 400 REQUEST</li>
  * <li>{@link org.springframework.web.bind.MethodArgumentNotValidException} -> 400 BAD REQUEST</li>
+ * <li>{@link org.springframework.dao.DataIntegrityViolationException} -> 409 CONFLICT (e.g. a double submit)</li>
+ * <li>Temporary database problems (no free connection, failover, timeouts) -> 503 SERVICE UNAVAILABLE
+ * with a Retry-After header</li>
  * </ul>
  *
  * @see org.springframework.http.HttpStatus
  */
 @RestControllerAdvice
 public class ExceptionsControllerAdvice {
+    private static final Logger logger = LoggerFactory.getLogger(ExceptionsControllerAdvice.class);
+    /** Seconds a client should wait before retrying after a 503. */
+    static final String RETRY_AFTER_SECONDS = "2";
 
     @ResponseStatus(NOT_FOUND)
     @ExceptionHandler(EntityNotFoundException.class)
@@ -81,6 +97,45 @@ public class ExceptionsControllerAdvice {
             .message("The request body did not meet the required criteria")
             .canRetry(true)
             .build();
+    }
+
+    /**
+     * The request conflicts with data that is already stored, most often because the same request
+     * arrived twice at the same moment (a double click): both passed the "does it exist?" check,
+     * and the database's unique constraint rejected the second one. This is a client-side
+     * condition, so it is answered with 409 instead of a 500 that would look like a server fault.
+     */
+    @ResponseStatus(CONFLICT)
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public AppError handleException(DataIntegrityViolationException ex) {
+        logger.warn("Request rejected by a data constraint: {}", ex.getMostSpecificCause().getMessage());
+        return AppError.builder()
+            .code("CONFLICT_01")
+            .message("The request conflicts with data that already exists; it may have been submitted twice")
+            .canRetry(false)
+            .build();
+    }
+
+    /**
+     * The database could not be reached in time: no free connection in the pool (busy), RDS Proxy
+     * or the database briefly unavailable (e.g. a Multi-AZ failover), a lock or query timeout.
+     * Nothing was saved, so the client may safely try again: 503 with a Retry-After hint.
+     */
+    @ExceptionHandler({
+        CannotCreateTransactionException.class,
+        DataAccessResourceFailureException.class,
+        TransientDataAccessException.class
+    })
+    public ResponseEntity<AppError> handleTemporaryDatabaseProblem(Exception ex) {
+        logger.warn("Database temporarily unavailable, answered 503: {}", ex.getMessage());
+        AppError body = AppError.builder()
+            .code("BUSY_01")
+            .message("The service is busy; please retry shortly")
+            .canRetry(true)
+            .build();
+        return ResponseEntity.status(SERVICE_UNAVAILABLE)
+            .header(HttpHeaders.RETRY_AFTER, RETRY_AFTER_SECONDS)
+            .body(body);
     }
 
     @ResponseStatus(BAD_REQUEST)

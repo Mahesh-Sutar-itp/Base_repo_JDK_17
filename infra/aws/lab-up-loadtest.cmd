@@ -10,7 +10,8 @@ REM Run from infra\aws. Start from a lab that is OFF: the task size is applied w
 REM definition is created (Terraform ignores later container changes, see ecs.tf).
 REM
 REM Usage:  lab-up-loadtest.cmd [image_tag]   (same meaning as in lab-up.cmd)
-set LOADTEST_VARS=-var="lab_on=true" -var="db_multi_az=true" -var="app_cpu=1024" -var="app_memory=2048" -var="app_desired_count=3"
+REM   - auto scaling up to 30 tasks; k6 load generator enabled (needs loadgen.auto.tfvars, see loadgen.tf)
+set LOADTEST_VARS=-var="lab_on=true" -var="db_multi_az=true" -var="app_cpu=1024" -var="app_memory=2048" -var="app_desired_count=3" -var="autoscaling_max_tasks=30" -var="loadgen_enabled=true"
 if "%~1"=="" (
   terraform apply %LOADTEST_VARS%
 ) else (

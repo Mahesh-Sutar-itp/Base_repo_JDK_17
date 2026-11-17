@@ -21,8 +21,9 @@ resource "aws_wafv2_ip_set" "loadtest" {
   description        = "k6 load generator IPs, excluded from the login rate limit"
   scope              = "CLOUDFRONT"
   ip_address_version = "IPV4"
-  addresses          = var.waf_loadtest_ips
-  tags               = { Name = "${var.project}-loadtest-ips" }
+  # Plus the NAT gateway's IP while the k6 load generator is enabled (its traffic leaves through it)
+  addresses = concat(var.waf_loadtest_ips, local.loadgen_on ? local.nat_ip_cidrs : [])
+  tags      = { Name = "${var.project}-loadtest-ips" }
 }
 
 resource "aws_wafv2_web_acl" "main" {

@@ -24,6 +24,8 @@ import com.querydsl.core.types.OrderSpecifier;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -40,6 +42,7 @@ import org.trebol.api.models.DataPagePojo;
 import org.trebol.api.models.ProductPojo;
 import org.trebol.api.services.PaginationService;
 import org.trebol.common.exceptions.BadInputException;
+import org.trebol.config.CacheConfig;
 import org.trebol.jpa.entities.Product;
 import org.trebol.jpa.services.SortSpecParserService;
 import org.trebol.jpa.services.crud.ProductsCrudService;
@@ -70,9 +73,11 @@ public class DataProductsController
         super(paginationService, sortService, crudService, predicateService);
     }
 
+    // List and search pages are cached briefly (see CacheConfig); lookups of one product are not
     @Override
     @GetMapping
     @Operation(summary = "List products.")
+    @Cacheable(cacheNames = CacheConfig.PRODUCT_PAGES, condition = CacheConfig.NOT_AN_IDENTITY_LOOKUP)
     public DataPagePojo<ProductPojo> readMany(@RequestParam Map<String, String> allRequestParams) {
         return super.readMany(allRequestParams);
     }
@@ -81,6 +86,7 @@ public class DataProductsController
     @PostMapping
     @Operation(summary = "Define new products.")
     @ResponseStatus(CREATED)
+    @CacheEvict(cacheNames = CacheConfig.PRODUCT_PAGES, allEntries = true)
     @PreAuthorize("hasAuthority('products:create')")
     public void create(@Valid @RequestBody ProductPojo input)
         throws BadInputException, EntityExistsException {
@@ -91,6 +97,7 @@ public class DataProductsController
     @PutMapping
     @Operation(summary = "Replace products data.")
     @ResponseStatus(NO_CONTENT)
+    @CacheEvict(cacheNames = CacheConfig.PRODUCT_PAGES, allEntries = true)
     @PreAuthorize("hasAuthority('products:update')")
     public void update(@Valid @RequestBody ProductPojo input, @RequestParam Map<String, String> requestParams)
         throws BadInputException, EntityNotFoundException {
@@ -101,6 +108,7 @@ public class DataProductsController
     @PatchMapping
     @Operation(summary = "Update parts of products data.")
     @ResponseStatus(NO_CONTENT)
+    @CacheEvict(cacheNames = CacheConfig.PRODUCT_PAGES, allEntries = true)
     @PreAuthorize("hasAuthority('products:update')")
     public void partialUpdate(
         @RequestBody Map<String, Object> input,
@@ -113,6 +121,7 @@ public class DataProductsController
     @DeleteMapping
     @Operation(summary = "Remove products.")
     @ResponseStatus(NO_CONTENT)
+    @CacheEvict(cacheNames = CacheConfig.PRODUCT_PAGES, allEntries = true)
     @PreAuthorize("hasAuthority('products:delete')")
     public void delete(@RequestParam Map<String, String> requestParams)
         throws EntityNotFoundException {

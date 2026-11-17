@@ -108,11 +108,14 @@ data "aws_iam_policy_document" "github_actions" {
     resources = ["*"]
   }
 
-  # Push only (the workflow never pulls from ECR) + DescribeImages for the "already in ECR?" check
+  # Push + DescribeImages for the "already in ECR?" check.
+  # BatchGetImage is needed for PUSH too: docker checks whether the manifest already exists before it
+  # uploads it (CloudTrail showed BatchGetImage AccessDenied and a failed push when it was removed).
   statement {
     sid = "EcrPushOurRepoOnly"
     actions = [
       "ecr:BatchCheckLayerAvailability",
+      "ecr:BatchGetImage",
       "ecr:CompleteLayerUpload",
       "ecr:DescribeImages",
       "ecr:InitiateLayerUpload",

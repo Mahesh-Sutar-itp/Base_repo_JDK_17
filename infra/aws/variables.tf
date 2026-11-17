@@ -183,15 +183,25 @@ variable "autoscaling_fast_cpu_threshold" {
 }
 
 variable "autoscaling_fast_step_tasks" {
-  description = "Tasks added at once by the emergency scale-out."
+  description = "Tasks added at once by the emergency scale-out (CPU above autoscaling_fast_cpu_threshold)."
   type        = number
   default     = 2
 }
 
-variable "autoscaling_requests_per_target" {
-  description = "Requests per minute per task that auto scaling tries to hold (ALB RequestCountPerTarget)."
+variable "autoscaling_fast_step_tasks_high" {
+  description = "Tasks added at once when CPU is 15 points or more above the emergency threshold (a surge)."
   type        = number
-  default     = 1000
+  default     = 4
+}
+
+variable "autoscaling_requests_per_target" {
+  description = <<-EOT
+    Requests per minute per task that auto scaling tries to hold (ALB RequestCountPerTarget).
+    Load test 2 measured ~5,200/min per 1 vCPU task at ~60% CPU; 4,000 keeps headroom. (1,000 made
+    this policy ask for far more tasks than CPU needed.)
+  EOT
+  type        = number
+  default     = 4000
 }
 
 variable "latency_alarm_seconds" {
