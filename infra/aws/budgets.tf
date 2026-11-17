@@ -1,10 +1,12 @@
 # Budget alerts (cost safety net).
 #
-# One monthly budget with several usage alerts. With the defaults (limit $50):
-#     30% = $15 spent   -> early heads-up
-#     50% = $25 spent   -> half way
-#     90% = $45 spent   -> almost at the limit
+# One monthly budget with several usage alerts. The POC has $100 in TOTAL (not per month); the POC runs
+# within about a month, so the monthly limit is set to the same $100. With the defaults:
+#     30% = $30 spent   -> early heads-up
+#     50% = $50 spent   -> half way
+#     90% = $90 spent   -> almost at the limit
 #   plus one FORECAST alert: AWS predicts the month will end above 100% of the limit.
+# If the POC carries on into another month, lower the limit to what is left of the $100.
 # Change var.budget_monthly_limit or var.budget_alert_percentages to adjust; the dollar amounts follow.
 #
 # Alerts go by email to var.alarm_email (set in alarm.auto.tfvars, git-ignored).
@@ -19,9 +21,9 @@
 # to count everything the account spends instead.
 
 variable "budget_monthly_limit" {
-  description = "Monthly budget in USD."
+  description = "Monthly budget in USD (the POC total is $100, see above)."
   type        = number
-  default     = 50
+  default     = 100
 }
 
 variable "budget_alert_percentages" {
