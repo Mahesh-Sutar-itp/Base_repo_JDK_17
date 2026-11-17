@@ -21,9 +21,11 @@
 package org.trebol.api.services.impl;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.trebol.api.models.CompanyDetailsPojo;
 import org.trebol.api.services.CompanyService;
+import org.trebol.config.CacheConfig;
 import org.trebol.jpa.entities.Param;
 import org.trebol.jpa.repositories.ParamsRepository;
 
@@ -39,7 +41,9 @@ public class CompanyServiceImpl
         this.paramsRepository = paramsRepository;
     }
 
+    // Store information changes only through the database seed; cached briefly (see CacheConfig)
     @Override
+    @Cacheable(cacheNames = CacheConfig.ABOUT)
     public CompanyDetailsPojo readDetails() {
         Iterable<Param> it = paramsRepository.findParamsByCategory("company");
         CompanyDetailsPojo target = new CompanyDetailsPojo();

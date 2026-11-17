@@ -24,6 +24,7 @@ import com.querydsl.core.types.OrderSpecifier;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -32,6 +33,7 @@ import org.trebol.api.DataGenericController;
 import org.trebol.api.models.BillingTypePojo;
 import org.trebol.api.models.DataPagePojo;
 import org.trebol.api.services.PaginationService;
+import org.trebol.config.CacheConfig;
 import org.trebol.jpa.entities.BillingType;
 import org.trebol.jpa.services.SortSpecParserService;
 import org.trebol.jpa.services.crud.BillingTypesCrudService;
@@ -59,6 +61,7 @@ public class DataBillingTypesController
     @Override
     @GetMapping
     @Operation(summary = "List billing types.")
+    @Cacheable(cacheNames = CacheConfig.BILLING_TYPES) // read-only reference data (see CacheConfig)
     public DataPagePojo<BillingTypePojo> readMany(@RequestParam Map<String, String> allRequestParams) {
         return super.readMany(allRequestParams);
     }
