@@ -77,7 +77,7 @@ public class DataProductsController
     @Override
     @GetMapping
     @Operation(summary = "List products.")
-    @Cacheable(cacheNames = CacheConfig.PRODUCT_PAGES, condition = CacheConfig.NOT_AN_IDENTITY_LOOKUP)
+    @Cacheable(cacheNames = CacheConfig.PRODUCT_PAGES, condition = CacheConfig.NOT_AN_IDENTITY_LOOKUP, sync = true)
     public DataPagePojo<ProductPojo> readMany(@RequestParam Map<String, String> allRequestParams) {
         return super.readMany(allRequestParams);
     }

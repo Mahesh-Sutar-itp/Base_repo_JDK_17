@@ -12,7 +12,7 @@
 # started for each test run with `aws ecs run-task` (see the loadgen_run_command output), and stop
 # by themselves when the test ends.
 #
-# Cost: 2 vCPU / 4 GB per task ~ $0.10/h while running; 3 tasks for a 20-minute test ~ $0.10.
+# Cost: 4 vCPU / 8 GB per task ~ $0.20/h while running; 3 tasks for a 20-minute test ~ $0.20.
 
 variable "loadgen_enabled" {
   description = "Create the k6 load-generator task definition (needs lab_on = true)."
@@ -21,15 +21,15 @@ variable "loadgen_enabled" {
 }
 
 variable "loadgen_cpu" {
-  description = "CPU units per k6 task (2048 = 2 vCPU, ~1,700 virtual users with think time)."
+  description = "CPU units per k6 task (4096 = 4 vCPU; each task keeps ~1,700 requests in flight with no think time)."
   type        = number
-  default     = 2048
+  default     = 4096
 }
 
 variable "loadgen_memory" {
   description = "Memory per k6 task in MiB."
   type        = number
-  default     = 4096
+  default     = 8192
 }
 
 variable "loadgen_k6_image" {
@@ -114,7 +114,7 @@ resource "aws_ecs_task_definition" "loadgen" {
         { name = "K6_SCRIPT_B64", value = filebase64("${path.module}/loadgen/k6-steps.js") },
         { name = "BASE_URL", value = "https://${aws_cloudfront_distribution.main[0].domain_name}" },
         { name = "ADMIN_PASSWORD", value = coalesce(var.loadgen_admin_password, "not-set") },
-        { name = "PEAK_USERS", value = "5000" },
+        { name = "PEAK_CONCURRENCY", value = "5000" }, # total concurrent requests over all tasks
         { name = "K6_ARGS", value = "" },
         { name = "INSTANCE", value = "0" },
       ]

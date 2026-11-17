@@ -61,7 +61,7 @@ public class DataBillingTypesController
     @Override
     @GetMapping
     @Operation(summary = "List billing types.")
-    @Cacheable(cacheNames = CacheConfig.BILLING_TYPES) // read-only reference data (see CacheConfig)
+    @Cacheable(cacheNames = CacheConfig.BILLING_TYPES, sync = true) // read-only reference data (see CacheConfig)
     public DataPagePojo<BillingTypePojo> readMany(@RequestParam Map<String, String> allRequestParams) {
         return super.readMany(allRequestParams);
     }

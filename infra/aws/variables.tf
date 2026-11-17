@@ -129,9 +129,22 @@ variable "app_desired_count" {
 }
 
 variable "app_db_pool_size" {
-  description = "Hikari connections per task (RDS Proxy pools them further)."
+  description = <<-EOT
+    Hikari connections per task. Small on purpose: the read cache means most requests need no DB
+    connection, and RDS Proxy shares the few connections db.t3.micro allows (10-24 for the proxy)
+    across all tasks. At 10 per task, load test 3 ran out with ~10 tasks.
+  EOT
   type        = number
-  default     = 10
+  default     = 3
+}
+
+variable "rds_proxy_debug_logging" {
+  description = <<-EOT
+    Turn on RDS Proxy debug logs (CloudWatch /aws/rds/proxy/<name>), which state why a session was
+    pinned. For short diagnostic runs only: the logs can include SQL text.
+  EOT
+  type        = bool
+  default     = false
 }
 
 variable "cors_allowed_origins" {
