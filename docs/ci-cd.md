@@ -94,9 +94,10 @@ disables schedules in public repositories after 60 days without commits; re-enab
   at the normal size; for a load test run `lab-up-loadtest.cmd` from the laptop instead, and set
   `LAB_SCHEDULE_PAUSED=true` if it must run past 23:00. Up/down by hand: Actions > Lab schedule > Run workflow.
   The public URL is not printed (public repo): `terraform output app_url`.
-- **Schedule applies `main`**: a scheduled up builds the lab from whatever is on `main`. Changes to IAM
-  (roles, policies) must be applied from the laptop first; the schedule role is not allowed to make them,
-  so the run fails with AccessDenied until you do.
+- **Schedule applies `main`**: a scheduled up builds the lab from whatever is on `main`. Changes to
+  always-on resources the schedule role may not change (IAM roles and policies, the budget, ECR, secrets,
+  the VPC) must be applied from the laptop first, e.g. `terraform apply -target=aws_budgets_budget.monthly`;
+  otherwise the scheduled run fails with AccessDenied until you do.
 
 ## How the safety nets work
 

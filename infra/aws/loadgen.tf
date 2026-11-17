@@ -21,7 +21,7 @@ variable "loadgen_enabled" {
 }
 
 variable "loadgen_cpu" {
-  description = "CPU units per k6 task (4096 = 4 vCPU; each task keeps ~1,700 requests in flight with no think time)."
+  description = "CPU units per k6 task (4096 = 4 vCPU; 3 tasks drove ~5,000 req/s in load test r11171916)."
   type        = number
   default     = 4096
 }
@@ -114,7 +114,13 @@ resource "aws_ecs_task_definition" "loadgen" {
         { name = "K6_SCRIPT_B64", value = filebase64("${path.module}/loadgen/k6-steps.js") },
         { name = "BASE_URL", value = "https://${aws_cloudfront_distribution.main[0].domain_name}" },
         { name = "ADMIN_PASSWORD", value = coalesce(var.loadgen_admin_password, "not-set") },
-        { name = "PEAK_CONCURRENCY", value = "5000" }, # total concurrent requests over all tasks
+        # Totals over ALL k6 tasks together. Override per run with --overrides (see docs/scalability-plan.md);
+        # other settings (ADMIN_RATE, BG_RATE, WARMUP_S, RATE_STEPS, ...) use the script's defaults.
+        # Burst model (default, the POC target): ~10,000 requests in 5 minutes with a burst to 2,500 req/s
+        { name = "LOAD_MODEL", value = "burst" },
+        { name = "TOTAL_REQUESTS", value = "10000" },
+        { name = "PEAK_RATE", value = "2500" },
+        { name = "PEAK_CONCURRENCY", value = "5000" }, # vus model only: total concurrent requests
         { name = "K6_ARGS", value = "" },
         { name = "INSTANCE", value = "0" },
       ]
