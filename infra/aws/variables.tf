@@ -153,6 +153,16 @@ variable "cors_allowed_origins" {
   default     = "http://localhost:4200"
 }
 
+variable "swagger_enabled" {
+  description = <<-EOT
+    Serve Swagger UI (/swagger-ui/index.html) and the OpenAPI description (/v3/api-docs) through
+    CloudFront, e.g. for a review session. Off by default: it publishes the whole API surface.
+    Like other container settings, it takes effect when the task definition is created (lab-up).
+  EOT
+  type        = bool
+  default     = false
+}
+
 variable "log_retention_days" {
   description = "How long CloudWatch keeps app logs."
   type        = number

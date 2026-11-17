@@ -135,7 +135,15 @@ a capacity provider and patching. Fargate stays for the POC.
 6. The breaking point is the first run that fails. Expected (to be confirmed): run 3 (2,500 req/s) passes; the
    connection path to the single database fails first, somewhere above ~4,500 req/s; with 8-16 warm tasks the app
    has room for ~6,000-12,000 req/s.
-7. Optional, once: `LOAD_MODEL=rate` sustained steps (30 minutes, 250 to 5,000 req/s) to measure capacity without
+7. Results so far:
+
+   | Run (UTC) | Setup | Requests | Burst p95 at ALB | k6 burst p95 / p99 | Failed | App CPU (avg / busiest) | DB connection wait | Result |
+   |---|---|---|---|---|---|---|---|---|
+   | b5k1841, 17 Nov 18:41 | 8 x 1 vCPU, 1 x db.t3.micro (single-AZ), 2 k6 tasks; TOTAL_REQUESTS=5000, PEAK_RATE=2500, BG_RATE=5 | 4,999 counted (3,424 in the burst) + 6,000 warm-up | 68 ms (p99 101 ms) | 79-82 / 112 ms | 0 | 3% / 20% | 0 ms | **pass** |
+
+   Note on b5k1841: with only 5,000 requests the burst lasted ~2.4 s and held the full 2,500 req/s for ~0.4 s
+   (1 s ramps). Run 3 (10,000 requests) holds the peak ~1.8 s and is the real check of the target.
+8. Optional, once: `LOAD_MODEL=rate` sustained steps (30 minutes, 250 to 5,000 req/s) to measure capacity without
    the burst; costs ~$8 in request fees.
 
 ## 6. Scalability plan beyond 2,500 req/s

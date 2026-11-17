@@ -84,7 +84,7 @@ locals {
     { name = "DB_NAME", value = var.db_name },
     { name = "DB_POOL_SIZE", value = tostring(var.app_db_pool_size) },
     { name = "CORS_ALLOWED_ORIGINS", value = var.cors_allowed_origins },
-    { name = "SWAGGER_ENABLED", value = "false" },
+    { name = "SWAGGER_ENABLED", value = tostring(var.swagger_enabled) },
     { name = "LOG_LEVEL", value = "INFO" },
     # Also set in application-prod.properties; repeated here so images built before that change
     # (e.g. 0d72b16) get it too. Holds DB connections only during transactions (see load test 1).
