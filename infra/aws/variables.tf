@@ -165,9 +165,27 @@ variable "autoscaling_max_tasks" {
 }
 
 variable "autoscaling_cpu_target" {
-  description = "Average CPU % across tasks that auto scaling tries to hold."
+  description = <<-EOT
+    Average CPU % across tasks that auto scaling tries to hold. 50 leaves headroom for the 4-6 minutes
+    a new task needs (alarm + start + health checks); at 60 the first load test reached 100% first.
+  EOT
   type        = number
-  default     = 60
+  default     = 50
+}
+
+variable "autoscaling_fast_cpu_threshold" {
+  description = <<-EOT
+    Emergency scale-out: when average CPU passes this % for ONE minute, add autoscaling_fast_step_tasks
+    tasks at once. Target tracking needs 3 minutes of data before it acts; this step policy reacts sooner.
+  EOT
+  type        = number
+  default     = 70
+}
+
+variable "autoscaling_fast_step_tasks" {
+  description = "Tasks added at once by the emergency scale-out."
+  type        = number
+  default     = 2
 }
 
 variable "autoscaling_requests_per_target" {

@@ -45,6 +45,13 @@ resource "aws_lb_target_group" "app" {
   # Give in-flight requests 30 s to finish when a task stops (matches graceful shutdown)
   deregistration_delay = 30
 
+  # Send each request to the task with the fewest requests in progress (default is round robin).
+  # Requests differ a lot in cost (a sign-up hashes a password with BCrypt, a product list does not),
+  # so round robin can overload one task while another is idle. A newly started task (cold JVM) is
+  # slower, keeps more requests in progress, and so automatically gets less traffic until it warms up.
+  # (AWS does not allow slow_start together with this algorithm.)
+  load_balancing_algorithm_type = "least_outstanding_requests"
+
   tags = { Name = "${var.project}-app-tg" }
 }
 
