@@ -23,6 +23,7 @@ package org.trebol.api.services.impl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.convert.ConversionService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.trebol.api.models.ProductPojo;
 import org.trebol.api.models.ReceiptDetailPojo;
 import org.trebol.api.models.ReceiptPojo;
@@ -37,6 +38,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+// Reads lazy order relations (status, details), which need an open session now that open-in-view is off
+@Transactional(readOnly = true)
 @Service
 public class ReceiptServiceImpl
     implements ReceiptService {

@@ -26,6 +26,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.trebol.api.models.PersonPojo;
 import org.trebol.api.models.RegistrationPojo;
 import org.trebol.api.services.RegistrationService;
@@ -45,6 +46,10 @@ import org.trebol.jpa.services.conversion.PeopleConverterService;
 import jakarta.persistence.EntityExistsException;
 import java.util.Optional;
 
+// One transaction for the whole registration (person, user, customer). Without open-in-view the
+// person saved first is detached by the time the user referencing it is saved ("detached entity
+// passed to persist"), and a failure half-way would leave a person without a user.
+@Transactional
 @Service
 public class RegistrationServiceImpl
     implements RegistrationService {

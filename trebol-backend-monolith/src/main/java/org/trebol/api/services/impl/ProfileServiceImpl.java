@@ -38,6 +38,8 @@ import org.trebol.jpa.services.patch.PeoplePatchService;
 
 import java.util.Optional;
 
+// Reads user.getPerson() (lazy), which needs an open session now that open-in-view is off
+@Transactional
 @Service
 public class ProfileServiceImpl
     implements ProfileService {
