@@ -3,15 +3,16 @@
 # Traffic is allowed only along the request path, one hop at a time:
 #
 #   CloudFront --80--> ALB --8080--> ECS tasks --3306--> RDS Proxy --3306--> MariaDB
-#                                         \--443--> AWS APIs (ECR, Secrets Manager, CloudWatch)
+#                          \--8081 (health checks only)--/  \--443--> AWS APIs (ECR, Secrets Manager, CloudWatch)
 #
 # Groups reference each other instead of IP ranges, so new tasks are covered automatically.
 # Terraform removes AWS's default "allow all outbound" rule from every group it creates,
 # so only the rules below exist.
 
 locals {
-  app_port = 8080
-  db_port  = 3306
+  app_port        = 8080
+  management_port = 8081 # Spring Boot Actuator (health checks), separate from user traffic
+  db_port         = 3306
 }
 
 resource "aws_security_group" "alb" {
@@ -59,6 +60,16 @@ resource "aws_vpc_security_group_egress_rule" "alb_to_app" {
   tags                         = { Name = "${var.project}-alb-to-app" }
 }
 
+resource "aws_vpc_security_group_egress_rule" "alb_to_app_health" {
+  security_group_id            = aws_security_group.alb.id
+  description                  = "Health checks to the app's Actuator port"
+  ip_protocol                  = "tcp"
+  from_port                    = local.management_port
+  to_port                      = local.management_port
+  referenced_security_group_id = aws_security_group.app.id
+  tags                         = { Name = "${var.project}-alb-to-app-health" }
+}
+
 ############################
 # ECS tasks
 ############################
@@ -70,6 +81,16 @@ resource "aws_vpc_security_group_ingress_rule" "app_from_alb" {
   to_port                      = local.app_port
   referenced_security_group_id = aws_security_group.alb.id
   tags                         = { Name = "${var.project}-app-from-alb" }
+}
+
+resource "aws_vpc_security_group_ingress_rule" "app_health_from_alb" {
+  security_group_id            = aws_security_group.app.id
+  description                  = "Health checks from the ALB (Actuator port)"
+  ip_protocol                  = "tcp"
+  from_port                    = local.management_port
+  to_port                      = local.management_port
+  referenced_security_group_id = aws_security_group.alb.id
+  tags                         = { Name = "${var.project}-app-health-from-alb" }
 }
 
 resource "aws_vpc_security_group_egress_rule" "app_to_proxy" {

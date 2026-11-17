@@ -58,11 +58,13 @@ USER trebol
 ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=75 -XX:+ExitOnOutOfMemoryError" \
     SPRING_PROFILES_ACTIVE=prod
 
-EXPOSE 8080
+# 8080 = API, 8081 = Actuator (health checks; management.server.port in the prod profile)
+EXPOSE 8080 8081
 
-# Container-level check for docker compose; on AWS the load balancer checks /actuator/health/readiness
+# Container-level check for docker compose. On AWS the ALB checks the same liveness URL on 8081
+# (no database dependency, separate threads from user traffic)
 HEALTHCHECK --interval=15s --timeout=3s --start-period=60s --retries=3 \
-  CMD wget -qO- http://localhost:8080/actuator/health/liveness || exit 1
+  CMD wget -qO- http://localhost:8081/actuator/health/liveness || exit 1
 
 # Exec form: java runs as PID 1 and receives SIGTERM directly, so graceful shutdown works
 ENTRYPOINT ["java", "-jar", "/app/app.war"]

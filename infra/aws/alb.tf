@@ -2,7 +2,7 @@
 #
 # Internal = no public IP. It sits in the private app subnets and is reached only by
 # CloudFront through a VPC origin (Step 7). It spreads requests over the ECS tasks
-# and only sends traffic to tasks whose readiness check passes (app + database OK).
+# and only sends traffic to tasks whose liveness check passes (JVM/app alive).
 
 locals {
   alb_count = var.lab_on ? 1 : 0
@@ -32,14 +32,21 @@ resource "aws_lb_target_group" "app" {
   target_type = "ip" # Fargate tasks register by IP
   vpc_id      = aws_vpc.main.id
 
-  # Readiness includes the database: a task that can't reach MariaDB gets no traffic
+  # Liveness on the separate Actuator port (8081): "is the app alive?" only.
+  # - No database check: in load test r11171916 the readiness check (which waits for a DB connection)
+  #   timed out at peak and ECS replaced 6 busy-but-working tasks, making the overload worse.
+  # - Own port = own Tomcat threads, so the check doesn't queue behind user requests on 8080.
+  # A task that can't reach the database still gets traffic; those requests fail fast (Hikari
+  # connection-timeout 5 s -> 503 + Retry-After) and the alarms in monitoring.tf report it.
+  # 5 failures x 15 s = 75 s of consecutive failures before a target is marked unhealthy.
   health_check {
-    path                = "/actuator/health/readiness"
-    matcher             = "200"
+    port                = tostring(local.management_port)
+    path                = "/actuator/health/liveness"
     interval            = 15
     timeout             = 5
     healthy_threshold   = 2
-    unhealthy_threshold = 3
+    unhealthy_threshold = 5
+    matcher             = "200"
   }
 
   # Give in-flight requests 30 s to finish when a task stops (matches graceful shutdown)

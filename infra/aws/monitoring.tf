@@ -223,7 +223,7 @@ resource "aws_cloudwatch_metric_alarm" "unhealthy_hosts" {
   count = local.monitor_count
 
   alarm_name          = "${var.project}-unhealthy-tasks"
-  alarm_description   = "At least one task has failed the ALB readiness check for 3 minutes"
+  alarm_description   = "At least one task has failed the ALB health check (liveness, port 8081) for 3 minutes"
   namespace           = "AWS/ApplicationELB"
   metric_name         = "UnHealthyHostCount"
   dimensions          = { LoadBalancer = local.alb_dimension, TargetGroup = local.tg_dimension }
@@ -247,7 +247,7 @@ resource "aws_cloudwatch_metric_alarm" "no_healthy_tasks" {
   count = local.monitor_count
 
   alarm_name          = "${var.project}-no-healthy-tasks"
-  alarm_description   = "No task has passed the ALB readiness check for 10 minutes: the API is down"
+  alarm_description   = "No task has passed the ALB health check (liveness, port 8081) for 10 minutes: the API is down"
   namespace           = "AWS/ApplicationELB"
   metric_name         = "HealthyHostCount"
   dimensions          = { LoadBalancer = local.alb_dimension, TargetGroup = local.tg_dimension }
