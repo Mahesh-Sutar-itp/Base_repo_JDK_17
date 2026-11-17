@@ -1,0 +1,199 @@
+# Turns the lab on and off on a timetable, with the same Terraform apply as lab-up.cmd / lab-down.cmd:
+#
+#   ON   Mon-Fri 13:40 IST (08:10 UTC) -> ready around 14:00 (RDS, RDS Proxy and CloudFront take ~20-30 min)
+#   OFF  every day 23:00 IST (17:30 UTC) -> also a safety net for a lab left on by hand at the weekend
+#
+# GitHub may start scheduled runs 5-30 minutes late at busy times.
+# Pause the timetable (e.g. to keep a load test running past 23:00): set the REPOSITORY variable
+# LAB_SCHEDULE_PAUSED=true (it is read before the job enters the "lab" environment, so it cannot live
+# there). Manual runs (Actions > Lab schedule > Run workflow) still work while paused.
+#
+# The lab comes up at the normal size (lab-up.cmd). For a load test, run lab-up-loadtest.cmd from the laptop.
+#
+# AWS access: OIDC role infra/aws/lab-scheduler.tf, only for jobs in the GitHub environment "lab"
+# (restricted to main). This repository is public: the plan is never printed, only its summary line,
+# and on failure only the error messages. Setup: docs/ci-cd.md.
+
+name: Lab schedule
+
+on:
+  schedule:
+    - cron: "10 8 * * 1-5" # ON
+    - cron: "30 17 * * *" # OFF
+  workflow_dispatch:
+    inputs:
+      action:
+        description: Turn the lab up (on) or down (off)
+        type: choice
+        options: [up, down]
+        required: true
+      image_tag:
+        description: "Image tag for up (blank = image of the latest main commit, or else the newest image in ECR)"
+        type: string
+        required: false
+
+permissions:
+  contents: read
+  id-token: write
+
+# Never two Terraform runs at once from GitHub (the S3 lock file also blocks a run from the laptop)
+concurrency:
+  group: lab-terraform
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: us-east-1
+  TF_VERSION: 1.17.1
+  ECR_REPOSITORY: trebol-poc/backend
+  ECS_CLUSTER: trebol-poc
+  ECS_SERVICE: trebol-poc-backend
+  OFF_CRON: "30 17 * * *"
+
+jobs:
+  lab:
+    name: Lab ${{ github.event.inputs.action || (github.event.schedule == '30 17 * * *' && 'down' || 'up') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    # Environment "lab": holds the secrets below and is the only way to get the scheduler role
+    environment: lab
+    if: >
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'workflow_dispatch' || vars.LAB_SCHEDULE_PAUSED != 'true')
+    defaults:
+      run:
+        working-directory: infra/aws
+
+    steps:
+      - name: Work out what to do
+        id: what
+        working-directory: .
+        env:
+          EVENT: ${{ github.event_name }}
+          INPUT_ACTION: ${{ github.event.inputs.action }}
+          CRON: ${{ github.event.schedule }}
+          ROLE: ${{ vars.LAB_ROLE_ARN }}
+          OWNER: ${{ secrets.OWNER_EMAIL }}
+          ALARM: ${{ secrets.ALARM_EMAIL }}
+        run: |
+          if [ "$EVENT" = "workflow_dispatch" ]; then ACTION="$INPUT_ACTION"
+          elif [ "$CRON" = "$OFF_CRON" ]; then ACTION=down
+          else ACTION=up; fi
+          echo "action=$ACTION" >> "$GITHUB_OUTPUT"
+
+          # Missing values would make Terraform fail (owner) or delete the alarm email subscription (alarm)
+          missing=""
+          [ -z "$ROLE" ]  && missing="$missing variable LAB_ROLE_ARN,"
+          [ -z "$OWNER" ] && missing="$missing secret OWNER_EMAIL,"
+          [ -z "$ALARM" ] && missing="$missing secret ALARM_EMAIL,"
+          if [ -n "$missing" ]; then
+            echo "::error::Environment 'lab' is missing:${missing%,}. See docs/ci-cd.md (Lab schedule setup)."
+            exit 1
+          fi
+
+      - name: Check out main
+        uses: actions/checkout@v7
+
+      - name: Get AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.LAB_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-duration-seconds: 7200
+
+      # Public repository: hide the account number everywhere in this job's logs
+      - name: Mask the AWS account number in the logs
+        id: account
+        run: |
+          ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
+          echo "::add-mask::$ACCOUNT"
+          echo "id=$ACCOUNT" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+
+      - name: Terraform init
+        run: |
+          terraform init -input=false -no-color \
+            -backend-config="bucket=trebol-poc-tfstate-${{ steps.account.outputs.id }}" > init.log 2>&1 \
+            || { sed -n '/Error/,$p' init.log; exit 1; }
+          echo "Initialized."
+
+      - name: Pick the image tag
+        id: image
+        if: steps.what.outputs.action == 'up'
+        env:
+          INPUT_TAG: ${{ github.event.inputs.image_tag }}
+        run: |
+          TAG="$INPUT_TAG"
+          if [ -z "$TAG" ]; then
+            MAIN_TAG="${GITHUB_SHA::7}"
+            if aws ecr describe-images --repository-name "$ECR_REPOSITORY" --image-ids imageTag="$MAIN_TAG" >/dev/null 2>&1; then
+              TAG="$MAIN_TAG"
+            else
+              TAG=$(aws ecr describe-images --repository-name "$ECR_REPOSITORY" \
+                --query 'sort_by(imageDetails[?imageTags != `null`], &imagePushedAt)[-1].imageTags[0]' --output text)
+              echo "::notice::No image for main commit $MAIN_TAG; using the newest image in ECR: $TAG"
+            fi
+          fi
+          if ! aws ecr describe-images --repository-name "$ECR_REPOSITORY" --image-ids imageTag="$TAG" >/dev/null 2>&1; then
+            echo "::error::Image tag '$TAG' is not in ECR"
+            exit 1
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Terraform apply (lab ${{ steps.what.outputs.action }})
+        env:
+          ACTION: ${{ steps.what.outputs.action }}
+          TAG: ${{ steps.image.outputs.tag }}
+          TF_VAR_owner: ${{ secrets.OWNER_EMAIL }}
+          TF_VAR_alarm_email: ${{ secrets.ALARM_EMAIL }}
+          TF_IN_AUTOMATION: "true"
+        run: |
+          ARGS=(-input=false -auto-approve -no-color)
+          if [ "$ACTION" = "up" ]; then
+            ARGS+=(-var="lab_on=true" -var="app_image_tag=$TAG")
+          else
+            ARGS+=(-var="lab_on=false")
+          fi
+
+          apply() { terraform apply "${ARGS[@]}" > apply.log 2>&1; }
+          # Error blocks only (never the plan); secrets and the account number are masked by GitHub
+          show_errors() { sed -n '/^Error: /,$p' apply.log | head -80; }
+
+          if ! apply; then
+            # Known quirk: right after the NAT gateway is deleted, releasing its Elastic IP can fail once
+            echo "First attempt failed:"; show_errors
+            echo "Retrying in 60 s..."; sleep 60
+            if ! apply; then show_errors; exit 1; fi
+          fi
+          grep -E '^Apply complete' apply.log
+
+      - name: Wait for the API to be healthy
+        if: steps.what.outputs.action == 'up'
+        run: |
+          # Up to 10 min. The first tasks retry until RDS Proxy accepts connections (5-10 min after creation).
+          aws ecs wait services-stable --cluster "$ECS_CLUSTER" --services "$ECS_SERVICE" || {
+            echo "::error::ECS service did not reach a steady state. Check the ECS events and the target group."
+            exit 1
+          }
+
+      - name: Summary
+        if: always()
+        env:
+          ACTION: ${{ steps.what.outputs.action }}
+          TAG: ${{ steps.image.outputs.tag }}
+          OUTCOME: ${{ job.status }}
+        run: |
+          {
+            if [ "$ACTION" = "up" ]; then
+              echo "### Lab up: $OUTCOME"
+              echo "Image tag: \`$TAG\`. Public URL (not printed here, the repo is public): \`terraform output app_url\`"
+              echo "Switches off at 23:00 IST unless LAB_SCHEDULE_PAUSED=true."
+            else
+              echo "### Lab down: $OUTCOME"
+              echo "Hourly-billed resources removed."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
