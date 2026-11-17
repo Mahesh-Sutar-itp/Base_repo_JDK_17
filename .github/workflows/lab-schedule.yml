@@ -47,6 +47,8 @@ env:
   ECR_REPOSITORY: trebol-poc/backend
   ECS_CLUSTER: trebol-poc
   ECS_SERVICE: trebol-poc-backend
+  TASK_FAMILY: trebol-poc-backend
+  TARGET_GROUP: trebol-poc-app-tg
   OFF_CRON: "30 17 * * *"
 
 jobs:
@@ -174,11 +176,37 @@ jobs:
       - name: Wait for the API to be healthy
         if: steps.what.outputs.action == 'up'
         run: |
+          # If the lab was already on, Terraform may have registered a new task definition (ports, health
+          # check, size) that the service ignores (ecs.tf ignore_changes). Move the service onto it.
+          LATEST=$(aws ecs describe-task-definition --task-definition "$TASK_FAMILY" \
+            --query 'taskDefinition.taskDefinitionArn' --output text)
+          CURRENT=$(aws ecs describe-services --cluster "$ECS_CLUSTER" --services "$ECS_SERVICE" \
+            --query 'services[0].taskDefinition' --output text)
+          if [ "$CURRENT" != "$LATEST" ]; then
+            echo "::notice::Service was on ${CURRENT##*/}; moving it to ${LATEST##*/} (lab was already on)"
+            aws ecs update-service --cluster "$ECS_CLUSTER" --service "$ECS_SERVICE" \
+              --task-definition "$LATEST" > /dev/null
+          fi
+
           # Up to 10 min. The first tasks retry until RDS Proxy accepts connections (5-10 min after creation).
           aws ecs wait services-stable --cluster "$ECS_CLUSTER" --services "$ECS_SERVICE" || {
             echo "::error::ECS service did not reach a steady state. Check the ECS events and the target group."
             exit 1
           }
+
+          # "Stable" only compares task counts; the load balancer's health check is the real test
+          TG=$(aws elbv2 describe-target-groups --names "$TARGET_GROUP" --query 'TargetGroups[0].TargetGroupArn' --output text)
+          for _ in $(seq 1 30); do
+            HEALTHY=$(aws elbv2 describe-target-health --target-group-arn "$TG" \
+              --query "length(TargetHealthDescriptions[?TargetHealth.State=='healthy'])" --output text)
+            UNHEALTHY=$(aws elbv2 describe-target-health --target-group-arn "$TG" \
+              --query "length(TargetHealthDescriptions[?TargetHealth.State!='healthy'])" --output text)
+            echo "Targets healthy: $HEALTHY, not healthy: $UNHEALTHY"
+            if [ "$HEALTHY" -ge 1 ] && [ "$UNHEALTHY" -eq 0 ]; then exit 0; fi
+            sleep 20
+          done
+          echo "::error::Load balancer targets are not all healthy after 10 minutes. Check the target group health and ECS events."
+          exit 1
 
       - name: Summary
         if: always()

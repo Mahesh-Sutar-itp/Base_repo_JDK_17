@@ -196,14 +196,17 @@ jobs:
             --query 'services[0].taskDefinition' --output text)
           echo "previous=$PREVIOUS" >> "$GITHUB_OUTPUT"
 
-          # New revision = current one with only the image changed (tags are kept: organization tag rule)
-          aws ecs describe-task-definition --task-definition "$PREVIOUS" --include TAGS > current.json
+          # New revision = the family's newest ACTIVE revision with only the image changed (tags are kept:
+          # organization tag rule). Not the revision the service runs: a terraform apply with the lab on
+          # registers a newer revision (ports, health check, size) that the service does not pick up
+          # (Terraform ignores task_definition on the service) and deregisters the running one.
+          aws ecs describe-task-definition --task-definition "$TASK_FAMILY" --include TAGS > current.json
           TAGS=$(jq -c '.tags // []' current.json)
           jq --arg img "$IMAGE" --argjson tags "$TAGS" '
               .taskDefinition
               | .containerDefinitions |= map(if .name == "app" then .image = $img else . end)
               | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities,
-                    .registeredAt, .registeredBy)
+                    .registeredAt, .registeredBy, .deregisteredAt)
               | . + {tags: $tags}
             ' current.json > new.json
           NEW=$(aws ecs register-task-definition --cli-input-json file://new.json \
