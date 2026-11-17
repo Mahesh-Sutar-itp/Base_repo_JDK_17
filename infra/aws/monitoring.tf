@@ -4,9 +4,11 @@
 # Lab only (they watch lab resources): ECS auto scaling, CloudWatch alarms, dashboard.
 #
 # Auto scaling keeps at least app_desired_count tasks (one per zone) and adds tasks, up to
-# autoscaling_max_tasks, when average CPU or requests per task rise. Two target-tracking policies:
-# if both want a different size, the larger one wins. Scale-out is quick (60 s), scale-in slow
-# (5 min) so a short dip in traffic does not remove tasks.
+# autoscaling_max_tasks, when average CPU or requests per task rise. Three policies; if they want a
+# different size, the larger one wins:
+#   - target tracking on CPU (50%) and on requests per task: steady, gradual scaling
+#   - step scaling: emergency +2 tasks after one minute above 70% CPU (sudden surges)
+# Scale-out is quick (60 s), scale-in slow (5 min) so a short dip in traffic does not remove tasks.
 
 locals {
   monitor_count = var.lab_on ? 1 : 0
@@ -120,6 +122,51 @@ resource "aws_appautoscaling_policy" "requests" {
       resource_label         = "${local.alb_dimension}/${local.tg_dimension}"
     }
   }
+}
+
+# Emergency scale-out (step scaling). Target tracking above waits for 3 one-minute data points, and a
+# new task then needs ~2-3 min to start and pass health checks, so a sudden surge reached 100% CPU
+# before help arrived. This alarm fires after ONE minute above the threshold and adds several tasks at
+# once. When both policies want a size, Application Auto Scaling uses the larger one.
+# Scale-in stays with target tracking (slow and gradual).
+resource "aws_appautoscaling_policy" "cpu_fast_out" {
+  count = local.monitor_count
+
+  name               = "${var.project}-cpu-fast-scale-out"
+  policy_type        = "StepScaling"
+  service_namespace  = aws_appautoscaling_target.app[0].service_namespace
+  scalable_dimension = aws_appautoscaling_target.app[0].scalable_dimension
+  resource_id        = aws_appautoscaling_target.app[0].resource_id
+
+  step_scaling_policy_configuration {
+    adjustment_type         = "ChangeInCapacity"
+    cooldown                = 120 # new tasks need time to start before the next step
+    metric_aggregation_type = "Average"
+
+    step_adjustment {
+      metric_interval_lower_bound = 0 # anything above the alarm threshold
+      scaling_adjustment          = var.autoscaling_fast_step_tasks
+    }
+  }
+}
+
+resource "aws_cloudwatch_metric_alarm" "cpu_fast_out" {
+  count = local.monitor_count
+
+  alarm_name          = "${var.project}-cpu-fast-scale-out"
+  alarm_description   = "Average task CPU above ${var.autoscaling_fast_cpu_threshold}% for 1 minute: add ${var.autoscaling_fast_step_tasks} tasks now"
+  namespace           = "AWS/ECS"
+  metric_name         = "CPUUtilization"
+  dimensions          = { ClusterName = aws_ecs_cluster.main.name, ServiceName = aws_ecs_service.app[0].name }
+  statistic           = "Average"
+  period              = 60
+  evaluation_periods  = 1
+  threshold           = var.autoscaling_fast_cpu_threshold
+  comparison_operator = "GreaterThanThreshold"
+  treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_appautoscaling_policy.cpu_fast_out[0].arn] # scaling only, no email
+
+  tags = { Name = "${var.project}-cpu-fast-scale-out" }
 }
 
 ############################
