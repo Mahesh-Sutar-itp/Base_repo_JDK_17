@@ -62,7 +62,7 @@ resource "aws_vpc_security_group_egress_rule" "alb_to_app" {
 
 resource "aws_vpc_security_group_egress_rule" "alb_to_app_health" {
   security_group_id            = aws_security_group.alb.id
-  description                  = "Health checks to the app's Actuator port"
+  description                  = "Health checks to the app (Actuator port)"
   ip_protocol                  = "tcp"
   from_port                    = local.management_port
   to_port                      = local.management_port
