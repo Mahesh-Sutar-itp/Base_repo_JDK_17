@@ -1,6 +1,7 @@
 # Turns the lab on and off on a timetable, with the same Terraform apply as lab-up.cmd / lab-down.cmd:
 #
-#   ON   Mon-Fri 13:40 IST (08:10 UTC) -> ready around 14:00 (RDS, RDS Proxy and CloudFront take ~20-30 min)
+#   ON   Mon-Fri 14:00 IST (08:30 UTC) -> API ready around 14:20-14:30 (RDS, RDS Proxy and CloudFront
+#        take ~20-30 min)
 #   OFF  every day 23:00 IST (17:30 UTC) -> also a safety net for a lab left on by hand at the weekend
 #
 # GitHub may start scheduled runs 5-30 minutes late at busy times.
@@ -18,7 +19,7 @@ name: Lab schedule
 
 on:
   schedule:
-    - cron: "10 8 * * 1-5" # ON
+    - cron: "30 8 * * 1-5" # ON
     - cron: "30 17 * * *" # OFF
   workflow_dispatch:
     inputs:

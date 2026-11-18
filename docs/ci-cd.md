@@ -6,7 +6,7 @@ Three workflows in `.github/workflows/`:
 |---|---|---|---|
 | `ci.yml` | every pull request, every push to `main` | build, run the tests, JaCoCo coverage, SonarCloud analysis (once connected) | none |
 | `deploy.yml` | after `ci.yml` passes on `main` (or run it by hand) | build the Docker image, Trivy scan, push to ECR, deploy to ECS if the lab is on, smoke test, roll back on failure | OIDC role, `main` branch only |
-| `lab-schedule.yml` | Mon-Fri 13:40 IST (up), every day 23:00 IST (down), or by hand | `terraform apply -var lab_on=true/false`, the same as `lab-up.cmd` / `lab-down.cmd` | separate OIDC role, GitHub environment `lab` only |
+| `lab-schedule.yml` | Mon-Fri 14:00 IST (up), every day 23:00 IST (down), or by hand | `terraform apply -var lab_on=true/false`, the same as `lab-up.cmd` / `lab-down.cmd` | separate OIDC role, GitHub environment `lab` only |
 
 ```
 pull request  ->  ci.yml (build + test + Sonar)                      no AWS, safe for forks
@@ -89,8 +89,9 @@ disables schedules in public repositories after 60 days without commits; re-enab
   `terraform apply -var="lab_on=true" -var="app_image_tag=<tag>"`.
 - **Lab on**: the same run also deploys the new image to ECS and smoke-tests it through CloudFront.
 - **Run by hand**: Actions tab > Deploy > Run workflow.
-- **Lab schedule**: up Mon-Fri at 13:40 IST (ready around 14:00), down every day at 23:00 IST. GitHub can start
-  scheduled runs 5-30 minutes late. Up uses the image of the latest `main` commit (or the newest image in ECR)
+- **Lab schedule**: up Mon-Fri at 14:00 IST (API ready around 14:20-14:30), down every day at 23:00 IST. GitHub
+  runs schedules on a best-effort basis: they can start late (hours, at busy times) or be skipped, so check the
+  Actions tab before relying on it. Up uses the image of the latest `main` commit (or the newest image in ECR)
   at the normal size; for a load test run `lab-up-loadtest.cmd` from the laptop instead, and set
   `LAB_SCHEDULE_PAUSED=true` if it must run past 23:00. Up/down by hand: Actions > Lab schedule > Run workflow.
   The public URL is not printed (public repo): `terraform output app_url`.
