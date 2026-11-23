@@ -1,6 +1,6 @@
-# Lab schedule: a second GitHub OIDC role, used ONLY by .github/workflows/lab-schedule.yml, which runs
-# the same `terraform apply -var lab_on=true|false` as lab-up.cmd / lab-down.cmd on a timetable
-# (weekdays 14:00-23:00 IST, plus a nightly switch-off as a safety net). See docs/ci-cd.md.
+# Lab up/down from GitHub: a second GitHub OIDC role, used ONLY by .github/workflows/lab-schedule.yml,
+# which runs the same `terraform apply -var lab_on=true|false` as lab-up.cmd / lab-down.cmd when started
+# by hand (the weekday timetable was removed on 23 Nov 2026). See docs/ci-cd.md.
 #
 # Always on and free (an IAM role costs nothing).
 #
@@ -13,7 +13,7 @@
 # What it may NOT do: create or change IAM (no way to give itself more rights), touch S3 other than the
 # Terraform state file, or write secrets. All IAM resources here are always-on, so a lab switch never
 # needs IAM writes. If a merged change edits IAM (this file, github-oidc.tf, the task or proxy roles),
-# the scheduled run fails with AccessDenied on purpose: apply that change from the laptop first.
+# the workflow run fails with AccessDenied on purpose: apply that change from the laptop first.
 
 variable "lab_schedule_environment" {
   description = "GitHub environment whose jobs may assume the lab scheduler role (restricted to main in GitHub)."

@@ -85,19 +85,19 @@ a capacity provider and patching. Fargate stays for the POC.
 | One burst run (~16,000 requests incl. warm-up): CloudFront + WAF request fees | ~$0.03 |
 | A read replica (db.t3.micro), if added | ~$0.02/hour each |
 | **A test day: 3 hours at load-test size, 1 hour of k6, ~10 burst runs** | **~$2.50** |
-| Lab schedule, weekdays 14:00-23:00 at normal size | ~$1.70/day, ~$38/month |
+| Lab left on at normal size (no timetable; switched on and off by hand) | ~$0.19/hour, ~$4.50/day |
 
 - **What has been spent so far is not visible yet**: the budget and Cost Explorer filter on the `Project` tag,
   which must first be activated as a cost allocation tag (cloud team). Until then they show $0, and the account
   total includes other teams. This is the first open point.
-- The scheduled lab is the biggest cost line. With $100 in total, run the timetable only on days the lab is used
-  (repository variable `LAB_SCHEDULE_PAUSED=true` on the others) and keep a long sustained test (`LOAD_MODEL=rate`,
-  ~4 million requests, ~$8 in request fees) to one run at most.
+- Lab hours are the biggest cost line. The lab is switched on only when needed and off after each session
+  (nothing switches it off by itself), and a long sustained test (`LOAD_MODEL=rate`, ~4 million requests, ~$8 in
+  request fees) is kept to one run at most.
 - The AWS budget alert is set to $100 (alerts at $30, $50 and $90, plus a forecast alert).
 
 ## 5. Test plan: burst runs with a rising peak
 
-1. Pause the lab schedule if the tests may run past 23:00 IST.
+1. Plan to switch the lab off at the end (`lab-down.cmd`); nothing does it automatically.
 2. Start the lab at load-test size from a lab that is off: `lab-up-loadtest.cmd <image_tag>`.
 3. Start the k6 tasks (`terraform output loadgen_run_command`, repeated for INSTANCE 1 and 2 with their execution
    segments). Each run takes ~6.5 minutes: 1 minute of warm-up (not counted), then the 5-minute window with the

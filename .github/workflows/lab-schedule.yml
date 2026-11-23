@@ -1,13 +1,10 @@
-# Turns the lab on and off on a timetable, with the same Terraform apply as lab-up.cmd / lab-down.cmd:
+# Turns the lab on or off BY HAND (Actions > Lab schedule > Run workflow > up / down), with the same
+# Terraform apply as lab-up.cmd / lab-down.cmd. Up takes ~20-30 min (RDS, RDS Proxy and CloudFront).
 #
-#   ON   Mon-Fri 14:00 IST (08:30 UTC) -> API ready around 14:20-14:30 (RDS, RDS Proxy and CloudFront
-#        take ~20-30 min)
-#   OFF  every day 23:00 IST (17:30 UTC) -> also a safety net for a lab left on by hand at the weekend
-#
-# GitHub may start scheduled runs 5-30 minutes late at busy times.
-# Pause the timetable (e.g. to keep a load test running past 23:00): set the REPOSITORY variable
-# LAB_SCHEDULE_PAUSED=true (it is read before the job enters the "lab" environment, so it cannot live
-# there). Manual runs (Actions > Lab schedule > Run workflow) still work while paused.
+# There is no timetable any more. It ran Mon-Fri 14:00-23:00 IST until 23 Nov 2026 and was removed:
+# GitHub runs schedules on a best-effort basis and started the 14:00 run 8-9 hours late (the lab came
+# up at ~22:30-23:00 IST and went down at ~04:00-05:00 IST). Nothing switches the lab off by itself
+# now: finish every session with "down" here or lab-down.cmd.
 #
 # The lab comes up at the normal size (lab-up.cmd). For a load test, run lab-up-loadtest.cmd from the laptop.
 #
@@ -18,9 +15,6 @@
 name: Lab schedule
 
 on:
-  schedule:
-    - cron: "30 8 * * 1-5" # ON
-    - cron: "30 17 * * *" # OFF
   workflow_dispatch:
     inputs:
       action:
@@ -50,18 +44,15 @@ env:
   ECS_SERVICE: trebol-poc-backend
   TASK_FAMILY: trebol-poc-backend
   TARGET_GROUP: trebol-poc-app-tg
-  OFF_CRON: "30 17 * * *"
 
 jobs:
   lab:
-    name: Lab ${{ github.event.inputs.action || (github.event.schedule == '30 17 * * *' && 'down' || 'up') }}
+    name: Lab ${{ github.event.inputs.action }}
     runs-on: ubuntu-latest
     timeout-minutes: 90
     # Environment "lab": holds the secrets below and is the only way to get the scheduler role
     environment: lab
-    if: >
-      github.ref == 'refs/heads/main' &&
-      (github.event_name == 'workflow_dispatch' || vars.LAB_SCHEDULE_PAUSED != 'true')
+    if: github.ref == 'refs/heads/main'
     defaults:
       run:
         working-directory: infra/aws
@@ -71,16 +62,11 @@ jobs:
         id: what
         working-directory: .
         env:
-          EVENT: ${{ github.event_name }}
-          INPUT_ACTION: ${{ github.event.inputs.action }}
-          CRON: ${{ github.event.schedule }}
+          ACTION: ${{ github.event.inputs.action }}
           ROLE: ${{ vars.LAB_ROLE_ARN }}
           OWNER: ${{ secrets.OWNER_EMAIL }}
           ALARM: ${{ secrets.ALARM_EMAIL }}
         run: |
-          if [ "$EVENT" = "workflow_dispatch" ]; then ACTION="$INPUT_ACTION"
-          elif [ "$CRON" = "$OFF_CRON" ]; then ACTION=down
-          else ACTION=up; fi
           echo "action=$ACTION" >> "$GITHUB_OUTPUT"
 
           # Missing values would make Terraform fail (owner) or delete the alarm email subscription (alarm)
@@ -220,7 +206,7 @@ jobs:
             if [ "$ACTION" = "up" ]; then
               echo "### Lab up: $OUTCOME"
               echo "Image tag: \`$TAG\`. Public URL (not printed here, the repo is public): \`terraform output app_url\`"
-              echo "Switches off at 23:00 IST unless LAB_SCHEDULE_PAUSED=true."
+              echo "Nothing switches it off by itself: run this workflow with **down** (or lab-down.cmd) when done."
             else
               echo "### Lab down: $OUTCOME"
               echo "Hourly-billed resources removed."

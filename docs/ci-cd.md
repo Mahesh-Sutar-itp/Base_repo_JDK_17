@@ -6,7 +6,7 @@ Three workflows in `.github/workflows/`:
 |---|---|---|---|
 | `ci.yml` | every pull request, every push to `main` | build, run the tests, JaCoCo coverage, SonarCloud analysis (once connected) | none |
 | `deploy.yml` | after `ci.yml` passes on `main` (or run it by hand) | build the Docker image, Trivy scan, push to ECR, deploy to ECS if the lab is on, smoke test, roll back on failure | OIDC role, `main` branch only |
-| `lab-schedule.yml` | Mon-Fri 14:00 IST (up), every day 23:00 IST (down), or by hand | `terraform apply -var lab_on=true/false`, the same as `lab-up.cmd` / `lab-down.cmd` | separate OIDC role, GitHub environment `lab` only |
+| `lab-schedule.yml` | by hand only (Run workflow > up / down); no timetable since 23 Nov 2026 | `terraform apply -var lab_on=true/false`, the same as `lab-up.cmd` / `lab-down.cmd` | separate OIDC role, GitHub environment `lab` only |
 
 ```
 pull request  ->  ci.yml (build + test + Sonar)                      no AWS, safe for forks
@@ -70,16 +70,16 @@ or secrets.
    ```
 2. In GitHub: **Settings > Environments > New environment**, name `lab`.
    - **Deployment branches and tags**: *Selected branches and tags*, add `main`.
-   - Do **not** add required reviewers (a scheduled run would wait for approval).
+   - Required reviewers are optional: with them, every up/down run waits for an approval click.
    - **Environment secrets**: `OWNER_EMAIL` (same value as `owner.auto.tfvars`) and `ALARM_EMAIL` (same as
      `alarm.auto.tfvars`). Both are required: without `ALARM_EMAIL` Terraform would delete the alarm email
      subscription.
    - **Environment variables**: `LAB_ROLE_ARN` = the output of step 1.
-3. Optional, repository variable (Settings > Secrets and variables > Actions > Variables):
-   `LAB_SCHEDULE_PAUSED` = `true` stops the timetable; delete it or set `false` to resume.
 
-GitHub sends an email when a scheduled run fails (to whoever last changed the schedule). GitHub also
-disables schedules in public repositories after 60 days without commits; re-enable from the Actions tab.
+The workflow ran on a timetable (Mon-Fri 14:00-23:00 IST) until 23 Nov 2026. That was removed because GitHub
+runs schedules on a best-effort basis and started the 14:00 run 8-9 hours late, so the lab came up around
+22:30 IST and went down around 04:00 IST. A repository variable `LAB_SCHEDULE_PAUSED`, if it still exists, is
+no longer read and can be deleted.
 
 ## Day to day
 
@@ -89,16 +89,14 @@ disables schedules in public repositories after 60 days without commits; re-enab
   `terraform apply -var="lab_on=true" -var="app_image_tag=<tag>"`.
 - **Lab on**: the same run also deploys the new image to ECS and smoke-tests it through CloudFront.
 - **Run by hand**: Actions tab > Deploy > Run workflow.
-- **Lab schedule**: up Mon-Fri at 14:00 IST (API ready around 14:20-14:30), down every day at 23:00 IST. GitHub
-  runs schedules on a best-effort basis: they can start late (hours, at busy times) or be skipped, so check the
-  Actions tab before relying on it. Up uses the image of the latest `main` commit (or the newest image in ECR)
-  at the normal size; for a load test run `lab-up-loadtest.cmd` from the laptop instead, and set
-  `LAB_SCHEDULE_PAUSED=true` if it must run past 23:00. Up/down by hand: Actions > Lab schedule > Run workflow.
-  The public URL is not printed (public repo): `terraform output app_url`.
-- **Schedule applies `main`**: a scheduled up builds the lab from whatever is on `main`. Changes to
-  always-on resources the schedule role may not change (IAM roles and policies, the budget, ECR, secrets,
-  the VPC) must be applied from the laptop first, e.g. `terraform apply -target=aws_budgets_budget.monthly`;
-  otherwise the scheduled run fails with AccessDenied until you do.
+- **Lab up / down from GitHub**: Actions > Lab schedule > Run workflow > `up` or `down`. Up takes 20-30 minutes
+  and uses the image of the latest `main` commit (or the newest image in ECR) at the normal size; for a load
+  test run `lab-up-loadtest.cmd` from the laptop instead. The public URL is not printed (public repo):
+  `terraform output app_url`. Nothing switches the lab off by itself: finish every session with `down`.
+- **The workflow applies `main`**: an up from GitHub builds the lab from whatever is on `main`. Changes to
+  always-on resources its role may not change (IAM roles and policies, the budget, ECR, secrets, the VPC)
+  must be applied from the laptop first, e.g. `terraform apply -target=aws_budgets_budget.monthly`;
+  otherwise the run fails with AccessDenied until you do.
 
 ## How the safety nets work
 
@@ -117,8 +115,6 @@ disables schedules in public repositories after 60 days without commits; re-enab
 
 - A deploy only happens while the lab is on. At the next `lab-up` the task definition is rebuilt from Terraform,
   so pass `-var app_image_tag=<tag>` to start from the latest image (default is the one in `variables.tf`).
-- `lab-schedule.yml` turns the lab off every night at 23:00 IST. A lab started by hand after that stays on
-  until the next 23:00 run, so still finish late sessions with `lab-down.cmd`.
-- Cost of the timetable at the normal size: about 9 h x 5 days x $0.19/h = about $8.50 a week (about $38 a
-  month), more on load-test days. That is close to the $50 monthly budget alert; pause the schedule on days
-  the lab is not needed.
+- Nothing turns the lab off by itself. A lab left on costs ~$0.19/hour at normal size (~$4.50 a day) and
+  ~$0.55/hour at load-test size; the $100 budget alert emails at $30, $50 and $90. Always finish a session with
+  `down` (GitHub) or `lab-down.cmd` (laptop).
